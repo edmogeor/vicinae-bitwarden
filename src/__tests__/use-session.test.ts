@@ -68,35 +68,14 @@ describe("useSession", () => {
       expect(result.current.session).toBeNull();
     });
 
-    it("loads cached session and validates it via sync", async () => {
+    it("loads cached session directly from LocalStorage", async () => {
       mockLocalStorage.getItem.mockResolvedValue("cached-token");
-      mockBw.sync.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useSession());
-
-      expect(result.current.session).toBeNull();
 
       await waitFor(() => {
         expect(result.current.session).toBe("cached-token");
       });
-
-      expect(mockBw.sync).toHaveBeenCalledWith("cached-token");
-    });
-
-    it("discards cached session when sync validation fails", async () => {
-      mockLocalStorage.getItem.mockResolvedValue("expired-token");
-      mockBw.sync.mockRejectedValue(new Error("Session expired"));
-
-      const { result } = renderHook(() => useSession());
-
-      await waitFor(() => {
-        expect(mockBw.sync).toHaveBeenCalled();
-      });
-
-      expect(result.current.session).toBeNull();
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith(
-        "vicinae-bitwarden-session",
-      );
     });
   });
 

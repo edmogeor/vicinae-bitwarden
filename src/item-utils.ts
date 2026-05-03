@@ -1,8 +1,42 @@
+import { LocalStorage } from "@vicinae/api";
 import type { Image } from "@vicinae/api";
 import { createHash } from "node:crypto";
-import { BwItem, ItemType } from "./bitwarden-types";
+import { BwItem, BwFolder, ItemType } from "./bitwarden-types";
 import type { ItemTypeValue } from "./bitwarden-types";
 import type { CreateItemPayload, ItemAction } from "./bw-executor";
+
+const CACHE_KEY = "vicinae-bitwarden-cache";
+
+interface CachedVault {
+  items: BwItem[];
+  folders: BwFolder[];
+  timestamp: number;
+}
+
+/** Load cached vault data from LocalStorage. Returns null if not found or stale. */
+export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwFolder[] } | null> {
+  try {
+    const raw = await LocalStorage.getItem<string>(CACHE_KEY);
+    if (!raw) return null;
+    const cached: CachedVault = JSON.parse(raw);
+    // Cache valid for 24 hours (background sync refreshes on every open anyway)
+    if (Date.now() - cached.timestamp > 24 * 60 * 60 * 1000) return null;
+    return { items: cached.items, folders: cached.folders };
+  } catch {
+    return null;
+  }
+}
+
+/** Save vault data to LocalStorage for instant load next time. */
+export async function saveCachedVault(items: BwItem[], folders: BwFolder[]): Promise<void> {
+  const cache: CachedVault = { items, folders, timestamp: Date.now() };
+  await LocalStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+}
+
+/** Clear the cached vault data. */
+export async function clearCachedVault(): Promise<void> {
+  await LocalStorage.removeItem(CACHE_KEY);
+}
 
 // Google's globe placeholder — same 16x16 PNG regardless of sz param
 const GLOBE_MD5 = "b8a0bf372c762e966cc99ede8682bc71";

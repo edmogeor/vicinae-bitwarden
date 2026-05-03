@@ -1,4 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@vicinae/api", () => ({
+  LocalStorage: {
+    getItem: vi.fn().mockResolvedValue(undefined),
+    setItem: vi.fn().mockResolvedValue(undefined),
+    removeItem: vi.fn().mockResolvedValue(undefined),
+  },
+  Image: { Mask: { Circle: "circle", RoundedRectangle: "roundedRectangle" } },
+}));
+
 import { BwItem, ItemType } from "../bitwarden-types";
 import { CreateItemPayload, ItemAction } from "../bw-executor";
 import {

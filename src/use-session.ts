@@ -23,13 +23,8 @@ export function useSession(): SessionState {
   useEffect(() => {
     void (async () => {
       const cached = await LocalStorage.getItem<string>(SESSION_KEY);
-      if (!cached) return;
-
-      try {
-        await bw.sync(cached);
+      if (cached) {
         setSession(cached);
-      } catch {
-        await LocalStorage.removeItem(SESSION_KEY);
       }
     })();
   }, []);

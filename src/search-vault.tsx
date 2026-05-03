@@ -19,6 +19,7 @@ import * as bw from "./bw-executor";
 import { processFavicons } from "./favicon-processor";
 import {
   buildItemDetailMarkdown,
+  clearCachedVault,
   clearFaviconCache,
   filterItems,
   getItemActions,
@@ -26,7 +27,9 @@ import {
   itemIcon,
   itemSubtitle,
   itemTypeLabel,
+  loadCachedVault,
   resolveFavicons,
+  saveCachedVault,
 } from "./item-utils";
 import { useSession } from "./use-session";
 import type { BwFolder, BwItem } from "./bitwarden-types";
@@ -106,30 +109,39 @@ export default function SearchVault() {
     })();
   }, [state.kind]);
 
-  // Step 3: When session becomes available, load vault
+  // Step 3: When session becomes available, load vault (cache first, sync in background)
   useEffect(() => {
     if (!session) return;
     if (state.kind !== "loading" && state.kind !== "unlocking") return;
 
     void (async () => {
+      // Show cached data immediately if available
+      const cached = await loadCachedVault();
+      if (cached) {
+        setState({ kind: "vault", items: cached.items, folders: cached.folders });
+      }
+
       try {
         await bw.sync(session);
         const [items, folders] = await Promise.all([
           bw.listItems(session),
           bw.listFolders(session),
         ]);
-      setState({ kind: "vault", items, folders });
-      clearFaviconCache();
-      setFaviconMap({});
+        await saveCachedVault(items, folders);
+        setState({ kind: "vault", items, folders });
+        clearFaviconCache();
+        setFaviconMap({});
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        await showToast({
-          style: Toast.Style.Failure,
-          title: "Failed to load vault",
-          message,
-        });
-        await clearSession();
-        setState({ kind: "needs-unlock", error: message });
+        if (!cached) {
+          const message = err instanceof Error ? err.message : String(err);
+          await showToast({
+            style: Toast.Style.Failure,
+            title: "Failed to load vault",
+            message,
+          });
+          await clearSession();
+          setState({ kind: "needs-unlock", error: message });
+        }
       }
     })();
   }, [session, state.kind]);
@@ -168,6 +180,9 @@ export default function SearchVault() {
         bw.listFolders(session),
       ]);
       setState({ kind: "vault", items, folders });
+      await saveCachedVault(items, folders);
+      clearFaviconCache();
+      setFaviconMap({});
       await showToast({ style: Toast.Style.Success, title: "Vault synced" });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -184,6 +199,7 @@ export default function SearchVault() {
   // Lock handler
   const handleLock = useCallback(async () => {
     await clearSession();
+    await clearCachedVault();
     setState({ kind: "needs-unlock" });
   }, [clearSession]);
 
