@@ -18,7 +18,6 @@ type UIState =
   | { kind: "checking-bw" }
   | { kind: "bw-not-installed" }
   | { kind: "logging-in" }
-  | { kind: "waiting-for-session" }
   | { kind: "needs-unlock"; error?: string }
   | { kind: "unlocking" }
   | { kind: "form" };
@@ -57,19 +56,20 @@ export default function CreateItem() {
         // If status fails, proceed — session check will handle it
       }
 
-      setState({ kind: "waiting-for-session" });
+      if (session) {
+        setState({ kind: "form" });
+      } else {
+        setState({ kind: "needs-unlock" });
+      }
     })();
   }, []);
 
+  // When session becomes available after mount, transition to form
   useEffect(() => {
-    if (state.kind !== "waiting-for-session") return;
-
-    if (session) {
-      setState({ kind: "form" });
-    } else {
-      setState({ kind: "needs-unlock" });
-    }
-  }, [state.kind, session]);
+    if (!session) return;
+    if (state.kind !== "needs-unlock") return;
+    setState({ kind: "form" });
+  }, [session, state.kind]);
 
   useEffect(() => {
     if (state.kind !== "logging-in") return;
@@ -167,7 +167,7 @@ export default function CreateItem() {
     [session, selectedType],
   );
 
-  if (state.kind === "checking-bw" || state.kind === "logging-in" || state.kind === "waiting-for-session") {
+  if (state.kind === "checking-bw" || state.kind === "logging-in") {
     return (
       <Form>
         <Form.Description text="Loading..." />

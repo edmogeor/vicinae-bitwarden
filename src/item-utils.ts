@@ -6,36 +6,60 @@ import type { ItemTypeValue } from "./bitwarden-types";
 import type { CreateItemPayload, ItemAction } from "./bw-executor";
 
 const CACHE_KEY = "vicinae-bitwarden-cache";
+const FAVICON_CACHE_KEY = "vicinae-bitwarden-favicons";
 
 interface CachedVault {
   items: BwItem[];
   folders: BwFolder[];
+  favicons: FaviconMap;
   timestamp: number;
 }
 
 /** Load cached vault data from LocalStorage. Returns null if not found or stale. */
-export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwFolder[] } | null> {
+export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwFolder[]; favicons: FaviconMap } | null> {
   try {
     const raw = await LocalStorage.getItem<string>(CACHE_KEY);
     if (!raw) return null;
     const cached: CachedVault = JSON.parse(raw);
     // Cache valid for 24 hours (background sync refreshes on every open anyway)
     if (Date.now() - cached.timestamp > 24 * 60 * 60 * 1000) return null;
-    return { items: cached.items, folders: cached.folders };
+    return { items: cached.items, folders: cached.folders, favicons: cached.favicons ?? {} };
   } catch {
     return null;
   }
 }
 
-/** Save vault data to LocalStorage for instant load next time. */
-export async function saveCachedVault(items: BwItem[], folders: BwFolder[]): Promise<void> {
-  const cache: CachedVault = { items, folders, timestamp: Date.now() };
+/** Save vault data + favicons to LocalStorage for instant load next time. */
+export async function saveCachedVault(
+  items: BwItem[],
+  folders: BwFolder[],
+): Promise<void> {
+  const cache: CachedVault = { items, folders, favicons: {}, timestamp: Date.now() };
   await LocalStorage.setItem(CACHE_KEY, JSON.stringify(cache));
 }
 
-/** Clear the cached vault data. */
 export async function clearCachedVault(): Promise<void> {
   await LocalStorage.removeItem(CACHE_KEY);
+  await LocalStorage.removeItem(FAVICON_CACHE_KEY);
+}
+
+/** Load cached favicon data URIs from LocalStorage. */
+export async function loadFaviconCache(): Promise<FaviconMap> {
+  try {
+    const raw = await LocalStorage.getItem<string>(FAVICON_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Persist the in-memory favicon cache to LocalStorage. */
+async function persistFaviconCache(): Promise<void> {
+  const map: FaviconMap = {};
+  for (const [domain, entry] of Object.entries(faviconCache)) {
+    if (entry.dataUri) map[domain] = entry.dataUri;
+  }
+  await LocalStorage.setItem(FAVICON_CACHE_KEY, JSON.stringify(map));
 }
 
 // Google's globe placeholder — same 16x16 PNG regardless of sz param
@@ -72,6 +96,14 @@ interface CacheEntry {
 }
 
 let faviconCache: Record<string, CacheEntry> = {};
+
+// Try loading persisted favicon cache on module init
+void (async () => {
+  const saved = await loadFaviconCache();
+  for (const [domain, uri] of Object.entries(saved)) {
+    faviconCache[domain] = { dataUri: uri, timestamp: Date.now() };
+  }
+})();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
@@ -115,6 +147,8 @@ export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
       }
     }),
   );
+
+  await persistFaviconCache();
 
   return Object.fromEntries(
     Object.entries(faviconCache).map(([k, v]) => [k, v.dataUri]),

@@ -16,7 +16,6 @@ import type { Image } from "@vicinae/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BwNotInstalled } from "./bw-not-installed";
 import * as bw from "./bw-executor";
-import { processFavicons } from "./favicon-processor";
 import {
   buildItemDetailMarkdown,
   clearCachedVault,
@@ -28,6 +27,7 @@ import {
   itemSubtitle,
   itemTypeLabel,
   loadCachedVault,
+  loadFaviconCache,
   resolveFavicons,
   saveCachedVault,
 } from "./item-utils";
@@ -38,24 +38,45 @@ type UIState =
   | { kind: "checking-bw" }
   | { kind: "bw-not-installed" }
   | { kind: "logging-in" }
-  | { kind: "waiting-for-session" }
   | { kind: "needs-unlock"; error?: string }
   | { kind: "unlocking" }
   | { kind: "loading" }
   | { kind: "vault"; items: BwItem[]; folders: BwFolder[] };
 
+// Module-level cache for instant synchronous initial render
+let memoryVault: { items: BwItem[]; folders: BwFolder[] } | null = null;
+
 export default function SearchVault() {
   const { session, unlock, clearSession, loginIfNeeded, isLoggingIn, loginError } =
     useSession();
-  const [state, setState] = useState<UIState>({ kind: "checking-bw" });
+  const [state, setState] = useState<UIState>(() => {
+    if (memoryVault) {
+      return { kind: "vault", items: memoryVault.items, folders: memoryVault.folders };
+    }
+    return { kind: "checking-bw" };
+  });
+
+  const setVault = (items: BwItem[], folders: BwFolder[]) => {
+    memoryVault = { items, folders };
+    setState({ kind: "vault", items, folders });
+  };
   const [searchText, setSearchText] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [faviconMap, setFaviconMap] = useState<Record<string, string>>({});
   const { push } = useNavigation();
 
-  // Step 1: Check if `bw` is installed and logged in
+  // Step 1: Load cached vault immediately, run bw checks in parallel
   useEffect(() => {
     void (async () => {
+      const map = await loadFaviconCache();
+      setFaviconMap(map);
+
+      const cached = await loadCachedVault();
+      if (cached) {
+        setVault(cached.items, cached.folders);
+      }
+
+      // Check bw in background
       const installed = await bw.checkInstalled();
       if (!installed) {
         setState({ kind: "bw-not-installed" });
@@ -72,21 +93,115 @@ export default function SearchVault() {
         // If status fails, proceed — session check will handle it
       }
 
-      // Wait for useSession to finish loading from LocalStorage
-      setState({ kind: "waiting-for-session" });
+      if (!session) {
+        if (!cached) setState({ kind: "needs-unlock" });
+        return;
+      }
+
+      // Sync in background (cache already shown above)
+      try {
+        await bw.sync(session);
+        const [items, folders] = await Promise.all([
+          bw.listItems(session),
+          bw.listFolders(session),
+        ]);
+        await saveCachedVault(items, folders);
+        setVault(items, folders);
+        clearFaviconCache();
+        setFaviconMap({});
+      } catch {
+        if (!cached) {
+          await clearSession();
+          setState({ kind: "needs-unlock", error: "Session expired" });
+        }
+      }
     })();
   }, []);
 
-  // Step 1b: When session resolves after mount, decide next state
+  // Step 1b: when session resolves after mount, try loading
   useEffect(() => {
-    if (state.kind !== "waiting-for-session") return;
+    if (!session) return;
+    if (state.kind !== "needs-unlock") return;
 
-    if (session) {
-      setState({ kind: "loading" });
-    } else {
-      setState({ kind: "needs-unlock" });
+    setState({ kind: "loading" });
+  }, [session, state.kind]);
+
+  // Step 1c: when session appears while vault is already showing (cache loaded first)
+  useEffect(() => {
+    if (!session) return;
+    if (state.kind !== "vault") return;
+
+    void (async () => {
+      try {
+        await bw.sync(session);
+        const [items, folders] = await Promise.all([
+          bw.listItems(session),
+          bw.listFolders(session),
+        ]);
+        await saveCachedVault(items, folders);
+        setVault(items, folders);
+        clearFaviconCache();
+        setFaviconMap({});
+      } catch {
+        // Cache already showing — silent fail
+      }
+    })();
+  }, [session]);
+
+  // Resolve favicons after vault appears (catches both cached and fresh loads)
+  useEffect(() => {
+    if (state.kind !== "vault") return;
+
+    const domains: string[] = [];
+    for (const item of state.items) {
+      if (item.type === 1 && item.login?.uris?.[0]?.uri) {
+        try {
+          domains.push(new URL(item.login.uris[0].uri).hostname);
+        } catch {
+          // skip
+        }
+      }
     }
-  }, [state.kind, session]);
+
+    if (domains.length === 0) return;
+
+    void (async () => {
+      const map = await resolveFavicons(domains);
+      setFaviconMap(map);
+    })();
+  }, [state]);
+
+  // Step 2: When state becomes "loading" and session is available, load vault
+  useEffect(() => {
+    if (!session) return;
+    if (state.kind !== "loading") return;
+
+    void (async () => {
+      const cached = await loadCachedVault();
+      if (cached) {
+        setVault(cached.items, cached.folders);
+      }
+
+      try {
+        await bw.sync(session);
+        const [items, folders] = await Promise.all([
+          bw.listItems(session),
+          bw.listFolders(session),
+        ]);
+        await saveCachedVault(items, folders);
+        setVault(items, folders);
+        clearFaviconCache();
+        setFaviconMap({});
+      } catch (err) {
+        if (!cached) {
+          const message = err instanceof Error ? err.message : String(err);
+          await showToast({ style: Toast.Style.Failure, title: "Failed to load vault", message });
+          await clearSession();
+          setState({ kind: "needs-unlock", error: message });
+        }
+      }
+    })();
+  }, [session, state.kind]);
 
   // Step 2: When login is needed, attempt login
   useEffect(() => {
@@ -109,66 +224,6 @@ export default function SearchVault() {
     })();
   }, [state.kind]);
 
-  // Step 3: When session becomes available, load vault (cache first, sync in background)
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind !== "loading" && state.kind !== "unlocking") return;
-
-    void (async () => {
-      // Show cached data immediately if available
-      const cached = await loadCachedVault();
-      if (cached) {
-        setState({ kind: "vault", items: cached.items, folders: cached.folders });
-      }
-
-      try {
-        await bw.sync(session);
-        const [items, folders] = await Promise.all([
-          bw.listItems(session),
-          bw.listFolders(session),
-        ]);
-        await saveCachedVault(items, folders);
-        setState({ kind: "vault", items, folders });
-        clearFaviconCache();
-        setFaviconMap({});
-      } catch (err) {
-        if (!cached) {
-          const message = err instanceof Error ? err.message : String(err);
-          await showToast({
-            style: Toast.Style.Failure,
-            title: "Failed to load vault",
-            message,
-          });
-          await clearSession();
-          setState({ kind: "needs-unlock", error: message });
-        }
-      }
-    })();
-  }, [session, state.kind]);
-
-  // Resolve favicons asynchronously after vault loads
-  useEffect(() => {
-    if (state.kind !== "vault") return;
-
-    const domains: string[] = [];
-    for (const item of state.items) {
-      if (item.type === 1 && item.login?.uris?.[0]?.uri) {
-        try {
-          domains.push(new URL(item.login.uris[0].uri).hostname);
-        } catch {
-          // skip
-        }
-      }
-    }
-
-    if (domains.length === 0) return;
-
-    void (async () => {
-      const map = await resolveFavicons(domains);
-      setFaviconMap(map);
-    })();
-  }, [state.kind]);
-
   // Sync handler
   const handleSync = useCallback(async () => {
     if (!session) return;
@@ -179,10 +234,10 @@ export default function SearchVault() {
         bw.listItems(session),
         bw.listFolders(session),
       ]);
-      setState({ kind: "vault", items, folders });
-      await saveCachedVault(items, folders);
+      setVault(items, folders);
       clearFaviconCache();
       setFaviconMap({});
+      await saveCachedVault(items, folders);
       await showToast({ style: Toast.Style.Success, title: "Vault synced" });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -281,7 +336,6 @@ export default function SearchVault() {
   const isLoading =
     state.kind === "checking-bw" ||
     state.kind === "logging-in" ||
-    state.kind === "waiting-for-session" ||
     state.kind === "loading" ||
     isSyncing;
 
