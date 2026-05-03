@@ -11,6 +11,7 @@ import { BwNotInstalled } from "./bw-not-installed";
 import * as bw from "./bw-executor";
 import type { BwFolder } from "./bitwarden-types";
 import { ItemType } from "./bitwarden-types";
+import type { ItemTypeValue } from "./bitwarden-types";
 import { toCreatePayload } from "./item-utils";
 import { useSession } from "./use-session";
 
@@ -22,12 +23,17 @@ type UIState =
   | { kind: "unlocking" }
   | { kind: "form" };
 
-const ITEM_TYPE_OPTIONS = [
-  { value: "Login", label: "Login" },
-  { value: "Card", label: "Card" },
-  { value: "Identity", label: "Identity" },
-  { value: "Secure Note", label: "Secure Note" },
-];
+const ITEM_TYPE_MAP: Record<string, ItemTypeValue> = {
+  Login: ItemType.Login,
+  Card: ItemType.Card,
+  Identity: ItemType.Identity,
+  "Secure Note": ItemType.SecureNote,
+};
+
+const ITEM_TYPE_OPTIONS = Object.keys(ITEM_TYPE_MAP).map((label) => ({
+  value: label,
+  label,
+}));
 
 const CARD_BRANDS = ["Visa", "Mastercard", "Amex", "Discover", "Other"];
 
@@ -134,14 +140,7 @@ export default function CreateItem() {
         itemValues[key] = String(val ?? "");
       }
 
-      const typeNum =
-        selectedType === "Login"
-          ? ItemType.Login
-          : selectedType === "Card"
-            ? ItemType.Card
-            : selectedType === "Identity"
-              ? ItemType.Identity
-              : ItemType.SecureNote;
+      const typeNum = ITEM_TYPE_MAP[selectedType] ?? ItemType.SecureNote;
 
       setIsSubmitting(true);
       try {

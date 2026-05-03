@@ -11,39 +11,43 @@ const FAVICON_CACHE_KEY = "vicinae-bitwarden-favicons";
 interface CachedVault {
   items: BwItem[];
   folders: BwFolder[];
-  favicons: FaviconMap;
   timestamp: number;
 }
 
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
 /** Load cached vault data from LocalStorage. Returns null if not found or stale. */
-export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwFolder[]; favicons: FaviconMap } | null> {
+// fallow-ignore-next-line unused-export
+export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwFolder[] } | null> {
   try {
     const raw = await LocalStorage.getItem<string>(CACHE_KEY);
     if (!raw) return null;
     const cached: CachedVault = JSON.parse(raw);
-    // Cache valid for 24 hours (background sync refreshes on every open anyway)
-    if (Date.now() - cached.timestamp > 24 * 60 * 60 * 1000) return null;
-    return { items: cached.items, folders: cached.folders, favicons: cached.favicons ?? {} };
+    if (Date.now() - cached.timestamp > CACHE_TTL) return null;
+    return { items: cached.items, folders: cached.folders };
   } catch {
     return null;
   }
 }
 
-/** Save vault data + favicons to LocalStorage for instant load next time. */
+/** Save vault data to LocalStorage for instant load next time. */
+// fallow-ignore-next-line unused-export
 export async function saveCachedVault(
   items: BwItem[],
   folders: BwFolder[],
 ): Promise<void> {
-  const cache: CachedVault = { items, folders, favicons: {}, timestamp: Date.now() };
+  const cache: CachedVault = { items, folders, timestamp: Date.now() };
   await LocalStorage.setItem(CACHE_KEY, JSON.stringify(cache));
 }
 
+// fallow-ignore-next-line unused-export
 export async function clearCachedVault(): Promise<void> {
   await LocalStorage.removeItem(CACHE_KEY);
   await LocalStorage.removeItem(FAVICON_CACHE_KEY);
 }
 
 /** Load cached favicon data URIs from LocalStorage. */
+// fallow-ignore-next-line unused-export
 export async function loadFaviconCache(): Promise<FaviconMap> {
   try {
     const raw = await LocalStorage.getItem<string>(FAVICON_CACHE_KEY);
@@ -88,7 +92,7 @@ function isGlobeFavicon(buf: Buffer, status: number): boolean {
   return hash === GLOBE_MD5;
 }
 
-export type FaviconMap = Record<string, string>;
+type FaviconMap = Record<string, string>;
 
 interface CacheEntry {
   dataUri: string;
@@ -104,13 +108,13 @@ void (async () => {
     faviconCache[domain] = { dataUri: uri, timestamp: Date.now() };
   }
 })();
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Resolve favicons via Google's service. Fetches the image, filters out
  * the globe placeholder, and caches the actual image as a data URI.
  * Returns a map of domain → data URI (or empty string for globe).
  */
+// fallow-ignore-next-line unused-export
 export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
   const now = Date.now();
   const unique = [...new Set(domains)].filter((d) => {
@@ -156,6 +160,7 @@ export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
 }
 
 /** Clear the in-memory favicon cache (e.g. after sync forces re-fetch). */
+// fallow-ignore-next-line unused-export
 export function clearFaviconCache(): void {
   faviconCache = {};
 }
@@ -169,6 +174,8 @@ export function filterItems(items: BwItem[], query: string): BwItem[] {
   return items.filter((item) => item.name.toLowerCase().includes(lower));
 }
 
+type GroupedItems = Map<string | null, { folderName: string; items: BwItem[] }>;
+
 /**
  * Group items by folderId. Returns a Map where:
  * - `null` key maps to unfiled items
@@ -177,16 +184,13 @@ export function filterItems(items: BwItem[], query: string): BwItem[] {
 export function groupByFolder(
   items: BwItem[],
   folders: { id: string; name: string }[],
-): Map<string | null, { folderName: string; items: BwItem[] }> {
+): GroupedItems {
   const folderMap = new Map<string, string>();
   for (const f of folders) {
     folderMap.set(f.id, f.name);
   }
 
-  const grouped = new Map<
-    string | null,
-    { folderName: string; items: BwItem[] }
-  >();
+  const grouped: GroupedItems = new Map();
 
   for (const item of items) {
     const key = item.folderId ?? null;
@@ -209,15 +213,12 @@ export function itemSubtitle(item: BwItem): string | undefined {
   switch (item.type) {
     case ItemType.Login:
       return item.login?.username ?? undefined;
-    case ItemType.Card: {
-      const card = item.card;
-      if (card?.cardholderName) return card.cardholderName;
-      if (card?.brand && card.number) {
-        const last4 = card.number.slice(-4);
-        return `${card.brand} *${last4}`;
+    case ItemType.Card:
+      if (item.card?.cardholderName) return item.card.cardholderName;
+      if (item.card?.brand && item.card.number) {
+        return `${item.card.brand} *${item.card.number.slice(-4)}`;
       }
       return undefined;
-    }
     case ItemType.Identity:
       if (item.identity) {
         const parts = [
@@ -252,65 +253,90 @@ export function itemTypeLabel(item: BwItem): string {
   }
 }
 
+function getLoginActions(login: BwItem["login"]): ItemAction[] {
+  const actions: ItemAction[] = [];
+  if (login?.password) actions.push({ label: "Copy Password", value: login.password });
+  if (login?.username) actions.push({ label: "Copy Username", value: login.username });
+  if (login?.totp) actions.push({ label: "Copy TOTP", value: "TOTP" });
+  if (login?.uris?.length) {
+    const primaryUri = login.uris[0]?.uri;
+    if (primaryUri) actions.push({ label: "Open URL", value: primaryUri });
+  }
+  return actions;
+}
+
+function getCardActions(card: BwItem["card"]): ItemAction[] {
+  const actions: ItemAction[] = [];
+  if (card?.number) actions.push({ label: "Copy Card Number", value: card.number });
+  if (card?.code) actions.push({ label: "Copy Security Code", value: card.code });
+  return actions;
+}
+
+function getIdentityActions(identity: BwItem["identity"]): ItemAction[] {
+  const actions: ItemAction[] = [];
+  if (identity?.firstName && identity?.lastName) {
+    actions.push({ label: "Copy Name", value: `${identity.firstName} ${identity.lastName}` });
+  }
+  if (identity?.email) actions.push({ label: "Copy Email", value: identity.email });
+  if (identity?.phone) actions.push({ label: "Copy Phone", value: identity.phone });
+  return actions;
+}
+
 /**
  * Get the list of actions for an Item based on its type.
  */
 export function getItemActions(item: BwItem): ItemAction[] {
-  const actions: ItemAction[] = [];
-
   switch (item.type) {
-    case ItemType.Login: {
-      if (item.login?.password) {
-        actions.push({ label: "Copy Password", value: item.login.password });
-      }
-      if (item.login?.username) {
-        actions.push({ label: "Copy Username", value: item.login.username });
-      }
-      if (item.login?.totp) {
-        actions.push({ label: "Copy TOTP", value: "TOTP" });
-      }
-      if (item.login?.uris && item.login.uris.length > 0) {
-        const primaryUri = item.login.uris[0]?.uri;
-        if (primaryUri) {
-          actions.push({ label: "Open URL", value: primaryUri });
-        }
-      }
-      break;
-    }
-    case ItemType.Card: {
-      if (item.card?.number) {
-        actions.push({ label: "Copy Card Number", value: item.card.number });
-      }
-      if (item.card?.code) {
-        actions.push({
-          label: "Copy Security Code",
-          value: item.card.code,
-        });
-      }
-      break;
-    }
-    case ItemType.Identity: {
-      const identity = item.identity;
-      if (identity?.firstName && identity?.lastName) {
-        actions.push({
-          label: "Copy Name",
-          value: `${identity.firstName} ${identity.lastName}`,
-        });
-      }
-      if (identity?.email) {
-        actions.push({ label: "Copy Email", value: identity.email });
-      }
-      if (identity?.phone) {
-        actions.push({ label: "Copy Phone", value: identity.phone });
-      }
-      break;
-    }
-    case ItemType.SecureNote: {
-      break;
-    }
+    case ItemType.Login:
+      return getLoginActions(item.login);
+    case ItemType.Card:
+      return getCardActions(item.card);
+    case ItemType.Identity:
+      return getIdentityActions(item.identity);
+    default:
+      return [];
   }
+}
 
-  return actions;
+function t(v: unknown): string | null {
+  return String(v ?? "").trim() || null;
+}
+
+function buildLoginFields(values: Record<string, string>): CreateItemPayload["login"] {
+  return {
+    username: t(values.username),
+    password: t(values.password),
+    totp: t(values.totp),
+    uris: values.url?.trim() ? [{ uri: values.url.trim(), match: null }] : undefined,
+  };
+}
+
+function buildCardFields(values: Record<string, string>): CreateItemPayload["card"] {
+  return {
+    cardholderName: t(values.cardholderName),
+    brand: t(values.brand),
+    number: t(values.number),
+    expMonth: t(values.expMonth),
+    expYear: t(values.expYear),
+    code: t(values.code),
+  };
+}
+
+function buildIdentityFields(values: Record<string, string>): CreateItemPayload["identity"] {
+  return {
+    title: t(values.title),
+    firstName: t(values.firstName),
+    middleName: t(values.middleName),
+    lastName: t(values.lastName),
+    email: t(values.email),
+    phone: t(values.phone),
+    address1: t(values.address1),
+    address2: t(values.address2),
+    city: t(values.city),
+    state: t(values.state),
+    postalCode: t(values.postalCode),
+    country: t(values.country),
+  };
 }
 
 /**
@@ -324,52 +350,15 @@ export function toCreatePayload(
   const base: CreateItemPayload = {
     type,
     name: formValues.name ?? "",
-    notes: formValues.notes?.trim() || null,
+    notes: t(formValues.notes),
     folderId: folderId || null,
     favorite: false,
   };
 
-  switch (type) {
-    case ItemType.Login:
-      base.login = {
-        username: formValues.username?.trim() || null,
-        password: formValues.password?.trim() || null,
-        totp: formValues.totp?.trim() || null,
-        uris: formValues.url?.trim()
-          ? [{ uri: formValues.url.trim(), match: null }]
-          : undefined,
-      };
-      break;
-    case ItemType.Card:
-      base.card = {
-        cardholderName: formValues.cardholderName?.trim() || null,
-        brand: formValues.brand?.trim() || null,
-        number: formValues.number?.trim() || null,
-        expMonth: formValues.expMonth?.trim() || null,
-        expYear: formValues.expYear?.trim() || null,
-        code: formValues.code?.trim() || null,
-      };
-      break;
-    case ItemType.Identity:
-      base.identity = {
-        title: formValues.title?.trim() || null,
-        firstName: formValues.firstName?.trim() || null,
-        middleName: formValues.middleName?.trim() || null,
-        lastName: formValues.lastName?.trim() || null,
-        email: formValues.email?.trim() || null,
-        phone: formValues.phone?.trim() || null,
-        address1: formValues.address1?.trim() || null,
-        address2: formValues.address2?.trim() || null,
-        city: formValues.city?.trim() || null,
-        state: formValues.state?.trim() || null,
-        postalCode: formValues.postalCode?.trim() || null,
-        country: formValues.country?.trim() || null,
-      };
-      break;
-    case ItemType.SecureNote:
-      base.secureNote = { type: 0 };
-      break;
-  }
+  if (type === ItemType.Login) base.login = buildLoginFields(formValues);
+  if (type === ItemType.Card) base.card = buildCardFields(formValues);
+  if (type === ItemType.Identity) base.identity = buildIdentityFields(formValues);
+  if (type === ItemType.SecureNote) base.secureNote = { type: 0 };
 
   return base;
 }

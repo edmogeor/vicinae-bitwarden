@@ -282,3 +282,47 @@ describe("status", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// deleteItem
+// ---------------------------------------------------------------------------
+describe("deleteItem", () => {
+  it("calls bw delete item with BW_SESSION", async () => {
+    mockExec("");
+
+    await bw.deleteItem("item-1", "token");
+    expect(mockExecFile).toHaveBeenCalledWith(
+      "bw",
+      ["delete", "item", "item-1"],
+      hasSession("token"),
+    );
+  });
+
+  it("throws BwError on delete failure", async () => {
+    mockExecError("Item not found");
+
+    await expect(bw.deleteItem("missing", "token")).rejects.toThrow("Item not found");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// logout
+// ---------------------------------------------------------------------------
+describe("logout", () => {
+  it("calls bw logout", async () => {
+    mockExec("");
+
+    await bw.logout();
+    expect(mockExecFile).toHaveBeenCalledWith(
+      "bw",
+      ["logout"],
+      expect.any(Object),
+    );
+  });
+
+  it("throws BwError on logout failure", async () => {
+    mockExecError("Network error");
+
+    await expect(bw.logout()).rejects.toThrow("Network error");
+  });
+});

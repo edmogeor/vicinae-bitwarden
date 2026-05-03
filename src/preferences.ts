@@ -1,6 +1,6 @@
 import { getPreferenceValues } from "@vicinae/api";
 
-export interface Preferences {
+interface Preferences {
   serverRegion: "bitwarden.com" | "bitwarden.eu" | "self-hosted";
   customServerUrl: string;
   apiClientId: string;

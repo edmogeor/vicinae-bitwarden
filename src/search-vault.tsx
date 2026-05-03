@@ -33,6 +33,7 @@ import {
 } from "./item-utils";
 import { useSession } from "./use-session";
 import type { BwFolder, BwItem } from "./bitwarden-types";
+import { ItemType } from "./bitwarden-types";
 
 type UIState =
   | { kind: "checking-bw" }
@@ -59,6 +60,18 @@ export default function SearchVault() {
   const setVault = (items: BwItem[], folders: BwFolder[]) => {
     memoryVault = { items, folders };
     setState({ kind: "vault", items, folders });
+  };
+
+  const syncVault = async (token: string) => {
+    await bw.sync(token);
+    const [items, folders] = await Promise.all([
+      bw.listItems(token),
+      bw.listFolders(token),
+    ]);
+    await saveCachedVault(items, folders);
+    setVault(items, folders);
+    clearFaviconCache();
+    setFaviconMap({});
   };
   const [searchText, setSearchText] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -100,16 +113,13 @@ export default function SearchVault() {
 
       // Sync in background (cache already shown above)
       try {
-        await bw.sync(session);
-        const [items, folders] = await Promise.all([
-          bw.listItems(session),
-          bw.listFolders(session),
-        ]);
-        await saveCachedVault(items, folders);
-        setVault(items, folders);
-        clearFaviconCache();
-        setFaviconMap({});
+        await syncVault(session);
       } catch {
+        if (!cached) {
+          await clearSession();
+          setState({ kind: "needs-unlock", error: "Session expired" });
+        }
+      }
         if (!cached) {
           await clearSession();
           setState({ kind: "needs-unlock", error: "Session expired" });
@@ -133,15 +143,7 @@ export default function SearchVault() {
 
     void (async () => {
       try {
-        await bw.sync(session);
-        const [items, folders] = await Promise.all([
-          bw.listItems(session),
-          bw.listFolders(session),
-        ]);
-        await saveCachedVault(items, folders);
-        setVault(items, folders);
-        clearFaviconCache();
-        setFaviconMap({});
+        await syncVault(session);
       } catch {
         // Cache already showing — silent fail
       }
@@ -154,7 +156,7 @@ export default function SearchVault() {
 
     const domains: string[] = [];
     for (const item of state.items) {
-      if (item.type === 1 && item.login?.uris?.[0]?.uri) {
+      if (item.type === ItemType.Login && item.login?.uris?.[0]?.uri) {
         try {
           domains.push(new URL(item.login.uris[0].uri).hostname);
         } catch {
@@ -183,15 +185,7 @@ export default function SearchVault() {
       }
 
       try {
-        await bw.sync(session);
-        const [items, folders] = await Promise.all([
-          bw.listItems(session),
-          bw.listFolders(session),
-        ]);
-        await saveCachedVault(items, folders);
-        setVault(items, folders);
-        clearFaviconCache();
-        setFaviconMap({});
+        await syncVault(session);
       } catch (err) {
         if (!cached) {
           const message = err instanceof Error ? err.message : String(err);
@@ -229,15 +223,7 @@ export default function SearchVault() {
     if (!session) return;
     setIsSyncing(true);
     try {
-      await bw.sync(session);
-      const [items, folders] = await Promise.all([
-        bw.listItems(session),
-        bw.listFolders(session),
-      ]);
-      setVault(items, folders);
-      clearFaviconCache();
-      setFaviconMap({});
-      await saveCachedVault(items, folders);
+      await syncVault(session);
       await showToast({ style: Toast.Style.Success, title: "Vault synced" });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -470,7 +456,7 @@ function buildMetadata(
       <Detail.Metadata.Label title="Type" text={itemTypeLabel(item)} />
       {folderName && <Detail.Metadata.Label title="Folder" text={folderName} />}
 
-      {item.type === 1 && item.login && (
+      {item.type === ItemType.Login && item.login && (
         <>
           <Detail.Metadata.Separator />
           {item.login.username && (
@@ -497,7 +483,7 @@ function buildMetadata(
         </>
       )}
 
-      {item.type === 3 && item.card && (
+      {item.type === ItemType.Card && item.card && (
         <>
           <Detail.Metadata.Separator />
           {item.card.cardholderName && (
@@ -524,7 +510,7 @@ function buildMetadata(
         </>
       )}
 
-      {item.type === 4 && item.identity && (
+      {item.type === ItemType.Identity && item.identity && (
         <>
           <Detail.Metadata.Separator />
           {item.identity.title && (
@@ -623,7 +609,7 @@ function ItemDetailView({
   useEffect(() => {
     if (!session) return;
     const resolved = fullItem ?? item;
-    if (resolved.type !== 1 || !resolved.login?.totp) return;
+    if (resolved.type !== ItemType.Login || !resolved.login?.totp) return;
 
     let active = true;
 
@@ -648,11 +634,7 @@ function ItemDetailView({
   const resolved = fullItem ?? item;
   const markdown = buildItemDetailMarkdown(resolved);
   const actions = getItemActions(resolved);
-  const resolvedFolderName =
-    folderName ??
-    (resolved.folderId
-      ? resolved.folderId
-      : undefined);
+  const resolvedFolderName = folderName ?? resolved.folderId ?? undefined;
 
   const metadata = buildMetadata(resolved, resolvedFolderName, true, totpCode);
 

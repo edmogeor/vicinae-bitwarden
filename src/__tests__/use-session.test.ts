@@ -115,10 +115,7 @@ describe("useSession", () => {
   });
 
   describe("clearSession", () => {
-    it("calls bw.lock, removes from LocalStorage, and sets session to null", async () => {
-      mockLocalStorage.getItem.mockResolvedValue("active-token");
-      mockBw.sync.mockResolvedValue(undefined);
-
+    async function renderAndClear() {
       const { result } = renderHook(() => useSession());
 
       await waitFor(() => {
@@ -128,6 +125,15 @@ describe("useSession", () => {
       await act(async () => {
         await result.current.clearSession();
       });
+
+      return result;
+    }
+
+    it("calls bw.lock, removes from LocalStorage, and sets session to null", async () => {
+      mockLocalStorage.getItem.mockResolvedValue("active-token");
+      mockBw.sync.mockResolvedValue(undefined);
+
+      const result = await renderAndClear();
 
       expect(mockBw.lock).toHaveBeenCalledWith("active-token");
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith(
@@ -141,15 +147,7 @@ describe("useSession", () => {
       mockBw.sync.mockResolvedValue(undefined);
       mockBw.lock.mockRejectedValue(new Error("already locked"));
 
-      const { result } = renderHook(() => useSession());
-
-      await waitFor(() => {
-        expect(result.current.session).toBe("active-token");
-      });
-
-      await act(async () => {
-        await result.current.clearSession();
-      });
+      const result = await renderAndClear();
 
       expect(result.current.session).toBeNull();
       expect(mockLocalStorage.removeItem).toHaveBeenCalled();

@@ -27,7 +27,7 @@ export interface BwItem {
   collectionIds: string[] | null;
 }
 
-export interface BwLogin {
+interface BwLogin {
   username: string | null;
   password: string | null;
   totp: string | null;
@@ -35,11 +35,11 @@ export interface BwLogin {
   passwordRevisionDate?: string | null;
 }
 
-export interface BwSecureNote {
+interface BwSecureNote {
   type: number;
 }
 
-export interface BwCard {
+interface BwCard {
   cardholderName: string | null;
   brand: string | null;
   number: string | null;
@@ -48,7 +48,7 @@ export interface BwCard {
   code: string | null;
 }
 
-export interface BwIdentity {
+interface BwIdentity {
   title: string | null;
   firstName: string | null;
   middleName: string | null;
@@ -69,7 +69,7 @@ export interface BwIdentity {
   licenseNumber: string | null;
 }
 
-export interface BwField {
+interface BwField {
   name: string;
   value: string;
   type: number;

@@ -82,8 +82,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@vicinae/api": "^0.19.9",
-    "jimp": "^1.6.1"
+    "@vicinae/api": "^0.19.9"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

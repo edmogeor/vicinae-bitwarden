@@ -1,10 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+const { mockGetItem, mockSetItem, mockRemoveItem } = vi.hoisted(() => ({
+  mockGetItem: vi.fn<[key: string], Promise<string | undefined>>().mockResolvedValue(undefined),
+  mockSetItem: vi.fn<[key: string, value: string], Promise<void>>().mockResolvedValue(undefined),
+  mockRemoveItem: vi.fn<[key: string], Promise<void>>().mockResolvedValue(undefined),
+}));
 
 vi.mock("@vicinae/api", () => ({
   LocalStorage: {
-    getItem: vi.fn().mockResolvedValue(undefined),
-    setItem: vi.fn().mockResolvedValue(undefined),
-    removeItem: vi.fn().mockResolvedValue(undefined),
+    getItem: (key: string) => mockGetItem(key),
+    setItem: (key: string, value: string) => mockSetItem(key, value),
+    removeItem: (key: string) => mockRemoveItem(key),
   },
   Image: { Mask: { Circle: "circle", RoundedRectangle: "roundedRectangle" } },
 }));
@@ -13,14 +19,25 @@ import { BwItem, ItemType } from "../bitwarden-types";
 import { CreateItemPayload, ItemAction } from "../bw-executor";
 import {
   buildItemDetailMarkdown,
+  clearCachedVault,
+  clearFaviconCache,
   filterItems,
   getItemActions,
   groupByFolder,
   itemIcon,
   itemSubtitle,
   itemTypeLabel,
+  loadCachedVault,
+  loadFaviconCache,
+  resolveFavicons,
+  saveCachedVault,
   toCreatePayload,
 } from "../item-utils";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetItem.mockResolvedValue(undefined);
+});
 
 function makeItem(overrides: Partial<BwItem> = {}): BwItem {
   return {
@@ -423,5 +440,194 @@ describe("itemIcon", () => {
   it("returns person icon for Identity items", () => {
     const item = makeItem({ type: ItemType.Identity });
     expect(itemIcon(item)).toBe("person");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadCachedVault
+// ---------------------------------------------------------------------------
+describe("loadCachedVault", () => {
+  it("returns null when no cached data exists", async () => {
+    mockGetItem.mockResolvedValue(undefined);
+
+    const result = await loadCachedVault();
+    expect(result).toBeNull();
+  });
+
+  it("returns cached vault when fresh", async () => {
+    const cache = { items: [{ id: "1", name: "A", type: 1 }], folders: [{ id: "f1", name: "Work" }], timestamp: Date.now() };
+    mockGetItem.mockResolvedValue(JSON.stringify(cache));
+
+    const result = await loadCachedVault();
+    expect(result).toEqual({ items: cache.items, folders: cache.folders });
+  });
+
+  it("returns null when cache is older than 24 hours", async () => {
+    const staleTimestamp = Date.now() - 25 * 60 * 60 * 1000;
+    const cache = { items: [], folders: [], timestamp: staleTimestamp };
+    mockGetItem.mockResolvedValue(JSON.stringify(cache));
+
+    const result = await loadCachedVault();
+    expect(result).toBeNull();
+  });
+
+  it("returns null on JSON parse error", async () => {
+    mockGetItem.mockResolvedValue("not json {{{");
+
+    const result = await loadCachedVault();
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// saveCachedVault
+// ---------------------------------------------------------------------------
+describe("saveCachedVault", () => {
+  it("stores items, folders, and timestamp to LocalStorage", async () => {
+    const items = [{ id: "1", name: "A", type: 1 } as BwItem];
+    const folders = [{ id: "f1", name: "Work" }];
+
+    await saveCachedVault(items, folders);
+
+    expect(mockSetItem).toHaveBeenCalledTimes(1);
+    const [key, raw] = mockSetItem.mock.calls[0] as [string, string];
+    expect(key).toBe("vicinae-bitwarden-cache");
+    const parsed = JSON.parse(raw);
+    expect(parsed.items).toEqual(items);
+    expect(parsed.folders).toEqual(folders);
+    expect(parsed.timestamp).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clearCachedVault
+// ---------------------------------------------------------------------------
+describe("clearCachedVault", () => {
+  it("removes both vault and favicon cache keys", async () => {
+    await clearCachedVault();
+
+    expect(mockRemoveItem).toHaveBeenCalledWith("vicinae-bitwarden-cache");
+    expect(mockRemoveItem).toHaveBeenCalledWith("vicinae-bitwarden-favicons");
+    expect(mockRemoveItem).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadFaviconCache
+// ---------------------------------------------------------------------------
+describe("loadFaviconCache", () => {
+  it("returns empty object when no favicon cache exists", async () => {
+    mockGetItem.mockResolvedValue(undefined);
+
+    const result = await loadFaviconCache();
+    expect(result).toEqual({});
+  });
+
+  it("returns parsed favicon map from LocalStorage", async () => {
+    const map = { "github.com": "data:image/png;base64,abc", "example.com": "data:image/png;base64,def" };
+    mockGetItem.mockResolvedValue(JSON.stringify(map));
+
+    const result = await loadFaviconCache();
+    expect(result).toEqual(map);
+  });
+
+  it("returns empty object on parse error", async () => {
+    mockGetItem.mockResolvedValue("bad json");
+
+    const result = await loadFaviconCache();
+    expect(result).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clearFaviconCache
+// ---------------------------------------------------------------------------
+describe("clearFaviconCache", () => {
+  it("clears the in-memory favicon cache", async () => {
+    // Pre-populate by calling resolveFavicons with a stubbed fetch
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "image/png" },
+      arrayBuffer: async () => new Uint8Array([]).buffer,
+      status: 200,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveFavicons(["test.com"]);
+    expect(result["test.com"]).toBeTruthy();
+
+    clearFaviconCache();
+
+    // After clearing, a subsequent resolve should re-fetch
+    const result2 = await resolveFavicons(["test.com"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    vi.unstubAllGlobals();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveFavicons
+// ---------------------------------------------------------------------------
+describe("resolveFavicons", () => {
+  it("returns cached favicons without re-fetching", async () => {
+    // Ensure fresh in-memory cache
+    clearFaviconCache();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "image/png" },
+      arrayBuffer: async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      status: 200,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // First call fetches
+    const r1 = await resolveFavicons(["github.com"]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Second call uses cache
+    const r2 = await resolveFavicons(["github.com"]);
+    expect(r2["github.com"]).toBe(r1["github.com"]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("handles HTTP errors gracefully", async () => {
+    clearFaviconCache();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+    const result = await resolveFavicons(["bad.com"]);
+    expect(result["bad.com"]).toBe("");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("handles network errors gracefully", async () => {
+    clearFaviconCache();
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+    const result = await resolveFavicons(["offline.com"]);
+    expect(result["offline.com"]).toBe("");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("deduplicates domains", async () => {
+    clearFaviconCache();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "image/png" },
+      arrayBuffer: async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      status: 200,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await resolveFavicons(["a.com", "a.com", "b.com"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    vi.unstubAllGlobals();
   });
 });

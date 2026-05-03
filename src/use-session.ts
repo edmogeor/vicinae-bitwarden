@@ -6,7 +6,7 @@ import type { Session } from "./bw-executor";
 
 const SESSION_KEY = "vicinae-bitwarden-session";
 
-export interface SessionState {
+interface SessionState {
   session: Session | null;
   unlock: (masterPassword: string) => Promise<Session>;
   clearSession: () => Promise<void>;
