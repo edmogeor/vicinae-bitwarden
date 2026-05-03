@@ -1,0 +1,82 @@
+import { LocalStorage } from "@vicinae/api";
+import { useCallback, useEffect, useState } from "react";
+import { getPreferences, getServerUrl } from "./preferences";
+import * as bw from "./bw-executor";
+import type { Session } from "./bw-executor";
+
+const SESSION_KEY = "vicinae-bitwarden-session";
+
+export interface SessionState {
+  session: Session | null;
+  unlock: (masterPassword: string) => Promise<Session>;
+  clearSession: () => Promise<void>;
+  loginIfNeeded: () => Promise<void>;
+  isLoggingIn: boolean;
+  loginError: string | null;
+}
+
+export function useSession(): SessionState {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const cached = await LocalStorage.getItem<string>(SESSION_KEY);
+      if (!cached) return;
+
+      try {
+        await bw.sync(cached);
+        setSession(cached);
+      } catch {
+        await LocalStorage.removeItem(SESSION_KEY);
+      }
+    })();
+  }, []);
+
+  const loginIfNeeded = useCallback(async () => {
+    setIsLoggingIn(true);
+    setLoginError(null);
+
+    try {
+      const prefs = getPreferences();
+      const serverUrl = getServerUrl(prefs);
+
+      await bw.login({
+        clientId: prefs.apiClientId,
+        clientSecret: prefs.apiClientSecret,
+        serverUrl,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLoginError(message);
+      throw err;
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }, []);
+
+  const unlock = useCallback(
+    async (masterPassword: string): Promise<Session> => {
+      const token = await bw.unlock(masterPassword);
+      await LocalStorage.setItem(SESSION_KEY, token);
+      setSession(token);
+      return token;
+    },
+    [],
+  );
+
+  const clearSession = useCallback(async () => {
+    if (session) {
+      try {
+        await bw.lock(session);
+      } catch {
+        // Non-fatal
+      }
+    }
+    await LocalStorage.removeItem(SESSION_KEY);
+    setSession(null);
+  }, [session]);
+
+  return { session, unlock, clearSession, loginIfNeeded, isLoggingIn, loginError };
+}
