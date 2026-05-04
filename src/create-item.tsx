@@ -8,13 +8,14 @@ import {
   showToast,
   Toast,
 } from '@vicinae/api';
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import type { BwFolder } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
 import { CARD_BRANDS, toCreatePayload } from './item-utils';
+import CustomFieldsSection from './custom-fields-section';
 import { useSession } from './use-session';
 import { getPasswordPrefs, getPreferences } from './preferences';
 import { checkBwGate, renderUnlockGate, useUnlockGate } from './unlock-gate';
@@ -336,38 +337,7 @@ export default function CreateItem() {
 
       <Form.Separator />
 
-      <Form.TextArea id="notes" title="Notes" />
-
-      {customFields.length > 0 && (
-        <>
-          <Form.Separator />
-          <Form.Description text="Custom Fields" />
-        </>
-      )}
-      {customFields.map((field) => (
-        <Fragment key={field.id}>
-          <Form.TextField
-            id={`cf_name_${field.id}`}
-            title="Field Name"
-            value={field.name}
-            onChange={(v) =>
-              setCustomFields((prev) =>
-                prev.map((f) => (f.id === field.id ? { ...f, name: String(v ?? '') } : f)),
-              )
-            }
-          />
-          <Form.TextField
-            id={`cf_value_${field.id}`}
-            title="Field Value"
-            value={field.value}
-            onChange={(v) =>
-              setCustomFields((prev) =>
-                prev.map((f) => (f.id === field.id ? { ...f, value: String(v ?? '') } : f)),
-              )
-            }
-          />
-        </Fragment>
-      ))}
+      <CustomFieldsSection customFields={customFields} setCustomFields={setCustomFields} />
     </Form>
   );
 }

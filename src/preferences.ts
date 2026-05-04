@@ -12,7 +12,7 @@ interface Preferences {
   passwordSymbols: boolean;
 }
 
-export interface PasswordPrefs {
+interface PasswordPrefs {
   length: number;
   uppercase: boolean;
   lowercase: boolean;
