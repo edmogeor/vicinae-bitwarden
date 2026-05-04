@@ -41,6 +41,11 @@ vi.mock("../preferences", () => ({
     customServerUrl: "",
     apiClientId: "test-client-id",
     apiClientSecret: "test-client-secret",
+    passwordLength: "20",
+    passwordUppercase: true,
+    passwordLowercase: true,
+    passwordNumbers: true,
+    passwordSymbols: true,
   }),
   getServerUrl: () => "https://bitwarden.com",
 }));

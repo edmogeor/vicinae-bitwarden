@@ -326,3 +326,55 @@ describe("logout", () => {
     await expect(bw.logout()).rejects.toThrow("Network error");
   });
 });
+
+// ---------------------------------------------------------------------------
+// generatePassword
+// ---------------------------------------------------------------------------
+describe("generatePassword", () => {
+  it("calls bw generate with all flags enabled", async () => {
+    mockExec("aB3$xY9!pQ2&wE5!rT");
+
+    const result = await bw.generatePassword({
+      length: 20,
+      uppercase: true,
+      lowercase: true,
+      numbers: true,
+      symbols: true,
+    });
+    expect(result).toBe("aB3$xY9!pQ2&wE5!rT");
+    expect(mockExecFile).toHaveBeenCalledWith(
+      "bw",
+      ["generate", "-u", "-l", "-n", "-s", "--length", "20"],
+      expect.objectContaining({ timeout: 10000 }),
+    );
+  });
+
+  it("calls bw generate with subset of flags", async () => {
+    mockExec("abc123");
+
+    await bw.generatePassword({
+      length: 12,
+      uppercase: false,
+      lowercase: true,
+      numbers: true,
+      symbols: false,
+    });
+    expect(mockExecFile).toHaveBeenCalledWith(
+      "bw",
+      ["generate", "-l", "-n", "--length", "12"],
+      expect.objectContaining({ timeout: 10000 }),
+    );
+  });
+
+  it("throws BwError on failure", async () => {
+    mockExecError("CLI error");
+
+    await expect(bw.generatePassword({
+      length: 20,
+      uppercase: true,
+      lowercase: true,
+      numbers: true,
+      symbols: true,
+    })).rejects.toThrow("CLI error");
+  });
+});

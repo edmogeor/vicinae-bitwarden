@@ -10,12 +10,22 @@ import { getServerUrl } from "../preferences";
 function prefs(overrides: Partial<{
   serverRegion: "bitwarden.com" | "bitwarden.eu" | "self-hosted";
   customServerUrl: string;
+  passwordLength: string;
+  passwordUppercase: boolean;
+  passwordLowercase: boolean;
+  passwordNumbers: boolean;
+  passwordSymbols: boolean;
 }> = {}) {
   return {
     serverRegion: "bitwarden.com" as const,
     customServerUrl: "",
     apiClientId: "x",
     apiClientSecret: "x",
+    passwordLength: "20",
+    passwordUppercase: true,
+    passwordLowercase: true,
+    passwordNumbers: true,
+    passwordSymbols: true,
     ...overrides,
   };
 }

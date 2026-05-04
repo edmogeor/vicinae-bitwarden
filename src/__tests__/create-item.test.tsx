@@ -44,12 +44,12 @@ const {
 
   let _handler: ((values: Record<string, unknown>) => void) | null = null;
 
-  function el(type: string, testId?: string) {
+  const el = (type: string, testId?: string) => {
     return (props: Record<string, unknown>) => {
       const { children, ...rest } = props;
       return React.createElement(type, { "data-testid": testId ?? props.id, ...rest }, children);
     };
-  }
+  };
 
   const DropdownItem = el("option");
   const Dropdown = Object.assign(el("select"), { Item: DropdownItem });
@@ -131,18 +131,23 @@ vi.mock("../bw-not-installed", () => ({
 }));
 
 vi.mock("@vicinae/api", () => ({
-  Action: {
-    SubmitForm: MockActionSubmitForm,
-    OpenInBrowser: vi.fn(() => null),
-    Style: { Destructive: "destructive" },
-  },
+  Action: Object.assign(
+    ({ title, onAction }: { title: string; onAction?: () => void }) =>
+      React.createElement("button", { type: "button", "data-testid": `action-${title?.replace(/\s+/g, "-").toLowerCase()}`, onClick: onAction }, title),
+    {
+      SubmitForm: MockActionSubmitForm,
+      OpenInBrowser: vi.fn(() => null),
+      Style: { Destructive: "destructive" },
+    },
+  ),
   ActionPanel: MockActionPanel,
+  Clipboard: { copy: vi.fn().mockResolvedValue(undefined) },
   Form: MockForm,
+  Icon: { Key: "icon-key" },
   popToRoot: (...args: unknown[]) => mockPopToRoot(...args),
   showToast: (...args: unknown[]) => mockShowToast(...args),
   Toast: { Style: { Success: "success", Failure: "failure" } },
   LocalStorage: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
-  Icon: {},
   Image: {},
 }));
 

@@ -216,6 +216,26 @@ export async function createItem(
 }
 
 /**
+ * Create a new Folder in the vault.
+ * Requires a valid Session. Returns the created folder with its id.
+ */
+export async function createFolder(
+  name: string,
+  session: Session,
+): Promise<BwFolder> {
+  const json = JSON.stringify({ name });
+  try {
+    const { stdout } = await exec("bw", ["create", "folder", json], {
+      timeout: 15000,
+      env: sessionEnv(session),
+    });
+    return parseJson<BwFolder>(stdout);
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
  * Delete an Item from the vault by ID.
  * Requires a valid Session.
  */
@@ -249,6 +269,34 @@ export async function lock(session: Session): Promise<void> {
     await exec("bw", ["lock"], { timeout: 10000, env: sessionEnv(session) });
   } catch {
     // Lock failures are non-fatal — the session is cleared client-side regardless
+  }
+}
+
+/**
+ * Generate a random password using the `bw generate` command.
+ * No session required — this is a local cryptographic operation.
+ */
+export async function generatePassword(options: {
+  length: number;
+  uppercase: boolean;
+  lowercase: boolean;
+  numbers: boolean;
+  symbols: boolean;
+}): Promise<string> {
+  const flags: string[] = [];
+  if (options.uppercase) flags.push("-u");
+  if (options.lowercase) flags.push("-l");
+  if (options.numbers) flags.push("-n");
+  if (options.symbols) flags.push("-s");
+  flags.push("--length", String(options.length));
+
+  try {
+    const { stdout } = await exec("bw", ["generate", ...flags], {
+      timeout: 10000,
+    });
+    return stdout.trim();
+  } catch (err) {
+    throw toBwError(err);
   }
 }
 

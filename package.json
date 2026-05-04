@@ -52,6 +52,51 @@
       "description": "Your personal API key client_secret from the Bitwarden web vault",
       "type": "password",
       "required": true
+    },
+    {
+      "name": "passwordLength",
+      "title": "Password Length",
+      "description": "Number of characters for generated passwords",
+      "type": "textfield",
+      "required": false,
+      "default": "20",
+      "placeholder": "20"
+    },
+    {
+      "name": "passwordUppercase",
+      "title": "Include Uppercase (A-Z)",
+      "description": "Add uppercase letters to generated passwords",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Enabled"
+    },
+    {
+      "name": "passwordLowercase",
+      "title": "Include Lowercase (a-z)",
+      "description": "Add lowercase letters to generated passwords",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Enabled"
+    },
+    {
+      "name": "passwordNumbers",
+      "title": "Include Numbers (0-9)",
+      "description": "Add digits to generated passwords",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Enabled"
+    },
+    {
+      "name": "passwordSymbols",
+      "title": "Include Symbols (!@#$)",
+      "description": "Add special characters to generated passwords",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Enabled"
     }
   ],
   "commands": [

@@ -17,6 +17,21 @@ type ExtensionPreferences = {
 
 	/** API Client Secret - Your personal API key client_secret from the Bitwarden web vault */
 	"apiClientSecret"?: string;
+
+	/** Password Length - Number of characters for generated passwords */
+	"passwordLength": string;
+
+	/** Include Uppercase (A-Z) - Add uppercase letters to generated passwords */
+	"passwordUppercase": boolean;
+
+	/** Include Lowercase (a-z) - Add lowercase letters to generated passwords */
+	"passwordLowercase": boolean;
+
+	/** Include Numbers (0-9) - Add digits to generated passwords */
+	"passwordNumbers": boolean;
+
+	/** Include Symbols (!@#$) - Add special characters to generated passwords */
+	"passwordSymbols": boolean;
 }
 
 declare type Preferences = ExtensionPreferences

@@ -1,7 +1,9 @@
 import {
   Action,
   ActionPanel,
+  Clipboard,
   Form,
+  Icon,
   popToRoot,
   showToast,
   Toast,
@@ -13,6 +15,7 @@ import { ItemType } from "./bitwarden-types";
 import type { ItemTypeValue } from "./bitwarden-types";
 import { toCreatePayload } from "./item-utils";
 import { useSession } from "./use-session";
+import { getPasswordPrefs, getPreferences } from "./preferences";
 import { checkBwGate, renderUnlockGate, useUnlockGate } from "./unlock-gate";
 
 type UIState =
@@ -43,6 +46,9 @@ export default function CreateItem() {
   const [selectedType, setSelectedType] = useState<string>("Login");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [folders, setFolders] = useState<BwFolder[]>([]);
+  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [selectedFolder, setSelectedFolder] = useState("");
+  const [newFolderName, setNewFolderName] = useState("");
 
   const { handleLogin, handleUnlock } = useUnlockGate({
     loginIfNeeded,
@@ -84,18 +90,18 @@ export default function CreateItem() {
     void handleLogin();
   }, [state.kind]);
 
-  // Fetch folders for the folder dropdown
+  // Fetch folders — starts as soon as session is available, before form renders
   useEffect(() => {
-    if (state.kind !== "form" || !session) return;
+    if (!session) return;
+    if (folders.length > 0) return;
     void (async () => {
       try {
-        const folderList = await bw.listFolders(session);
-        setFolders(folderList);
+        setFolders(await bw.listFolders(session));
       } catch {
         // Folder list is optional — form still works without it
       }
     })();
-  }, [state.kind, session]);
+  }, [session, state.kind]);
 
   const handleSubmit = useCallback(
     async (values: Form.Values) => {
@@ -107,10 +113,29 @@ export default function CreateItem() {
       }
 
       const typeNum = ITEM_TYPE_MAP[selectedType] ?? ItemType.SecureNote;
+      let folderId = itemValues.folder || null;
+
+      // Create new folder if requested
+      if (folderId === "__new__") {
+        const name = itemValues.newFolderName?.trim();
+        if (!name) {
+          await showToast({ style: Toast.Style.Failure, title: "Folder name is required" });
+          return;
+        }
+        try {
+          const created = await bw.createFolder(name, session);
+          folderId = created.id;
+          await showToast({ style: Toast.Style.Success, title: "Folder created", message: name });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          await showToast({ style: Toast.Style.Failure, title: "Failed to create folder", message });
+          return;
+        }
+      }
 
       setIsSubmitting(true);
       try {
-        const payload = toCreatePayload(itemValues, typeNum, itemValues.folder || null);
+        const payload = toCreatePayload(itemValues, typeNum, folderId === "" ? null : folderId);
         await bw.createItem(payload, session);
         await showToast({
           style: Toast.Style.Success,
@@ -152,7 +177,26 @@ export default function CreateItem() {
       isLoading={isSubmitting}
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Create Item" onSubmit={handleSubmit} />
+          <Action.SubmitForm title="Create Item" icon={Icon.Plus} onSubmit={handleSubmit} />
+          {selectedType === "Login" && (
+            <Action
+              title="Generate Password"
+              icon={Icon.Key}
+              onAction={async () => {
+                try {
+                  const prefs = getPreferences();
+                  const opts = getPasswordPrefs(prefs);
+                  const pwd = await bw.generatePassword(opts);
+                  setGeneratedPassword(pwd);
+                  await Clipboard.copy(pwd);
+                  showToast({ style: Toast.Style.Success, title: "Password generated", message: "Copied to clipboard" });
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : String(err);
+                  showToast({ style: Toast.Style.Failure, title: "Generation failed", message });
+                }
+              }}
+            />
+          )}
         </ActionPanel>
       }
     >
@@ -168,12 +212,26 @@ export default function CreateItem() {
       </Form.Dropdown>
 
       {folders.length > 0 && (
-        <Form.Dropdown id="folder" title="Folder" defaultValue="">
-          <Form.Dropdown.Item value="" title="None" />
+        <Form.Dropdown
+          id="folder"
+          title="Folder"
+          value={selectedFolder}
+          onChange={(value) => setSelectedFolder(String(value ?? ""))}
+        >
           {folders.map((f) => (
             <Form.Dropdown.Item key={f.id} value={f.id} title={f.name} />
           ))}
+          <Form.Dropdown.Item value="__new__" title="+ New Folder" />
         </Form.Dropdown>
+      )}
+
+      {selectedFolder === "__new__" && (
+        <Form.TextField
+          id="newFolderName"
+          title="Folder Name"
+          value={newFolderName}
+          onChange={(value) => setNewFolderName(String(value ?? ""))}
+        />
       )}
 
       <Form.Separator />
@@ -183,7 +241,12 @@ export default function CreateItem() {
       {selectedType === "Login" && (
         <>
           <Form.TextField id="username" title="Username" />
-          <Form.PasswordField id="password" title="Password" />
+          <Form.PasswordField
+            id="password"
+            title="Password"
+            value={generatedPassword}
+            onChange={(value) => setGeneratedPassword(String(value ?? ""))}
+          />
           <Form.TextField id="url" title="URL" />
           <Form.TextField id="totp" title="TOTP Secret" />
         </>
