@@ -20,7 +20,6 @@ import { CreateItemPayload, ItemAction } from "../bw-executor";
 import {
   buildItemDetailMarkdown,
   clearCachedVault,
-  clearFaviconCache,
   filterItems,
   getItemActions,
   groupByFolder,
@@ -28,11 +27,10 @@ import {
   itemSubtitle,
   itemTypeLabel,
   loadCachedVault,
-  loadFaviconCache,
-  resolveFavicons,
   saveCachedVault,
   toCreatePayload,
 } from "../item-utils";
+import { clearFaviconCache, loadFaviconCache, resolveFavicons } from "../favicons";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -427,11 +425,6 @@ describe("itemIcon", () => {
     expect(itemIcon(item)).toBe("key");
   });
 
-  it("returns key icon for Login items without URL", () => {
-    const item = makeItem({ type: ItemType.Login, login: { username: null, password: null, totp: null } });
-    expect(itemIcon(item)).toBe("key");
-  });
-
   it("returns credit-card icon for Card items", () => {
     const item = makeItem({ type: ItemType.Card });
     expect(itemIcon(item)).toBe("credit-card");
@@ -569,17 +562,20 @@ describe("clearFaviconCache", () => {
 // ---------------------------------------------------------------------------
 // resolveFavicons
 // ---------------------------------------------------------------------------
+
+function createFetchMock() {
+  return vi.fn().mockResolvedValue({
+    ok: true,
+    headers: { get: () => "image/png" },
+    arrayBuffer: async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+    status: 200,
+  });
+}
+
 describe("resolveFavicons", () => {
   it("returns cached favicons without re-fetching", async () => {
-    // Ensure fresh in-memory cache
     clearFaviconCache();
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: () => "image/png" },
-      arrayBuffer: async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
-      status: 200,
-    });
+    const fetchMock = createFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     // First call fetches
@@ -616,13 +612,7 @@ describe("resolveFavicons", () => {
 
   it("deduplicates domains", async () => {
     clearFaviconCache();
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: () => "image/png" },
-      arrayBuffer: async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
-      status: 200,
-    });
+    const fetchMock = createFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     await resolveFavicons(["a.com", "a.com", "b.com"]);

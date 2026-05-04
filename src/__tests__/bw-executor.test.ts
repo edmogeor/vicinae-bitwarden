@@ -232,7 +232,7 @@ describe("getTotp", () => {
 describe("createItem", () => {
   it("calls bw create item with BW_SESSION", async () => {
     mockExec("");
-    const payload = { type: 1, name: "Test" };
+    const payload = { type: 1 as const, name: "Test", notes: null, folderId: null, favorite: false };
 
     await bw.createItem(payload, "token");
     expect(mockExecFile).toHaveBeenCalledWith(

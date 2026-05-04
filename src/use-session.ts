@@ -4,7 +4,7 @@ import { getPreferences, getServerUrl } from "./preferences";
 import * as bw from "./bw-executor";
 import type { Session } from "./bw-executor";
 
-const SESSION_KEY = "vicinae-bitwarden-session";
+export const SESSION_KEY = "vicinae-bitwarden-session";
 
 interface SessionState {
   session: Session | null;
@@ -62,15 +62,13 @@ export function useSession(): SessionState {
   );
 
   const clearSession = useCallback(async () => {
-    if (session) {
-      try {
-        await bw.lock(session);
-      } catch {
-        // Non-fatal
-      }
-    }
     await LocalStorage.removeItem(SESSION_KEY);
     setSession(null);
+    if (session) {
+      void bw.lock(session).catch(() => {
+        // Non-fatal — session already cleared client-side
+      });
+    }
   }, [session]);
 
   return { session, unlock, clearSession, loginIfNeeded, isLoggingIn, loginError };

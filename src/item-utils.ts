@@ -1,12 +1,12 @@
 import { LocalStorage } from "@vicinae/api";
 import type { Image } from "@vicinae/api";
-import { createHash } from "node:crypto";
 import { BwItem, BwFolder, ItemType } from "./bitwarden-types";
 import type { ItemTypeValue } from "./bitwarden-types";
 import type { CreateItemPayload, ItemAction } from "./bw-executor";
+import { FAVICON_CACHE_KEY } from "./favicons";
+import type { FaviconMap } from "./favicons";
 
 const CACHE_KEY = "vicinae-bitwarden-cache";
-const FAVICON_CACHE_KEY = "vicinae-bitwarden-favicons";
 
 interface CachedVault {
   items: BwItem[];
@@ -17,7 +17,6 @@ interface CachedVault {
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 /** Load cached vault data from LocalStorage. Returns null if not found or stale. */
-// fallow-ignore-next-line unused-export
 export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwFolder[] } | null> {
   try {
     const raw = await LocalStorage.getItem<string>(CACHE_KEY);
@@ -31,7 +30,6 @@ export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwF
 }
 
 /** Save vault data to LocalStorage for instant load next time. */
-// fallow-ignore-next-line unused-export
 export async function saveCachedVault(
   items: BwItem[],
   folders: BwFolder[],
@@ -40,129 +38,9 @@ export async function saveCachedVault(
   await LocalStorage.setItem(CACHE_KEY, JSON.stringify(cache));
 }
 
-// fallow-ignore-next-line unused-export
 export async function clearCachedVault(): Promise<void> {
   await LocalStorage.removeItem(CACHE_KEY);
   await LocalStorage.removeItem(FAVICON_CACHE_KEY);
-}
-
-/** Load cached favicon data URIs from LocalStorage. */
-// fallow-ignore-next-line unused-export
-export async function loadFaviconCache(): Promise<FaviconMap> {
-  try {
-    const raw = await LocalStorage.getItem<string>(FAVICON_CACHE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-/** Persist the in-memory favicon cache to LocalStorage. */
-async function persistFaviconCache(): Promise<void> {
-  const map: FaviconMap = {};
-  for (const [domain, entry] of Object.entries(faviconCache)) {
-    if (entry.dataUri) map[domain] = entry.dataUri;
-  }
-  await LocalStorage.setItem(FAVICON_CACHE_KEY, JSON.stringify(map));
-}
-
-// Google's globe placeholder — same 16x16 PNG regardless of sz param
-const GLOBE_MD5 = "b8a0bf372c762e966cc99ede8682bc71";
-
-/** Read PNG dimensions from the first bytes of a buffer. Returns null if not a PNG. */
-function readPngSize(buf: Buffer): { width: number; height: number } | null {
-  if (buf.length < 24) return null;
-  if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) return null; // not PNG
-  return {
-    width: buf.readUInt32BE(16),
-    height: buf.readUInt32BE(20),
-  };
-}
-
-function isGlobeFavicon(buf: Buffer, status: number): boolean {
-  // Google returns 404 for unknown domains serving the globe
-  if (status === 404) return true;
-
-  // Dimension check: the globe is always 16x16 regardless of sz param
-  const size = readPngSize(buf);
-  if (size && size.width <= 16) return true;
-
-  // Hash check: final fallback
-  const hash = createHash("md5").update(buf).digest("hex");
-  return hash === GLOBE_MD5;
-}
-
-type FaviconMap = Record<string, string>;
-
-interface CacheEntry {
-  dataUri: string;
-  timestamp: number;
-}
-
-let faviconCache: Record<string, CacheEntry> = {};
-
-// Try loading persisted favicon cache on module init
-void (async () => {
-  const saved = await loadFaviconCache();
-  for (const [domain, uri] of Object.entries(saved)) {
-    faviconCache[domain] = { dataUri: uri, timestamp: Date.now() };
-  }
-})();
-
-/**
- * Resolve favicons via Google's service. Fetches the image, filters out
- * the globe placeholder, and caches the actual image as a data URI.
- * Returns a map of domain → data URI (or empty string for globe).
- */
-// fallow-ignore-next-line unused-export
-export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
-  const now = Date.now();
-  const unique = [...new Set(domains)].filter((d) => {
-    const entry = faviconCache[d];
-    return !entry || now - entry.timestamp > CACHE_TTL;
-  });
-  if (unique.length === 0) {
-    return Object.fromEntries(
-      Object.entries(faviconCache).map(([k, v]) => [k, v.dataUri]),
-    );
-  }
-
-  await Promise.all(
-    unique.map(async (domain) => {
-      const url = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-        if (!res.ok) {
-          faviconCache[domain] = { dataUri: "", timestamp: now };
-          return;
-        }
-
-        const buf = Buffer.from(await res.arrayBuffer());
-        if (isGlobeFavicon(buf, res.status)) {
-          faviconCache[domain] = { dataUri: "", timestamp: now };
-          return;
-        }
-
-        const mime = res.headers.get("content-type") ?? "image/png";
-        const dataUri = `data:${mime};base64,${buf.toString("base64")}`;
-        faviconCache[domain] = { dataUri, timestamp: now };
-      } catch {
-        faviconCache[domain] = { dataUri: "", timestamp: now };
-      }
-    }),
-  );
-
-  await persistFaviconCache();
-
-  return Object.fromEntries(
-    Object.entries(faviconCache).map(([k, v]) => [k, v.dataUri]),
-  );
-}
-
-/** Clear the in-memory favicon cache (e.g. after sync forces re-fetch). */
-// fallow-ignore-next-line unused-export
-export function clearFaviconCache(): void {
-  faviconCache = {};
 }
 
 /**
@@ -386,6 +264,32 @@ export function buildItemDetailMarkdown(item: BwItem): string {
   }
 
   return lines.join("\n");
+}
+
+import { Icon } from "@vicinae/api";
+
+/**
+ * Map an ItemAction label to a Vicinae Icon.
+ */
+export function actionIcon(action: { label: string }): Image.ImageLike | undefined {
+  switch (action.label) {
+    case "Copy Password":
+      return Icon.Key;
+    case "Copy Username":
+      return Icon.Person;
+    case "Copy Card Number":
+      return Icon.CreditCard;
+    case "Copy Security Code":
+      return Icon.Lock;
+    case "Copy Name":
+      return Icon.Person;
+    case "Copy Email":
+      return Icon.Envelope;
+    case "Copy Phone":
+      return Icon.Phone;
+    default:
+      return undefined;
+  }
 }
 
 /**

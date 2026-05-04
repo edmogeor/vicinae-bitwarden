@@ -1,10 +1,11 @@
 import { LocalStorage, showToast, Toast } from "@vicinae/api";
 import * as bw from "./bw-executor";
+import { SESSION_KEY } from "./use-session";
 
 export default async function Logout() {
   try {
     await bw.logout();
-    await LocalStorage.removeItem("vicinae-bitwarden-session");
+    await LocalStorage.removeItem(SESSION_KEY);
     await showToast({
       style: Toast.Style.Success,
       title: "Logged out",

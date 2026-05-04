@@ -7,13 +7,13 @@ import {
   Toast,
 } from "@vicinae/api";
 import { useCallback, useEffect, useState } from "react";
-import { BwNotInstalled } from "./bw-not-installed";
 import * as bw from "./bw-executor";
 import type { BwFolder } from "./bitwarden-types";
 import { ItemType } from "./bitwarden-types";
 import type { ItemTypeValue } from "./bitwarden-types";
 import { toCreatePayload } from "./item-utils";
 import { useSession } from "./use-session";
+import { checkBwGate, renderUnlockGate, useUnlockGate } from "./unlock-gate";
 
 type UIState =
   | { kind: "checking-bw" }
@@ -44,28 +44,29 @@ export default function CreateItem() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [folders, setFolders] = useState<BwFolder[]>([]);
 
+  const { handleLogin, handleUnlock } = useUnlockGate({
+    loginIfNeeded,
+    loginError,
+    unlock,
+    onUnlockStart: () => setState({ kind: "unlocking" }),
+    onUnlockReady: () => setState({ kind: "form" }),
+    onUnlockError: (error) => setState({ kind: "needs-unlock", error }),
+    onLoginReady: () => setState({ kind: "needs-unlock" }),
+    onLoginError: (error) => setState({ kind: "needs-unlock", error }),
+  });
+
   useEffect(() => {
     void (async () => {
-      const installed = await bw.checkInstalled();
-      if (!installed) {
-        setState({ kind: "bw-not-installed" });
-        return;
-      }
-
-      try {
-        const st = await bw.status();
-        if (st.status === "unauthenticated") {
-          setState({ kind: "logging-in" });
+      const gate = await checkBwGate(session);
+      switch (gate.kind) {
+        case "bw-not-installed":
+        case "logging-in":
+        case "needs-unlock":
+          setState({ kind: gate.kind });
           return;
-        }
-      } catch {
-        // If status fails, proceed — session check will handle it
-      }
-
-      if (session) {
-        setState({ kind: "form" });
-      } else {
-        setState({ kind: "needs-unlock" });
+        case "ready":
+          setState({ kind: "form" });
+          return;
       }
     })();
   }, []);
@@ -77,32 +78,11 @@ export default function CreateItem() {
     setState({ kind: "form" });
   }, [session, state.kind]);
 
+  // Login effect
   useEffect(() => {
     if (state.kind !== "logging-in") return;
-    void (async () => {
-      try {
-        await loginIfNeeded();
-        setState({ kind: "needs-unlock" });
-      } catch {
-        await showToast({
-          style: Toast.Style.Failure,
-          title: "Login failed",
-          message: loginError ?? "Check your API key in preferences",
-        });
-        setState({
-          kind: "needs-unlock",
-          error: loginError ?? "Login failed — check preferences",
-        });
-      }
-    })();
+    void handleLogin();
   }, [state.kind]);
-
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind === "unlocking") {
-      setState({ kind: "form" });
-    }
-  }, [session, state.kind]);
 
   // Fetch folders for the folder dropdown
   useEffect(() => {
@@ -116,20 +96,6 @@ export default function CreateItem() {
       }
     })();
   }, [state.kind, session]);
-
-  const handleUnlock = useCallback(
-    async (values: Form.Values) => {
-      setState({ kind: "unlocking" });
-      try {
-        const password = String(values.password ?? "");
-        await unlock(password);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        setState({ kind: "needs-unlock", error: message });
-      }
-    },
-    [unlock],
-  );
 
   const handleSubmit = useCallback(
     async (values: Form.Values) => {
@@ -166,33 +132,17 @@ export default function CreateItem() {
     [session, selectedType],
   );
 
+  const gateRender = renderUnlockGate(
+    state.kind,
+    state.kind === "needs-unlock" ? state.error : undefined,
+    handleUnlock,
+  );
+  if (gateRender) return gateRender;
+
   if (state.kind === "checking-bw" || state.kind === "logging-in") {
     return (
       <Form>
         <Form.Description text="Loading..." />
-      </Form>
-    );
-  }
-
-  if (state.kind === "bw-not-installed") {
-    return <BwNotInstalled />;
-  }
-
-  if (state.kind === "needs-unlock" || state.kind === "unlocking") {
-    return (
-      <Form
-        isLoading={state.kind === "unlocking"}
-        actions={
-          <ActionPanel>
-            <Action.SubmitForm title="Unlock" onSubmit={handleUnlock} />
-          </ActionPanel>
-        }
-      >
-        <Form.PasswordField
-          id="password"
-          title="Master Password"
-          error={state.kind === "needs-unlock" ? state.error : undefined}
-        />
       </Form>
     );
   }

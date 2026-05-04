@@ -201,7 +201,7 @@ export async function getTotp(id: string, session: Session): Promise<string> {
  * matching Bitwarden's internal item schema.
  */
 export async function createItem(
-  payload: object,
+  payload: CreateItemPayload,
   session: Session,
 ): Promise<void> {
   const json = JSON.stringify(payload);
@@ -219,7 +219,6 @@ export async function createItem(
  * Delete an Item from the vault by ID.
  * Requires a valid Session.
  */
-// fallow-ignore-next-line unused-export
 export async function deleteItem(id: string, session: Session): Promise<void> {
   try {
     await exec("bw", ["delete", "item", id], {
