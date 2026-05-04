@@ -69,39 +69,39 @@
     },
     {
       "name": "passwordUppercase",
-      "title": "Include Uppercase (A-Z)",
-      "description": "Add uppercase letters to generated passwords",
+      "title": "Add uppercase letters to generated passwords",
+      "description": "When enabled, generated passwords will include A-Z characters",
       "type": "checkbox",
       "required": false,
       "default": true,
-      "label": "Enabled"
+      "label": "Include Uppercase"
     },
     {
       "name": "passwordLowercase",
-      "title": "Include Lowercase (a-z)",
-      "description": "Add lowercase letters to generated passwords",
+      "title": "Add lowercase letters to generated passwords",
+      "description": "When enabled, generated passwords will include a-z characters",
       "type": "checkbox",
       "required": false,
       "default": true,
-      "label": "Enabled"
+      "label": "Include Lowercase"
     },
     {
       "name": "passwordNumbers",
-      "title": "Include Numbers (0-9)",
-      "description": "Add digits to generated passwords",
+      "title": "Add digits to generated passwords",
+      "description": "When enabled, generated passwords will include 0-9 characters",
       "type": "checkbox",
       "required": false,
       "default": true,
-      "label": "Enabled"
+      "label": "Include Numbers"
     },
     {
       "name": "passwordSymbols",
-      "title": "Include Symbols (!@#$)",
-      "description": "Add special characters to generated passwords",
+      "title": "Add special characters to generated passwords",
+      "description": "When enabled, generated passwords will include !@#$%^&* characters",
       "type": "checkbox",
       "required": false,
       "default": true,
-      "label": "Enabled"
+      "label": "Include Symbols"
     }
   ],
   "commands": [
