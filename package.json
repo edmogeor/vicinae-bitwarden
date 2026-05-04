@@ -1,5 +1,5 @@
 {
-  "name": "vicinae-bitwarden",
+  "name": "bitwarden",
   "title": "Bitwarden",
   "description": "Keyboard-driven access to your Bitwarden vault. Search and copy passwords, usernames, and TOTP codes directly from the launcher.",
   "author": "edmogeor",
