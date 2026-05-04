@@ -1,7 +1,9 @@
 name: Sync to Vicinae Store
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ['Release']
+    types: [completed]
 
 jobs:
   sync:
