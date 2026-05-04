@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract changelog entry
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          awk -v ver="$VERSION" '
+            BEGIN { found=0 }
+            /^## \[/ {
+              if (found) exit
+              if ($0 ~ "## \\[" ver "\\]") found=1
+            }
+            found { print }
+          ' CHANGELOG.md | sed '1d' > /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 'v${{ github.ref_name }}'
+          body_path: /tmp/release-notes.md
