@@ -24,6 +24,3 @@ Initial release.
 - Delete item from vault list
 - Create new folder from the search view
 - Cached vault items and favicons for instant loading on subsequent opens
-- Smoke tests for deep modules (`bw-executor`, `item-utils`, `use-session`)
-- CI workflow: lint, build, test on push/PR; health badge via fallow
-- Prettier formatting with pre-commit hook via husky and lint-staged
