@@ -1,10 +1,12 @@
-import { LocalStorage } from "@vicinae/api";
+import { Icon, LocalStorage } from "@vicinae/api";
 import type { Image } from "@vicinae/api";
 import { BwItem, BwFolder, ItemType } from "./bitwarden-types";
 import type { ItemTypeValue } from "./bitwarden-types";
 import type { CreateItemPayload, ItemAction } from "./bw-executor";
 import { FAVICON_CACHE_KEY } from "./favicons";
 import type { FaviconMap } from "./favicons";
+
+export const CARD_BRANDS = ["Visa", "Mastercard", "Amex", "Discover", "Other"];
 
 const CACHE_KEY = "vicinae-bitwarden-cache";
 
@@ -163,7 +165,7 @@ function getIdentityActions(identity: BwItem["identity"]): ItemAction[] {
 /**
  * Get the list of actions for an Item based on its type.
  */
-export function getItemActions(item: BwItem): ItemAction[] {
+export function itemActions(item: BwItem): ItemAction[] {
   switch (item.type) {
     case ItemType.Login:
       return getLoginActions(item.login);
@@ -256,7 +258,7 @@ export function buildItemDetailMarkdown(item: BwItem): string {
   return lines.join("\n");
 }
 
-import { Icon } from "@vicinae/api";
+
 
 /**
  * Map an ItemAction label to a Vicinae Icon.
@@ -292,18 +294,10 @@ export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
       const domain = new URL(item.login.uris[0].uri).hostname;
       const cached = favicons?.[domain];
 
-      if (cached !== undefined) {
-        // Resolved: empty string = globe → use Vicinae fallback
-        if (cached === "") return "key";
-        // Confirmed real favicon
-        return {
-          source: cached,
-          fallback: "key",
-        };
+      // Only use favicon when we have a confirmed non-empty image
+      if (cached !== undefined && cached !== "") {
+        return { source: cached, fallback: "key" };
       }
-
-      // Not yet resolved — show Vicinae icon, upgrade when confirmed
-      return "key";
     } catch {
       // Invalid URL, fall through to type icon
     }

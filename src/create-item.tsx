@@ -8,13 +8,13 @@ import {
   showToast,
   Toast,
 } from "@vicinae/api";
-import { useCallback, useEffect, useRef, useState } from "react";
-import React from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import * as bw from "./bw-executor";
+import { getErrorMessage } from "./bw-executor";
 import type { BwFolder } from "./bitwarden-types";
 import { ItemType } from "./bitwarden-types";
 import type { ItemTypeValue } from "./bitwarden-types";
-import { toCreatePayload } from "./item-utils";
+import { CARD_BRANDS, toCreatePayload } from "./item-utils";
 import { useSession } from "./use-session";
 import { getPasswordPrefs, getPreferences } from "./preferences";
 import { checkBwGate, renderUnlockGate, useUnlockGate } from "./unlock-gate";
@@ -39,7 +39,7 @@ const ITEM_TYPE_OPTIONS = Object.keys(ITEM_TYPE_MAP).map((label) => ({
   label,
 }));
 
-const CARD_BRANDS = ["Visa", "Mastercard", "Amex", "Discover", "Other"];
+
 
 export default function CreateItem() {
   const { session, unlock, loginIfNeeded, loginError } = useSession();
@@ -131,7 +131,7 @@ export default function CreateItem() {
           folderId = created.id;
           await showToast({ style: Toast.Style.Success, title: "Folder created", message: name });
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = getErrorMessage(err);
           await showToast({ style: Toast.Style.Failure, title: "Failed to create folder", message });
           return;
         }
@@ -163,7 +163,7 @@ export default function CreateItem() {
         setIsSubmitting(false);
       }
     },
-    [session, selectedType],
+    [session, selectedType, customFields],
   );
 
   const gateRender = renderUnlockGate(
@@ -206,7 +206,7 @@ export default function CreateItem() {
                   await Clipboard.copy(pwd);
                   showToast({ style: Toast.Style.Success, title: "Password generated", message: "Copied to clipboard" });
                 } catch (err) {
-                  const message = err instanceof Error ? err.message : String(err);
+                  const message = getErrorMessage(err);
                   showToast({ style: Toast.Style.Failure, title: "Generation failed", message });
                 }
               }}
@@ -330,7 +330,7 @@ export default function CreateItem() {
         </>
       )}
       {customFields.map((field) => (
-        <React.Fragment key={field.id}>
+        <Fragment key={field.id}>
           <Form.TextField
             id={`cf_name_${field.id}`}
             title="Field Name"
@@ -347,7 +347,7 @@ export default function CreateItem() {
               prev.map(f => f.id === field.id ? { ...f, value: String(v ?? "") } : f)
             )}
           />
-        </React.Fragment>
+        </Fragment>
       ))}
     </Form>
   );

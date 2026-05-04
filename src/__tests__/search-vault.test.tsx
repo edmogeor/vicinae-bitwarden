@@ -70,7 +70,7 @@ vi.mock("../item-utils", () => ({
   buildItemDetailMarkdown: () => "",
   clearCachedVault: vi.fn(),
   filterItems: (items: unknown[]) => items,
-  getItemActions: () => [],
+  itemActions: () => [],
   groupByFolder: () => new Map(),
   itemIcon: () => "key",
   itemSubtitle: () => undefined,

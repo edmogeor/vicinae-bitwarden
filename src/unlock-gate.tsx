@@ -8,6 +8,7 @@ import {
 import { useCallback } from "react";
 import { BwNotInstalled } from "./bw-not-installed";
 import * as bw from "./bw-executor";
+import { getErrorMessage } from "./bw-executor";
 
 export async function checkBwGate(session: string | null): Promise<
   | { kind: "bw-not-installed" }
@@ -64,7 +65,7 @@ export function useUnlockGate(deps: UnlockGateDeps) {
         await deps.unlock(password);
         deps.onUnlockReady();
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = getErrorMessage(err);
         deps.onUnlockError(message);
       }
     },

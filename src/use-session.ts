@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getPreferences, getServerUrl } from "./preferences";
 import * as bw from "./bw-executor";
 import type { Session } from "./bw-executor";
+import { getErrorMessage } from "./bw-executor";
 
 export const SESSION_KEY = "vicinae-bitwarden-session";
 
@@ -43,7 +44,7 @@ export function useSession(): SessionState {
         serverUrl,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = getErrorMessage(err);
       setLoginError(message);
       throw err;
     } finally {

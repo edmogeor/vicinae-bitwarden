@@ -85,8 +85,8 @@ vi.mock("../item-utils", () => ({
     favorite: false,
   })),
   buildItemDetailMarkdown: vi.fn(),
-  getItemActions: vi.fn(),
-  itemTypeLabel: vi.fn(),
+  itemActions: vi.fn(),
+  itemTypeLabel: vi.fn(() => "Login"),
   actionIcon: vi.fn(),
 }));
 

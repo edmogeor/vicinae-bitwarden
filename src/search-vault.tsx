@@ -10,10 +10,11 @@ import {
 } from "@vicinae/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as bw from "./bw-executor";
+import { getErrorMessage } from "./bw-executor";
 import {
   clearCachedVault,
   filterItems,
-  getItemActions,
+  itemActions as getItemActions,
   groupByFolder,
   itemIcon,
   itemSubtitle,
@@ -177,7 +178,7 @@ export default function SearchVault() {
         await syncVault(session);
       } catch (err) {
         if (!cached) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = getErrorMessage(err);
           await showToast({ style: Toast.Style.Failure, title: "Failed to load vault", message });
           await clearSession();
           setState({ kind: "needs-unlock", error: message });

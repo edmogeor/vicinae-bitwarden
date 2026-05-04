@@ -12,7 +12,7 @@ import * as bw from "./bw-executor";
 import type { Session } from "./bw-executor";
 import {
   buildItemDetailMarkdown,
-  getItemActions,
+  itemActions as getItemActions,
   itemTypeLabel,
   actionIcon,
 } from "./item-utils";

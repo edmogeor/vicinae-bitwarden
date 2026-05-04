@@ -27,11 +27,13 @@ function sessionEnv(session: Session): NodeJS.ProcessEnv {
   return { ...process.env, BW_SESSION: session };
 }
 
+export function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function toBwError(err: unknown): BwError {
   if (err instanceof BwError) return err;
-  const message =
-    err instanceof Error ? err.message : String(err);
-  return new BwError(message, "CLI_ERROR");
+  return new BwError(getErrorMessage(err), "CLI_ERROR");
 }
 
 /**

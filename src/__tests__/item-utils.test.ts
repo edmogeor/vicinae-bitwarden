@@ -21,7 +21,7 @@ import {
   buildItemDetailMarkdown,
   clearCachedVault,
   filterItems,
-  getItemActions,
+  itemActions,
   groupByFolder,
   itemIcon,
   itemSubtitle,
@@ -200,9 +200,9 @@ describe("itemTypeLabel", () => {
 });
 
 // ---------------------------------------------------------------------------
-// getItemActions
+// itemActions
 // ---------------------------------------------------------------------------
-describe("getItemActions", () => {
+describe("itemActions", () => {
   it("returns username, password, TOTP, and URL actions for Login items", () => {
     const item = makeItem({
       type: ItemType.Login,
@@ -213,7 +213,7 @@ describe("getItemActions", () => {
         uris: [{ uri: "https://example.com", match: null }],
       },
     });
-    const actions = getItemActions(item);
+    const actions = itemActions(item);
     const labels = actions.map((a) => a.label);
     expect(labels).toContain("Copy Username");
     expect(labels).toContain("Copy Password");
@@ -226,7 +226,7 @@ describe("getItemActions", () => {
       type: ItemType.Login,
       login: { username: null, password: "pass", totp: null },
     });
-    const actions = getItemActions(item);
+    const actions = itemActions(item);
     const labels = actions.map((a) => a.label);
     expect(labels).toContain("Copy Password");
     expect(labels).not.toContain("Copy Username");
@@ -238,7 +238,7 @@ describe("getItemActions", () => {
       type: ItemType.Card,
       card: { cardholderName: null, brand: null, number: "4111111111111111", expMonth: null, expYear: null, code: "123" },
     });
-    const actions = getItemActions(item);
+    const actions = itemActions(item);
     const labels = actions.map((a) => a.label);
     expect(labels).toContain("Copy Card Number");
     expect(labels).toContain("Copy Security Code");
@@ -249,7 +249,7 @@ describe("getItemActions", () => {
       type: ItemType.Identity,
       identity: { firstName: "Jane", lastName: "Doe", email: "jane@test.com", phone: "555-1234", title: null, middleName: null, address1: null, address2: null, address3: null, city: null, state: null, postalCode: null, country: null, company: null, ssn: null, username: null, passportNumber: null, licenseNumber: null },
     });
-    const actions = getItemActions(item);
+    const actions = itemActions(item);
     const labels = actions.map((a) => a.label);
     expect(labels).toContain("Copy Name");
     expect(labels).toContain("Copy Email");
@@ -258,7 +258,7 @@ describe("getItemActions", () => {
 
   it("returns empty actions for Secure Note items", () => {
     const item = makeItem({ type: ItemType.SecureNote, secureNote: { type: 0 } });
-    expect(getItemActions(item)).toHaveLength(0);
+    expect(itemActions(item)).toHaveLength(0);
   });
 });
 

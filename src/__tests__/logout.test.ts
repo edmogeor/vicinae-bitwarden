@@ -7,6 +7,7 @@ const { mockRemoveItem, mockShowToast, mockBw } = vi.hoisted(() => ({
     sync: vi.fn(),
     unlock: vi.fn(),
     login: vi.fn(),
+    getErrorMessage: vi.fn((err: unknown) => err instanceof Error ? err.message : String(err)),
   },
   mockRemoveItem: vi.fn<[string], Promise<void>>().mockResolvedValue(undefined),
   mockShowToast: vi.fn(),

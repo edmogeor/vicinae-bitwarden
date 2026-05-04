@@ -115,7 +115,7 @@ vi.mock("../item-utils", () => ({
   clearCachedVault: vi.fn(),
   clearFaviconCache: vi.fn(),
   filterItems: vi.fn(),
-  getItemActions: vi.fn(),
+  itemActions: vi.fn(),
   groupByFolder: vi.fn(),
   itemIcon: vi.fn(),
   itemSubtitle: vi.fn(),

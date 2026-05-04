@@ -9,15 +9,15 @@ import {
   showToast,
   Toast,
 } from "@vicinae/api";
-import { useCallback, useEffect, useRef, useState } from "react";
-import React from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import * as bw from "./bw-executor";
+import { getErrorMessage } from "./bw-executor";
 import type { BwFolder, BwItem } from "./bitwarden-types";
 import { ItemType } from "./bitwarden-types";
 import type { ItemTypeValue } from "./bitwarden-types";
-import { toCreatePayload } from "./item-utils";
+import { CARD_BRANDS, itemTypeLabel, toCreatePayload } from "./item-utils";
 
-const CARD_BRANDS = ["Visa", "Mastercard", "Amex", "Discover", "Other"];
+
 
 interface EditItemProps {
   item: BwItem;
@@ -96,7 +96,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
         onSaved();
         await popToRoot();
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = getErrorMessage(err);
         await showToast({ style: Toast.Style.Failure, title: "Failed to update item", message });
       } finally {
         setIsSubmitting(false);
@@ -134,7 +134,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
     );
   }
 
-  const typeLabel = getTypeLabel(item.type);
+  const typeLabel = itemTypeLabel(item);
   const folderId = fullItem.folderId ?? "";
 
   return (
@@ -239,7 +239,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
         </>
       )}
       {customFields.map((field) => (
-        <React.Fragment key={field.id}>
+        <Fragment key={field.id}>
           <Form.TextField
             id={`cf_name_${field.id}`}
             title="Field Name"
@@ -256,18 +256,10 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
               prev.map(f => f.id === field.id ? { ...f, value: String(v ?? "") } : f)
             )}
           />
-        </React.Fragment>
+        </Fragment>
       ))}
     </Form>
   );
 }
 
-function getTypeLabel(type: number): string {
-  switch (type) {
-    case ItemType.Login: return "Login";
-    case ItemType.Card: return "Card";
-    case ItemType.Identity: return "Identity";
-    case ItemType.SecureNote: return "Secure Note";
-    default: return "Unknown";
-  }
-}
+
