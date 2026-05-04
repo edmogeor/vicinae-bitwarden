@@ -5,6 +5,9 @@
     <a href="https://github.com/edmogeor/vicinae-bitwarden/actions/workflows/ci.yml">
       <img src="https://github.com/edmogeor/vicinae-bitwarden/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"/>
     </a>
+    <a href="https://github.com/edmogeor/vicinae-bitwarden/releases">
+      <img src="https://img.shields.io/github/v/release/edmogeor/vicinae-bitwarden" alt="version"/>
+    </a>
     <a href="https://github.com/fallow-rs/fallow">
       <img src="https://raw.githubusercontent.com/edmogeor/vicinae-bitwarden/badges/badge.svg" alt="fallow health"/>
     </a>
