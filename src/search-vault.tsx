@@ -1,9 +1,7 @@
 import {
   Action,
   ActionPanel,
-  Alert,
   Clipboard,
-  confirmAlert,
   Icon,
   List,
   showToast,
@@ -26,6 +24,7 @@ import { useSession } from "./use-session";
 import { checkBwGate, renderUnlockGate, useUnlockGate } from "./unlock-gate";
 import { useVaultSync } from "./use-vault-sync";
 import ItemDetailView, { renderItemActionElements } from "./item-detail-view";
+import EditItem from "./edit-item";
 import { loadFaviconCache, resolveFavicons } from "./favicons";
 import type { BwFolder, BwItem } from "./bitwarden-types";
 import { ItemType } from "./bitwarden-types";
@@ -290,7 +289,6 @@ export default function SearchVault() {
                       <Action
                         title="Lock Vault"
                         icon={Icon.Lock}
-                        style={Action.Style.Destructive}
                         onAction={handleLock}
                       />
                     </ActionPanel>
@@ -320,27 +318,6 @@ function renderItemActions(
     ? (folders.find((f) => f.id === item.folderId)?.name ?? item.folderId)
     : undefined;
 
-  const handleDelete = async () => {
-    if (!session) return;
-    const confirmed = await confirmAlert({
-      title: "Delete Item",
-      message: `Are you sure you want to delete "${item.name}"?`,
-      primaryAction: {
-        title: "Delete",
-        style: Alert.ActionStyle.Destructive,
-      },
-    });
-    if (!confirmed) return;
-    try {
-      await bw.deleteItem(item.id, session);
-      await showToast({ style: Toast.Style.Success, title: "Item deleted", message: item.name });
-      await onSync();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await showToast({ style: Toast.Style.Failure, title: "Delete failed", message });
-    }
-  };
-
   return (
     <>
       <Action
@@ -358,12 +335,21 @@ function renderItemActions(
         }}
       />
       {renderItemActionElements(actions, onCopyTotp, item.id)}
-      <Action
-        title="Delete Item"
-        icon={Icon.Trash}
-        style={Action.Style.Destructive}
-        onAction={handleDelete}
-      />
+      {session && (
+        <Action
+          title="Edit Item"
+          icon={Icon.Pencil}
+          onAction={() => {
+            push(
+              <EditItem
+                item={item}
+                session={session}
+                onSaved={() => void onSync()}
+              />,
+            );
+          }}
+        />
+      )}
     </>
   );
 }

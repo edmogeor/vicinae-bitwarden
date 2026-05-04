@@ -216,6 +216,27 @@ export async function createItem(
 }
 
 /**
+ * Edit an existing Item in the vault.
+ * Requires a valid Session. The `payload` is a partial item JSON
+ * with only the fields to update.
+ */
+export async function editItem(
+  id: string,
+  payload: object,
+  session: Session,
+): Promise<void> {
+  const json = JSON.stringify(payload);
+  try {
+    await exec("bw", ["edit", "item", id, json], {
+      timeout: 15000,
+      env: sessionEnv(session),
+    });
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
  * Create a new Folder in the vault.
  * Requires a valid Session. Returns the created folder with its id.
  */

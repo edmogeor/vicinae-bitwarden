@@ -387,16 +387,16 @@ describe("buildItemDetailMarkdown", () => {
     expect(md).toContain("My secret note");
   });
 
-  it("shows custom fields", () => {
+  it("shows custom fields in metadata, not markdown", () => {
     const item = makeItem({
       fields: [
         { name: "API Key", value: "abc123", type: 0, linkedId: null },
         { name: "Secret", value: "xyz", type: 1, linkedId: null },
+        { name: "Notes", value: "some value", type: 0, linkedId: null },
       ],
     });
     const md = buildItemDetailMarkdown(item);
-    expect(md).toContain("API Key: abc123");
-    expect(md).toContain("Secret: ••••••••");
+    expect(md).not.toContain("API Key");
   });
 
   it("shows password when showPassword is true", () => {

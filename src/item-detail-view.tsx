@@ -1,16 +1,13 @@
 import {
   Action,
   ActionPanel,
-  Alert,
-  Clipboard,
-  confirmAlert,
   Detail,
   Icon,
   showToast,
   Toast,
   useNavigation,
 } from "@vicinae/api";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as bw from "./bw-executor";
 import type { Session } from "./bw-executor";
 import {
@@ -21,6 +18,7 @@ import {
 } from "./item-utils";
 import type { BwItem } from "./bitwarden-types";
 import { ItemType } from "./bitwarden-types";
+import EditItem from "./edit-item";
 
 function renderItemActionElements(
   actions: ReturnType<typeof getItemActions>,
@@ -71,6 +69,19 @@ function buildMetadata(
       <Detail.Metadata.Label title="Type" text={itemTypeLabel(item)} />
       {folderName && <Detail.Metadata.Label title="Folder" text={folderName} />}
       {renderTypeMetadata(item, showPassword, totpCode)}
+      {item.fields && item.fields.length > 0 && (
+        <>
+          <Detail.Metadata.Separator />
+          <Detail.Metadata.Label title="Custom Fields" text="" />
+          {item.fields.map((field, i) => (
+            <Detail.Metadata.Label
+              key={i}
+              title={field.name}
+              text={field.type === 1 ? "••••••••" : field.value}
+            />
+          ))}
+        </>
+      )}
     </Detail.Metadata>
   );
 }
@@ -158,7 +169,8 @@ export default function ItemDetailView({
   const [fullItem, setFullItem] = useState<BwItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [totpCode, setTotpCode] = useState<string | undefined>();
-  const { pop } = useNavigation();
+  const [showPassword, setShowPassword] = useState(false);
+  const { pop, push } = useNavigation();
 
   useEffect(() => {
     if (!session) return;
@@ -201,29 +213,7 @@ export default function ItemDetailView({
   const markdown = buildItemDetailMarkdown(resolved);
   const actions = getItemActions(resolved);
   const resolvedFolderName = folderName ?? resolved.folderId ?? undefined;
-  const metadata = buildMetadata(resolved, resolvedFolderName, true, totpCode);
-
-  const handleDelete = useCallback(async () => {
-    if (!session) return;
-    const confirmed = await confirmAlert({
-      title: "Delete Item",
-      message: `Are you sure you want to delete "${resolved.name}"?`,
-      primaryAction: {
-        title: "Delete",
-        style: Alert.ActionStyle.Destructive,
-      },
-    });
-    if (!confirmed) return;
-
-    try {
-      await bw.deleteItem(item.id, session);
-      await showToast({ style: Toast.Style.Success, title: "Item deleted" });
-      pop();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await showToast({ style: Toast.Style.Failure, title: "Delete failed", message });
-    }
-  }, [item.id, session, pop, item.name]);
+  const metadata = buildMetadata(resolved, resolvedFolderName, showPassword, totpCode);
 
   return (
     <Detail
@@ -232,13 +222,33 @@ export default function ItemDetailView({
       metadata={metadata}
       actions={
         <ActionPanel>
-          {renderItemActionElements(actions, onCopyTotp, item.id, true)}
-          <Action
-            title="Delete Item"
-            icon={Icon.Trash}
-            style={Action.Style.Destructive}
-            onAction={handleDelete}
-          />
+          {renderItemActionElements(actions.slice(0, 2), onCopyTotp, item.id, true)}
+          {resolved.type === ItemType.Login && resolved.login?.password && (
+            <Action
+              title={showPassword ? "Hide Password" : "Show Password"}
+              icon={Icon.Eye}
+              onAction={() => setShowPassword(prev => !prev)}
+            />
+          )}
+          {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, true)}
+          {session && (
+            <Action
+              title="Edit Item"
+              icon={Icon.Pencil}
+              onAction={() => {
+                push(
+                  <EditItem
+                    item={item}
+                    session={session}
+                    onSaved={() => {
+                      setFullItem(null);
+                      setIsLoading(true);
+                    }}
+                  />,
+                );
+              }}
+            />
+          )}
         </ActionPanel>
       }
     />

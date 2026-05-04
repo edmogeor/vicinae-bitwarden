@@ -8,7 +8,8 @@ import {
   showToast,
   Toast,
 } from "@vicinae/api";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import React from "react";
 import * as bw from "./bw-executor";
 import type { BwFolder } from "./bitwarden-types";
 import { ItemType } from "./bitwarden-types";
@@ -47,8 +48,11 @@ export default function CreateItem() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [folders, setFolders] = useState<BwFolder[]>([]);
   const [generatedPassword, setGeneratedPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState("");
   const [newFolderName, setNewFolderName] = useState("");
+  const [customFields, setCustomFields] = useState<{ id: number; name: string; value: string }[]>([]);
+  const fieldIdRef = useRef(0);
 
   const { handleLogin, handleUnlock } = useUnlockGate({
     loginIfNeeded,
@@ -135,7 +139,12 @@ export default function CreateItem() {
 
       setIsSubmitting(true);
       try {
-        const payload = toCreatePayload(itemValues, typeNum, folderId === "" ? null : folderId);
+        const payload = toCreatePayload(
+          itemValues,
+          typeNum,
+          folderId === "" ? null : folderId,
+          customFields.length > 0 ? customFields.map(f => ({ name: f.name, value: f.value, type: 0 })) : undefined,
+        );
         await bw.createItem(payload, session);
         await showToast({
           style: Toast.Style.Success,
@@ -179,7 +188,13 @@ export default function CreateItem() {
         <ActionPanel>
           <Action.SubmitForm title="Create Item" icon={Icon.Plus} onSubmit={handleSubmit} />
           {selectedType === "Login" && (
-            <Action
+            <>
+              <Action
+                title={showPassword ? "Hide Password" : "Show Password"}
+                icon={Icon.Eye}
+                onAction={() => setShowPassword(prev => !prev)}
+              />
+              <Action
               title="Generate Password"
               icon={Icon.Key}
               onAction={async () => {
@@ -195,8 +210,14 @@ export default function CreateItem() {
                   showToast({ style: Toast.Style.Failure, title: "Generation failed", message });
                 }
               }}
-            />
+              />
+            </>
           )}
+          <Action
+            title="Add Custom Field"
+            icon={Icon.Plus}
+            onAction={() => setCustomFields(prev => [...prev, { id: fieldIdRef.current++, name: "", value: "" }])}
+          />
         </ActionPanel>
       }
     >
@@ -241,12 +262,21 @@ export default function CreateItem() {
       {selectedType === "Login" && (
         <>
           <Form.TextField id="username" title="Username" />
-          <Form.PasswordField
-            id="password"
-            title="Password"
-            value={generatedPassword}
-            onChange={(value) => setGeneratedPassword(String(value ?? ""))}
-          />
+          {showPassword ? (
+            <Form.TextField
+              id="password"
+              title="Password"
+              value={generatedPassword}
+              onChange={(value) => setGeneratedPassword(String(value ?? ""))}
+            />
+          ) : (
+            <Form.PasswordField
+              id="password"
+              title="Password"
+              value={generatedPassword}
+              onChange={(value) => setGeneratedPassword(String(value ?? ""))}
+            />
+          )}
           <Form.TextField id="url" title="URL" />
           <Form.TextField id="totp" title="TOTP Secret" />
         </>
@@ -292,6 +322,33 @@ export default function CreateItem() {
       <Form.Separator />
 
       <Form.TextArea id="notes" title="Notes" />
+
+      {customFields.length > 0 && (
+        <>
+          <Form.Separator />
+          <Form.Description text="Custom Fields" />
+        </>
+      )}
+      {customFields.map((field) => (
+        <React.Fragment key={field.id}>
+          <Form.TextField
+            id={`cf_name_${field.id}`}
+            title="Field Name"
+            value={field.name}
+            onChange={(v) => setCustomFields(prev =>
+              prev.map(f => f.id === field.id ? { ...f, name: String(v ?? "") } : f)
+            )}
+          />
+          <Form.TextField
+            id={`cf_value_${field.id}`}
+            title="Field Value"
+            value={field.value}
+            onChange={(v) => setCustomFields(prev =>
+              prev.map(f => f.id === field.id ? { ...f, value: String(v ?? "") } : f)
+            )}
+          />
+        </React.Fragment>
+      ))}
     </Form>
   );
 }

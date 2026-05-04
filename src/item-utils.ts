@@ -224,6 +224,7 @@ export function toCreatePayload(
   formValues: Record<string, string>,
   type: ItemTypeValue,
   folderId?: string | null,
+  fields?: { name: string; value: string; type: number }[],
 ): CreateItemPayload {
   const base: CreateItemPayload = {
     type,
@@ -237,6 +238,7 @@ export function toCreatePayload(
   if (type === ItemType.Card) base.card = buildCardFields(formValues);
   if (type === ItemType.Identity) base.identity = buildIdentityFields(formValues);
   if (type === ItemType.SecureNote) base.secureNote = { type: 0 };
+  if (fields && fields.length > 0) base.fields = fields;
 
   return base;
 }
@@ -249,18 +251,6 @@ export function buildItemDetailMarkdown(item: BwItem): string {
 
   if (item.notes) {
     lines.push(`**Notes:**`, "", item.notes);
-  }
-
-  if (item.fields && item.fields.length > 0) {
-    if (lines.length > 0) lines.push("", "---", "");
-    lines.push("**Custom Fields:**", "");
-    for (const field of item.fields) {
-      if (field.type === 1) {
-        lines.push(`- ${field.name}: ${"•".repeat(8)}`);
-      } else {
-        lines.push(`- ${field.name}: ${field.value}`);
-      }
-    }
   }
 
   return lines.join("\n");
