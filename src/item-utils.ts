@@ -1,14 +1,14 @@
-import { Icon, LocalStorage } from "@vicinae/api";
-import type { Image } from "@vicinae/api";
-import { BwItem, BwFolder, ItemType } from "./bitwarden-types";
-import type { ItemTypeValue } from "./bitwarden-types";
-import type { CreateItemPayload, ItemAction } from "./bw-executor";
-import { FAVICON_CACHE_KEY } from "./favicons";
-import type { FaviconMap } from "./favicons";
+import { Icon, LocalStorage } from '@vicinae/api';
+import type { Image } from '@vicinae/api';
+import { BwItem, BwFolder, ItemType } from './bitwarden-types';
+import type { ItemTypeValue } from './bitwarden-types';
+import type { CreateItemPayload, ItemAction } from './bw-executor';
+import { FAVICON_CACHE_KEY } from './favicons';
+import type { FaviconMap } from './favicons';
 
-export const CARD_BRANDS = ["Visa", "Mastercard", "Amex", "Discover", "Other"];
+export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'];
 
-const CACHE_KEY = "vicinae-bitwarden-cache";
+const CACHE_KEY = 'vicinae-bitwarden-cache';
 
 interface CachedVault {
   items: BwItem[];
@@ -32,10 +32,7 @@ export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwF
 }
 
 /** Save vault data to LocalStorage for instant load next time. */
-export async function saveCachedVault(
-  items: BwItem[],
-  folders: BwFolder[],
-): Promise<void> {
+export async function saveCachedVault(items: BwItem[], folders: BwFolder[]): Promise<void> {
   const cache: CachedVault = { items, folders, timestamp: Date.now() };
   await LocalStorage.setItem(CACHE_KEY, JSON.stringify(cache));
 }
@@ -76,7 +73,7 @@ export function groupByFolder(
     const key = item.folderId ?? null;
     if (!grouped.has(key)) {
       grouped.set(key, {
-        folderName: key ? (folderMap.get(key) ?? "Unknown") : "Unfiled",
+        folderName: key ? (folderMap.get(key) ?? 'Unknown') : 'Unfiled',
         items: [],
       });
     }
@@ -101,11 +98,8 @@ export function itemSubtitle(item: BwItem): string | undefined {
       return undefined;
     case ItemType.Identity:
       if (item.identity) {
-        const parts = [
-          item.identity.firstName,
-          item.identity.lastName,
-        ].filter(Boolean);
-        return parts.length > 0 ? parts.join(" ") : undefined;
+        const parts = [item.identity.firstName, item.identity.lastName].filter(Boolean);
+        return parts.length > 0 ? parts.join(' ') : undefined;
       }
       return undefined;
     case ItemType.SecureNote:
@@ -121,44 +115,44 @@ export function itemSubtitle(item: BwItem): string | undefined {
 export function itemTypeLabel(item: BwItem): string {
   switch (item.type) {
     case ItemType.Login:
-      return "Login";
+      return 'Login';
     case ItemType.Card:
-      return "Card";
+      return 'Card';
     case ItemType.Identity:
-      return "Identity";
+      return 'Identity';
     case ItemType.SecureNote:
-      return "Secure Note";
+      return 'Secure Note';
     default:
-      return "Unknown";
+      return 'Unknown';
   }
 }
 
-function getLoginActions(login: BwItem["login"]): ItemAction[] {
+function getLoginActions(login: BwItem['login']): ItemAction[] {
   const actions: ItemAction[] = [];
-  if (login?.password) actions.push({ label: "Copy Password", value: login.password });
-  if (login?.username) actions.push({ label: "Copy Username", value: login.username });
-  if (login?.totp) actions.push({ label: "Copy TOTP", value: "TOTP" });
+  if (login?.password) actions.push({ label: 'Copy Password', value: login.password });
+  if (login?.username) actions.push({ label: 'Copy Username', value: login.username });
+  if (login?.totp) actions.push({ label: 'Copy TOTP', value: 'TOTP' });
   if (login?.uris?.length) {
     const primaryUri = login.uris[0]?.uri;
-    if (primaryUri) actions.push({ label: "Open URL", value: primaryUri });
+    if (primaryUri) actions.push({ label: 'Open URL', value: primaryUri });
   }
   return actions;
 }
 
-function getCardActions(card: BwItem["card"]): ItemAction[] {
+function getCardActions(card: BwItem['card']): ItemAction[] {
   const actions: ItemAction[] = [];
-  if (card?.number) actions.push({ label: "Copy Card Number", value: card.number });
-  if (card?.code) actions.push({ label: "Copy Security Code", value: card.code });
+  if (card?.number) actions.push({ label: 'Copy Card Number', value: card.number });
+  if (card?.code) actions.push({ label: 'Copy Security Code', value: card.code });
   return actions;
 }
 
-function getIdentityActions(identity: BwItem["identity"]): ItemAction[] {
+function getIdentityActions(identity: BwItem['identity']): ItemAction[] {
   const actions: ItemAction[] = [];
   if (identity?.firstName && identity?.lastName) {
-    actions.push({ label: "Copy Name", value: `${identity.firstName} ${identity.lastName}` });
+    actions.push({ label: 'Copy Name', value: `${identity.firstName} ${identity.lastName}` });
   }
-  if (identity?.email) actions.push({ label: "Copy Email", value: identity.email });
-  if (identity?.phone) actions.push({ label: "Copy Phone", value: identity.phone });
+  if (identity?.email) actions.push({ label: 'Copy Email', value: identity.email });
+  if (identity?.phone) actions.push({ label: 'Copy Phone', value: identity.phone });
   return actions;
 }
 
@@ -179,10 +173,10 @@ export function itemActions(item: BwItem): ItemAction[] {
 }
 
 function t(v: unknown): string | null {
-  return String(v ?? "").trim() || null;
+  return String(v ?? '').trim() || null;
 }
 
-function buildLoginFields(values: Record<string, string>): CreateItemPayload["login"] {
+function buildLoginFields(values: Record<string, string>): CreateItemPayload['login'] {
   return {
     username: t(values.username),
     password: t(values.password),
@@ -191,7 +185,7 @@ function buildLoginFields(values: Record<string, string>): CreateItemPayload["lo
   };
 }
 
-function buildCardFields(values: Record<string, string>): CreateItemPayload["card"] {
+function buildCardFields(values: Record<string, string>): CreateItemPayload['card'] {
   return {
     cardholderName: t(values.cardholderName),
     brand: t(values.brand),
@@ -202,7 +196,7 @@ function buildCardFields(values: Record<string, string>): CreateItemPayload["car
   };
 }
 
-function buildIdentityFields(values: Record<string, string>): CreateItemPayload["identity"] {
+function buildIdentityFields(values: Record<string, string>): CreateItemPayload['identity'] {
   return {
     title: t(values.title),
     firstName: t(values.firstName),
@@ -230,7 +224,7 @@ export function toCreatePayload(
 ): CreateItemPayload {
   const base: CreateItemPayload = {
     type,
-    name: formValues.name ?? "",
+    name: formValues.name ?? '',
     notes: t(formValues.notes),
     folderId: folderId || null,
     favorite: false,
@@ -252,32 +246,30 @@ export function buildItemDetailMarkdown(item: BwItem): string {
   const lines: string[] = [];
 
   if (item.notes) {
-    lines.push(`**Notes:**`, "", item.notes);
+    lines.push(`**Notes:**`, '', item.notes);
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
-
-
 
 /**
  * Map an ItemAction label to a Vicinae Icon.
  */
 export function actionIcon(action: { label: string }): Image.ImageLike | undefined {
   switch (action.label) {
-    case "Copy Password":
+    case 'Copy Password':
       return Icon.Key;
-    case "Copy Username":
+    case 'Copy Username':
       return Icon.Person;
-    case "Copy Card Number":
+    case 'Copy Card Number':
       return Icon.CreditCard;
-    case "Copy Security Code":
+    case 'Copy Security Code':
       return Icon.Lock;
-    case "Copy Name":
+    case 'Copy Name':
       return Icon.Person;
-    case "Copy Email":
+    case 'Copy Email':
       return Icon.Envelope;
-    case "Copy Phone":
+    case 'Copy Phone':
       return Icon.Phone;
     default:
       return undefined;
@@ -295,8 +287,8 @@ export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
       const cached = favicons?.[domain];
 
       // Only use favicon when we have a confirmed non-empty image
-      if (cached !== undefined && cached !== "") {
-        return { source: cached, fallback: "key" };
+      if (cached !== undefined && cached !== '') {
+        return { source: cached, fallback: 'key' };
       }
     } catch {
       // Invalid URL, fall through to type icon
@@ -305,14 +297,14 @@ export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
 
   switch (item.type) {
     case ItemType.Login:
-      return "key";
+      return 'key';
     case ItemType.Card:
-      return "credit-card";
+      return 'credit-card';
     case ItemType.Identity:
-      return "person";
+      return 'person';
     case ItemType.SecureNote:
-      return "document";
+      return 'document';
     default:
-      return "circle";
+      return 'circle';
   }
 }

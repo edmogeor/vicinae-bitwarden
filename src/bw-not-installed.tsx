@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Detail } from "@vicinae/api";
+import { Action, ActionPanel, Detail } from '@vicinae/api';
 
 const NOT_INSTALLED_MARKDOWN = `# Bitwarden CLI Not Found
 

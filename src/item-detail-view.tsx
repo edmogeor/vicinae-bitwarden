@@ -1,24 +1,16 @@
-import {
-  Action,
-  ActionPanel,
-  Detail,
-  Icon,
-  showToast,
-  Toast,
-  useNavigation,
-} from "@vicinae/api";
-import { useEffect, useState } from "react";
-import * as bw from "./bw-executor";
-import type { Session } from "./bw-executor";
+import { Action, ActionPanel, Detail, Icon, showToast, Toast, useNavigation } from '@vicinae/api';
+import { useEffect, useState } from 'react';
+import * as bw from './bw-executor';
+import type { Session } from './bw-executor';
 import {
   buildItemDetailMarkdown,
   itemActions as getItemActions,
   itemTypeLabel,
   actionIcon,
-} from "./item-utils";
-import type { BwItem } from "./bitwarden-types";
-import { ItemType } from "./bitwarden-types";
-import EditItem from "./edit-item";
+} from './item-utils';
+import type { BwItem } from './bitwarden-types';
+import { ItemType } from './bitwarden-types';
+import EditItem from './edit-item';
 
 function renderItemActionElements(
   actions: ReturnType<typeof getItemActions>,
@@ -27,7 +19,7 @@ function renderItemActionElements(
   showIcons?: boolean,
 ) {
   return actions.map((action) => {
-    if (action.label === "Copy TOTP") {
+    if (action.label === 'Copy TOTP') {
       return (
         <Action
           key={action.label}
@@ -37,7 +29,7 @@ function renderItemActionElements(
         />
       );
     }
-    if (action.label === "Open URL") {
+    if (action.label === 'Open URL') {
       return (
         <Action.OpenInBrowser
           key={action.label}
@@ -77,7 +69,7 @@ function buildMetadata(
             <Detail.Metadata.Label
               key={i}
               title={field.name}
-              text={field.type === 1 ? "••••••••" : field.value}
+              text={field.type === 1 ? '••••••••' : field.value}
             />
           ))}
         </>
@@ -89,7 +81,9 @@ function buildMetadata(
 function renderTypeMetadata(item: BwItem, showPassword: boolean, totpCode?: string) {
   switch (item.type) {
     case ItemType.Login:
-      return item.login ? <LoginMetadata login={item.login} showPassword={showPassword} totpCode={totpCode} /> : null;
+      return item.login ? (
+        <LoginMetadata login={item.login} showPassword={showPassword} totpCode={totpCode} />
+      ) : null;
     case ItemType.Card:
       return item.card ? <CardMetadata card={item.card} /> : null;
     case ItemType.Identity:
@@ -99,29 +93,44 @@ function renderTypeMetadata(item: BwItem, showPassword: boolean, totpCode?: stri
   }
 }
 
-function LoginMetadata({ login, showPassword, totpCode }: { login: NonNullable<BwItem["login"]>; showPassword: boolean; totpCode?: string }) {
+function LoginMetadata({
+  login,
+  showPassword,
+  totpCode,
+}: {
+  login: NonNullable<BwItem['login']>;
+  showPassword: boolean;
+  totpCode?: string;
+}) {
   return (
     <>
       <Detail.Metadata.Separator />
       {login.username && <Detail.Metadata.Label title="Username" text={login.username} />}
       {login.password && (
-        <Detail.Metadata.Label title="Password" text={showPassword ? login.password : "••••••••••••"} />
+        <Detail.Metadata.Label
+          title="Password"
+          text={showPassword ? login.password : '••••••••••••'}
+        />
       )}
-      {login.totp && <Detail.Metadata.Label title="TOTP" text={totpCode ?? "Loading..."} />}
+      {login.totp && <Detail.Metadata.Label title="TOTP" text={totpCode ?? 'Loading...'} />}
       {login.uris && login.uris.length > 0 && (
-        <Detail.Metadata.Label title="URL" text={login.uris.map((u) => u.uri).join(", ")} />
+        <Detail.Metadata.Label title="URL" text={login.uris.map((u) => u.uri).join(', ')} />
       )}
     </>
   );
 }
 
-function CardMetadata({ card }: { card: NonNullable<BwItem["card"]> }) {
+function CardMetadata({ card }: { card: NonNullable<BwItem['card']> }) {
   return (
     <>
       <Detail.Metadata.Separator />
-      {card.cardholderName && <Detail.Metadata.Label title="Cardholder" text={card.cardholderName} />}
+      {card.cardholderName && (
+        <Detail.Metadata.Label title="Cardholder" text={card.cardholderName} />
+      )}
       {card.brand && <Detail.Metadata.Label title="Brand" text={card.brand} />}
-      {card.number && <Detail.Metadata.Label title="Number" text={`•••• ${card.number.slice(-4)}`} />}
+      {card.number && (
+        <Detail.Metadata.Label title="Number" text={`•••• ${card.number.slice(-4)}`} />
+      )}
       {card.expMonth && card.expYear && (
         <Detail.Metadata.Label title="Expires" text={`${card.expMonth}/${card.expYear}`} />
       )}
@@ -130,7 +139,7 @@ function CardMetadata({ card }: { card: NonNullable<BwItem["card"]> }) {
   );
 }
 
-function IdentityMetadata({ identity }: { identity: NonNullable<BwItem["identity"]> }) {
+function IdentityMetadata({ identity }: { identity: NonNullable<BwItem['identity']> }) {
   return (
     <>
       <Detail.Metadata.Separator />
@@ -145,7 +154,9 @@ function IdentityMetadata({ identity }: { identity: NonNullable<BwItem["identity
           {identity.address1 && <Detail.Metadata.Label title="Address" text={identity.address1} />}
           {identity.city && <Detail.Metadata.Label title="City" text={identity.city} />}
           {identity.state && <Detail.Metadata.Label title="State" text={identity.state} />}
-          {identity.postalCode && <Detail.Metadata.Label title="Postal Code" text={identity.postalCode} />}
+          {identity.postalCode && (
+            <Detail.Metadata.Label title="Postal Code" text={identity.postalCode} />
+          )}
           {identity.country && <Detail.Metadata.Label title="Country" text={identity.country} />}
         </>
       )}
@@ -217,7 +228,7 @@ export default function ItemDetailView({
 
   return (
     <Detail
-      markdown={isLoading ? "Loading..." : markdown}
+      markdown={isLoading ? 'Loading...' : markdown}
       navigationTitle={resolved.name}
       metadata={metadata}
       actions={
@@ -225,9 +236,9 @@ export default function ItemDetailView({
           {renderItemActionElements(actions.slice(0, 2), onCopyTotp, item.id, true)}
           {resolved.type === ItemType.Login && resolved.login?.password && (
             <Action
-              title={showPassword ? "Hide Password" : "Show Password"}
+              title={showPassword ? 'Hide Password' : 'Show Password'}
               icon={Icon.Eye}
-              onAction={() => setShowPassword(prev => !prev)}
+              onAction={() => setShowPassword((prev) => !prev)}
             />
           )}
           {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, true)}

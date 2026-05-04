@@ -23,8 +23,8 @@ The act of entering the master password to derive a Session. Distinct from Login
 _Avoid_: Decrypt, authenticate
 
 **Login**:
-Establishes the Bitwarden account on a Server using an API key (client_id + client_secret). Performed once; different from Unlock.
-_Avoid_: Sign in, authenticate
+Establishes the Bitwarden account on a Server using an API key (client*id + client_secret). Performed once; different from Unlock.
+\_Avoid*: Sign in, authenticate
 
 **Server**:
 The Bitwarden instance the vault lives on. Either a cloud region (`bitwarden.com`, `bitwarden.eu`) or a self-hosted domain.

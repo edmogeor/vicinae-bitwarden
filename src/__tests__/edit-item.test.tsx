@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from 'vitest';
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
 
 const { mockBw, mockItem, mockOnSaved } = vi.hoisted(() => {
   const mockBw = {
@@ -17,16 +17,16 @@ const { mockBw, mockItem, mockOnSaved } = vi.hoisted(() => {
   };
 
   const mockItem = {
-    id: "item-1",
+    id: 'item-1',
     type: 1,
-    name: "Test Login",
-    notes: "my notes",
+    name: 'Test Login',
+    notes: 'my notes',
     folderId: null,
     login: {
-      username: "alice",
-      password: "secret",
+      username: 'alice',
+      password: 'secret',
       totp: null,
-      uris: [{ uri: "https://example.com", match: null }],
+      uris: [{ uri: 'https://example.com', match: null }],
     },
   };
 
@@ -35,115 +35,158 @@ const { mockBw, mockItem, mockOnSaved } = vi.hoisted(() => {
   return { mockBw, mockItem, mockOnSaved };
 });
 
-vi.mock("@vicinae/api", () => ({
+vi.mock('@vicinae/api', () => ({
   Action: Object.assign(
-    ({ title }: { title: string }) => React.createElement("button", { "data-testid": `action-${title.replace(/\s+/g, "-").toLowerCase()}` }, title),
+    ({ title }: { title: string }) =>
+      React.createElement(
+        'button',
+        { 'data-testid': `action-${title.replace(/\s+/g, '-').toLowerCase()}` },
+        title,
+      ),
     {
-      SubmitForm: ({ title }: { title: string }) => React.createElement("button", { type: "submit", "data-testid": "submit-btn" }, title),
+      SubmitForm: ({ title }: { title: string }) =>
+        React.createElement('button', { type: 'submit', 'data-testid': 'submit-btn' }, title),
       OpenInBrowser: () => null,
-      Style: { Destructive: "destructive" },
+      Style: { Destructive: 'destructive' },
     },
   ),
-  ActionPanel: ({ children }: { children: React.ReactNode }) => React.createElement("div", { "data-testid": "action-panel" }, children),
-  Alert: { ActionStyle: { Destructive: "destructive" } },
+  ActionPanel: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'action-panel' }, children),
+  Alert: { ActionStyle: { Destructive: 'destructive' } },
   confirmAlert: vi.fn(),
   Form: Object.assign(
-    ({ children }: { children: React.ReactNode }) => React.createElement("form", { "data-testid": "form" }, children),
+    ({ children }: { children: React.ReactNode }) =>
+      React.createElement('form', { 'data-testid': 'form' }, children),
     {
-      TextField: ({ id, title, defaultValue }: { id: string; title: string; defaultValue?: string }) =>
-        React.createElement("input", { "data-testid": id, placeholder: title, defaultValue }),
-      PasswordField: ({ id, title, defaultValue }: { id: string; title: string; defaultValue?: string }) =>
-        React.createElement("input", { type: "password", "data-testid": id, placeholder: title, defaultValue }),
-      TextArea: ({ id, title, defaultValue }: { id: string; title: string; defaultValue?: string }) =>
-        React.createElement("textarea", { "data-testid": id, placeholder: title, defaultValue }),
+      TextField: ({
+        id,
+        title,
+        defaultValue,
+      }: {
+        id: string;
+        title: string;
+        defaultValue?: string;
+      }) => React.createElement('input', { 'data-testid': id, placeholder: title, defaultValue }),
+      PasswordField: ({
+        id,
+        title,
+        defaultValue,
+      }: {
+        id: string;
+        title: string;
+        defaultValue?: string;
+      }) =>
+        React.createElement('input', {
+          type: 'password',
+          'data-testid': id,
+          placeholder: title,
+          defaultValue,
+        }),
+      TextArea: ({
+        id,
+        title,
+        defaultValue,
+      }: {
+        id: string;
+        title: string;
+        defaultValue?: string;
+      }) =>
+        React.createElement('textarea', { 'data-testid': id, placeholder: title, defaultValue }),
       Dropdown: Object.assign(
         ({ id, title }: { id: string; title: string }) =>
-          React.createElement("select", { "data-testid": id, title }),
+          React.createElement('select', { 'data-testid': id, title }),
         {
           Item: ({ value, title }: { value: string; title: string }) =>
-            React.createElement("option", { value, children: title }),
+            React.createElement('option', { value, children: title }),
         },
       ),
-      Description: ({ text }: { text: string }) => React.createElement("span", { "data-testid": "description" }, text),
-      Separator: () => React.createElement("hr", { "data-testid": "separator" }),
+      Description: ({ text }: { text: string }) =>
+        React.createElement('span', { 'data-testid': 'description' }, text),
+      Separator: () => React.createElement('hr', { 'data-testid': 'separator' }),
     },
   ),
-  Icon: { Eye: "icon-eye", Pencil: "icon-pencil", Plus: "icon-plus", CheckCircle: "icon-check", Trash: "icon-trash" },
+  Icon: {
+    Eye: 'icon-eye',
+    Pencil: 'icon-pencil',
+    Plus: 'icon-plus',
+    CheckCircle: 'icon-check',
+    Trash: 'icon-trash',
+  },
   popToRoot: vi.fn(),
   showToast: vi.fn(),
-  Toast: { Style: { Success: "success", Failure: "failure" } },
+  Toast: { Style: { Success: 'success', Failure: 'failure' } },
 }));
 
-vi.mock("../bw-executor", () => mockBw);
+vi.mock('../bw-executor', () => mockBw);
 
-vi.mock("../item-utils", () => ({
+vi.mock('../item-utils', () => ({
   toCreatePayload: vi.fn((values: Record<string, string>, type: number) => ({
     type,
-    name: values.name ?? "",
+    name: values.name ?? '',
     notes: values.notes ?? null,
     folderId: null,
     favorite: false,
   })),
   buildItemDetailMarkdown: vi.fn(),
   itemActions: vi.fn(),
-  itemTypeLabel: vi.fn(() => "Login"),
+  itemTypeLabel: vi.fn(() => 'Login'),
   actionIcon: vi.fn(),
 }));
 
-import EditItem from "../edit-item";
+import EditItem from '../edit-item';
 
-describe("EditItem", () => {
+describe('EditItem', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockBw.getItem.mockResolvedValue(mockItem);
     mockBw.listFolders.mockResolvedValue([]);
   });
 
-  it("renders loading state initially", () => {
+  it('renders loading state initially', () => {
     mockBw.getItem.mockReturnValue(new Promise(() => {})); // never resolves
     render(
       React.createElement(EditItem, {
         item: mockItem as never,
-        session: "token",
+        session: 'token',
         onSaved: mockOnSaved,
       }),
     );
-    expect(screen.getByTestId("description")).toBeTruthy();
+    expect(screen.getByTestId('description')).toBeTruthy();
   });
 
-  it("renders the form with pre-populated fields after load", async () => {
+  it('renders the form with pre-populated fields after load', async () => {
     render(
       React.createElement(EditItem, {
         item: mockItem as never,
-        session: "token",
+        session: 'token',
         onSaved: mockOnSaved,
       }),
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("name")).toBeTruthy();
+      expect(screen.getByTestId('name')).toBeTruthy();
     });
 
-    const nameInput = screen.getByTestId("name") as HTMLInputElement;
-    expect(nameInput.defaultValue).toBe("Test Login");
+    const nameInput = screen.getByTestId('name') as HTMLInputElement;
+    expect(nameInput.defaultValue).toBe('Test Login');
 
-    const usernameInput = screen.getByTestId("username") as HTMLInputElement;
-    expect(usernameInput.defaultValue).toBe("alice");
+    const usernameInput = screen.getByTestId('username') as HTMLInputElement;
+    expect(usernameInput.defaultValue).toBe('alice');
   });
 
-  it("renders the type label", async () => {
+  it('renders the type label', async () => {
     render(
       React.createElement(EditItem, {
         item: mockItem as never,
-        session: "token",
+        session: 'token',
         onSaved: mockOnSaved,
       }),
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("description")).toBeTruthy();
+      expect(screen.getByTestId('description')).toBeTruthy();
     });
 
-    expect(screen.getByTestId("description").textContent).toContain("Login");
+    expect(screen.getByTestId('description').textContent).toContain('Login');
   });
 });

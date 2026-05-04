@@ -88,6 +88,6 @@ export class BwError extends Error {
     public readonly code: string,
   ) {
     super(message);
-    this.name = "BwError";
+    this.name = 'BwError';
   }
 }

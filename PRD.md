@@ -65,6 +65,7 @@ Two commands in the manifest, both `mode: "view"`:
 ### Preferences schema
 
 Four extension-level preferences in the manifest:
+
 - `serverRegion` — dropdown: `bitwarden.com`, `bitwarden.eu`, `self-hosted`
 - `customServerUrl` — textfield, only required when `serverRegion` is `self-hosted`
 - `apiClientId` — textfield, required
@@ -77,6 +78,7 @@ The Session token is stored in LocalStorage under a documented key. On every com
 ### Error handling
 
 All errors surface to the user via `showToast({ style: Toast.Style.Failure })`. Three categories:
+
 - **Pre-requisite errors**: `bw` not on PATH → show install guide Detail view
 - **Auth errors**: invalid master password, expired session → show unlock form with error
 - **Operational errors**: network failure, `bw` crash, malformed output → failure toast with message
@@ -84,6 +86,7 @@ All errors surface to the user via `showToast({ style: Toast.Style.Failure })`. 
 ### Item type handling
 
 Each of the four Bitwarden item types (Login, Card, Identity, Secure Note) gets:
+
 - A distinct set of copy actions in the vault list's `<ActionPanel>`
 - A distinct set of fields in the create Form
 - A type-specific Detail view with appropriate metadata

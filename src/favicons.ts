@@ -1,7 +1,7 @@
-import { LocalStorage } from "@vicinae/api";
-import { createHash } from "node:crypto";
+import { LocalStorage } from '@vicinae/api';
+import { createHash } from 'node:crypto';
 
-export const FAVICON_CACHE_KEY = "vicinae-bitwarden-favicons";
+export const FAVICON_CACHE_KEY = 'vicinae-bitwarden-favicons';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 export type FaviconMap = Record<string, string>;
@@ -39,7 +39,7 @@ void (async () => {
 })();
 
 // Google's globe placeholder — same 16x16 PNG regardless of sz param
-const GLOBE_MD5 = "b8a0bf372c762e966cc99ede8682bc71";
+const GLOBE_MD5 = 'b8a0bf372c762e966cc99ede8682bc71';
 
 function readPngSize(buf: Buffer): { width: number; height: number } | null {
   if (buf.length < 24) return null;
@@ -54,7 +54,7 @@ function isGlobeFavicon(buf: Buffer, status: number): boolean {
   if (status === 404) return true;
   const size = readPngSize(buf);
   if (size && size.width <= 16) return true;
-  const hash = createHash("md5").update(buf).digest("hex");
+  const hash = createHash('md5').update(buf).digest('hex');
   return hash === GLOBE_MD5;
 }
 
@@ -65,9 +65,7 @@ export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
     return !entry || now - entry.timestamp > CACHE_TTL;
   });
   if (unique.length === 0) {
-    return Object.fromEntries(
-      Object.entries(faviconCache).map(([k, v]) => [k, v.dataUri]),
-    );
+    return Object.fromEntries(Object.entries(faviconCache).map(([k, v]) => [k, v.dataUri]));
   }
 
   await Promise.all(
@@ -76,27 +74,25 @@ export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (!res.ok) {
-          faviconCache[domain] = { dataUri: "", timestamp: now };
+          faviconCache[domain] = { dataUri: '', timestamp: now };
           return;
         }
         const buf = Buffer.from(await res.arrayBuffer());
         if (isGlobeFavicon(buf, res.status)) {
-          faviconCache[domain] = { dataUri: "", timestamp: now };
+          faviconCache[domain] = { dataUri: '', timestamp: now };
           return;
         }
-        const mime = res.headers.get("content-type") ?? "image/png";
-        const dataUri = `data:${mime};base64,${buf.toString("base64")}`;
+        const mime = res.headers.get('content-type') ?? 'image/png';
+        const dataUri = `data:${mime};base64,${buf.toString('base64')}`;
         faviconCache[domain] = { dataUri, timestamp: now };
       } catch {
-        faviconCache[domain] = { dataUri: "", timestamp: now };
+        faviconCache[domain] = { dataUri: '', timestamp: now };
       }
     }),
   );
 
   await persistFaviconCache();
-  return Object.fromEntries(
-    Object.entries(faviconCache).map(([k, v]) => [k, v.dataUri]),
-  );
+  return Object.fromEntries(Object.entries(faviconCache).map(([k, v]) => [k, v.dataUri]));
 }
 
 export function clearFaviconCache(): void {

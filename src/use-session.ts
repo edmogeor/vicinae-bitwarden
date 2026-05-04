@@ -1,11 +1,11 @@
-import { LocalStorage } from "@vicinae/api";
-import { useCallback, useEffect, useState } from "react";
-import { getPreferences, getServerUrl } from "./preferences";
-import * as bw from "./bw-executor";
-import type { Session } from "./bw-executor";
-import { getErrorMessage } from "./bw-executor";
+import { LocalStorage } from '@vicinae/api';
+import { useCallback, useEffect, useState } from 'react';
+import { getPreferences, getServerUrl } from './preferences';
+import * as bw from './bw-executor';
+import type { Session } from './bw-executor';
+import { getErrorMessage } from './bw-executor';
 
-export const SESSION_KEY = "vicinae-bitwarden-session";
+export const SESSION_KEY = 'vicinae-bitwarden-session';
 
 interface SessionState {
   session: Session | null;
@@ -52,15 +52,12 @@ export function useSession(): SessionState {
     }
   }, []);
 
-  const unlock = useCallback(
-    async (masterPassword: string): Promise<Session> => {
-      const token = await bw.unlock(masterPassword);
-      await LocalStorage.setItem(SESSION_KEY, token);
-      setSession(token);
-      return token;
-    },
-    [],
-  );
+  const unlock = useCallback(async (masterPassword: string): Promise<Session> => {
+    const token = await bw.unlock(masterPassword);
+    await LocalStorage.setItem(SESSION_KEY, token);
+    setSession(token);
+    return token;
+  }, []);
 
   const clearSession = useCallback(async () => {
     await LocalStorage.removeItem(SESSION_KEY);

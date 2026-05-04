@@ -1,33 +1,29 @@
-import {
-  Action,
-  ActionPanel,
-  Form,
-  showToast,
-  Toast,
-} from "@vicinae/api";
-import { useCallback } from "react";
-import { BwNotInstalled } from "./bw-not-installed";
-import * as bw from "./bw-executor";
-import { getErrorMessage } from "./bw-executor";
+import { Action, ActionPanel, Form, showToast, Toast } from '@vicinae/api';
+import { useCallback } from 'react';
+import { BwNotInstalled } from './bw-not-installed';
+import * as bw from './bw-executor';
+import { getErrorMessage } from './bw-executor';
 
-export async function checkBwGate(session: string | null): Promise<
-  | { kind: "bw-not-installed" }
-  | { kind: "logging-in" }
-  | { kind: "needs-unlock" }
-  | { kind: "ready" }
+export async function checkBwGate(
+  session: string | null,
+): Promise<
+  | { kind: 'bw-not-installed' }
+  | { kind: 'logging-in' }
+  | { kind: 'needs-unlock' }
+  | { kind: 'ready' }
 > {
   const installed = await bw.checkInstalled();
-  if (!installed) return { kind: "bw-not-installed" };
+  if (!installed) return { kind: 'bw-not-installed' };
 
   try {
     const st = await bw.status();
-    if (st.status === "unauthenticated") return { kind: "logging-in" };
+    if (st.status === 'unauthenticated') return { kind: 'logging-in' };
   } catch {
     // If status fails, proceed — session check will handle it
   }
 
-  if (session) return { kind: "ready" };
-  return { kind: "needs-unlock" };
+  if (session) return { kind: 'ready' };
+  return { kind: 'needs-unlock' };
 }
 
 interface UnlockGateDeps {
@@ -47,12 +43,12 @@ export function useUnlockGate(deps: UnlockGateDeps) {
       await deps.loginIfNeeded();
       deps.onLoginReady();
     } catch {
-      const message = deps.loginError ?? "Login failed — check preferences";
+      const message = deps.loginError ?? 'Login failed — check preferences';
       deps.onLoginError(message);
       showToast({
         style: Toast.Style.Failure,
-        title: "Login failed",
-        message: deps.loginError ?? "Check your API key in preferences",
+        title: 'Login failed',
+        message: deps.loginError ?? 'Check your API key in preferences',
       });
     }
   }, [deps.loginIfNeeded, deps.loginError, deps.onLoginReady, deps.onLoginError]);
@@ -61,7 +57,7 @@ export function useUnlockGate(deps: UnlockGateDeps) {
     async (values: Form.Values) => {
       deps.onUnlockStart();
       try {
-        const password = String(values.password ?? "");
+        const password = String(values.password ?? '');
         await deps.unlock(password);
         deps.onUnlockReady();
       } catch (err) {
@@ -80,12 +76,12 @@ export function renderUnlockGate(
   error: string | undefined,
   onUnlock: (values: Form.Values) => Promise<void>,
 ) {
-  if (kind === "bw-not-installed") return <BwNotInstalled />;
+  if (kind === 'bw-not-installed') return <BwNotInstalled />;
 
-  if (kind === "needs-unlock" || kind === "unlocking") {
+  if (kind === 'needs-unlock' || kind === 'unlocking') {
     return (
       <Form
-        isLoading={kind === "unlocking"}
+        isLoading={kind === 'unlocking'}
         actions={
           <ActionPanel>
             <Action.SubmitForm title="Unlock" onSubmit={onUnlock} />
@@ -95,7 +91,7 @@ export function renderUnlockGate(
         <Form.PasswordField
           id="password"
           title="Master Password"
-          error={kind === "needs-unlock" ? error : undefined}
+          error={kind === 'needs-unlock' ? error : undefined}
         />
       </Form>
     );

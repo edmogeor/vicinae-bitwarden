@@ -8,16 +8,14 @@ import {
   popToRoot,
   showToast,
   Toast,
-} from "@vicinae/api";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import * as bw from "./bw-executor";
-import { getErrorMessage } from "./bw-executor";
-import type { BwFolder, BwItem } from "./bitwarden-types";
-import { ItemType } from "./bitwarden-types";
-import type { ItemTypeValue } from "./bitwarden-types";
-import { CARD_BRANDS, itemTypeLabel, toCreatePayload } from "./item-utils";
-
-
+} from '@vicinae/api';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import * as bw from './bw-executor';
+import { getErrorMessage } from './bw-executor';
+import type { BwFolder, BwItem } from './bitwarden-types';
+import { ItemType } from './bitwarden-types';
+import type { ItemTypeValue } from './bitwarden-types';
+import { CARD_BRANDS, itemTypeLabel, toCreatePayload } from './item-utils';
 
 interface EditItemProps {
   item: BwItem;
@@ -78,12 +76,13 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
       try {
         const formValues: Record<string, string> = {};
         for (const [key, val] of Object.entries(values)) {
-          formValues[key] = String(val ?? "");
+          formValues[key] = String(val ?? '');
         }
 
-        const fields = customFields.length > 0
-          ? customFields.map(f => ({ name: f.name, value: f.value, type: 0 }))
-          : undefined;
+        const fields =
+          customFields.length > 0
+            ? customFields.map((f) => ({ name: f.name, value: f.value, type: 0 }))
+            : undefined;
 
         const payload = toCreatePayload(
           formValues,
@@ -92,12 +91,16 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
           fields,
         );
         await bw.editItem(item.id, payload, session);
-        await showToast({ style: Toast.Style.Success, title: "Item updated", message: formValues.name });
+        await showToast({
+          style: Toast.Style.Success,
+          title: 'Item updated',
+          message: formValues.name,
+        });
         onSaved();
         await popToRoot();
       } catch (err) {
         const message = getErrorMessage(err);
-        await showToast({ style: Toast.Style.Failure, title: "Failed to update item", message });
+        await showToast({ style: Toast.Style.Failure, title: 'Failed to update item', message });
       } finally {
         setIsSubmitting(false);
       }
@@ -107,22 +110,22 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
 
   const handleDelete = useCallback(async () => {
     const confirmed = await confirmAlert({
-      title: "Delete Item",
+      title: 'Delete Item',
       message: `Are you sure you want to delete "${item.name}"?`,
       primaryAction: {
-        title: "Delete",
+        title: 'Delete',
         style: Alert.ActionStyle.Destructive,
       },
     });
     if (!confirmed) return;
     try {
       await bw.deleteItem(item.id, session);
-      await showToast({ style: Toast.Style.Success, title: "Item deleted", message: item.name });
+      await showToast({ style: Toast.Style.Success, title: 'Item deleted', message: item.name });
       onSaved();
       await popToRoot();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await showToast({ style: Toast.Style.Failure, title: "Delete failed", message });
+      await showToast({ style: Toast.Style.Failure, title: 'Delete failed', message });
     }
   }, [item.id, item.name, session, onSaved]);
 
@@ -135,7 +138,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
   }
 
   const typeLabel = itemTypeLabel(item);
-  const folderId = fullItem.folderId ?? "";
+  const folderId = fullItem.folderId ?? '';
 
   return (
     <Form
@@ -146,21 +149,22 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
           <Action.SubmitForm title="Save Changes" icon={Icon.CheckCircle} onSubmit={handleSubmit} />
           {item.type === ItemType.Login && fullItem.login?.password && (
             <Action
-              title={showPassword ? "Hide Password" : "Show Password"}
+              title={showPassword ? 'Hide Password' : 'Show Password'}
               icon={Icon.Eye}
-              onAction={() => setShowPassword(prev => !prev)}
+              onAction={() => setShowPassword((prev) => !prev)}
             />
           )}
           <Action
             title="Add Custom Field"
             icon={Icon.Plus}
-            onAction={() => setCustomFields(prev => [...prev, { id: fieldIdRef.current++, name: "", value: "" }])}
+            onAction={() =>
+              setCustomFields((prev) => [
+                ...prev,
+                { id: fieldIdRef.current++, name: '', value: '' },
+              ])
+            }
           />
-          <Action
-            title="Delete Item"
-            icon={Icon.Trash}
-            onAction={handleDelete}
-          />
+          <Action title="Delete Item" icon={Icon.Trash} onAction={handleDelete} />
         </ActionPanel>
       }
     >
@@ -180,47 +184,103 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
 
       {item.type === ItemType.Login && fullItem.login && (
         <>
-          <Form.TextField id="username" title="Username" defaultValue={fullItem.login.username ?? ""} />
+          <Form.TextField
+            id="username"
+            title="Username"
+            defaultValue={fullItem.login.username ?? ''}
+          />
           {showPassword ? (
-            <Form.TextField id="password" title="Password" defaultValue={fullItem.login.password ?? ""} />
+            <Form.TextField
+              id="password"
+              title="Password"
+              defaultValue={fullItem.login.password ?? ''}
+            />
           ) : (
-            <Form.PasswordField id="password" title="Password" defaultValue={fullItem.login.password ?? ""} />
+            <Form.PasswordField
+              id="password"
+              title="Password"
+              defaultValue={fullItem.login.password ?? ''}
+            />
           )}
-          <Form.TextField id="url" title="URL" defaultValue={fullItem.login.uris?.[0]?.uri ?? ""} />
-          <Form.TextField id="totp" title="TOTP Secret" defaultValue={fullItem.login.totp ?? ""} />
+          <Form.TextField id="url" title="URL" defaultValue={fullItem.login.uris?.[0]?.uri ?? ''} />
+          <Form.TextField id="totp" title="TOTP Secret" defaultValue={fullItem.login.totp ?? ''} />
         </>
       )}
 
       {item.type === ItemType.Card && fullItem.card && (
         <>
-          <Form.TextField id="cardholderName" title="Cardholder Name" defaultValue={fullItem.card.cardholderName ?? ""} />
-          <Form.Dropdown id="brand" title="Brand" defaultValue={fullItem.card.brand ?? "Other"}>
+          <Form.TextField
+            id="cardholderName"
+            title="Cardholder Name"
+            defaultValue={fullItem.card.cardholderName ?? ''}
+          />
+          <Form.Dropdown id="brand" title="Brand" defaultValue={fullItem.card.brand ?? 'Other'}>
             {CARD_BRANDS.map((b) => (
               <Form.Dropdown.Item key={b} value={b} title={b} />
             ))}
           </Form.Dropdown>
-          <Form.TextField id="number" title="Card Number" defaultValue={fullItem.card.number ?? ""} />
-          <Form.TextField id="expMonth" title="Expiration Month" defaultValue={fullItem.card.expMonth ?? ""} />
-          <Form.TextField id="expYear" title="Expiration Year" defaultValue={fullItem.card.expYear ?? ""} />
-          <Form.TextField id="code" title="Security Code" defaultValue={fullItem.card.code ?? ""} />
+          <Form.TextField
+            id="number"
+            title="Card Number"
+            defaultValue={fullItem.card.number ?? ''}
+          />
+          <Form.TextField
+            id="expMonth"
+            title="Expiration Month"
+            defaultValue={fullItem.card.expMonth ?? ''}
+          />
+          <Form.TextField
+            id="expYear"
+            title="Expiration Year"
+            defaultValue={fullItem.card.expYear ?? ''}
+          />
+          <Form.TextField id="code" title="Security Code" defaultValue={fullItem.card.code ?? ''} />
         </>
       )}
 
       {item.type === ItemType.Identity && fullItem.identity && (
         <>
-          <Form.TextField id="title" title="Title" defaultValue={fullItem.identity.title ?? ""} />
-          <Form.TextField id="firstName" title="First Name" defaultValue={fullItem.identity.firstName ?? ""} />
-          <Form.TextField id="middleName" title="Middle Name" defaultValue={fullItem.identity.middleName ?? ""} />
-          <Form.TextField id="lastName" title="Last Name" defaultValue={fullItem.identity.lastName ?? ""} />
-          <Form.TextField id="email" title="Email" defaultValue={fullItem.identity.email ?? ""} />
-          <Form.TextField id="phone" title="Phone" defaultValue={fullItem.identity.phone ?? ""} />
+          <Form.TextField id="title" title="Title" defaultValue={fullItem.identity.title ?? ''} />
+          <Form.TextField
+            id="firstName"
+            title="First Name"
+            defaultValue={fullItem.identity.firstName ?? ''}
+          />
+          <Form.TextField
+            id="middleName"
+            title="Middle Name"
+            defaultValue={fullItem.identity.middleName ?? ''}
+          />
+          <Form.TextField
+            id="lastName"
+            title="Last Name"
+            defaultValue={fullItem.identity.lastName ?? ''}
+          />
+          <Form.TextField id="email" title="Email" defaultValue={fullItem.identity.email ?? ''} />
+          <Form.TextField id="phone" title="Phone" defaultValue={fullItem.identity.phone ?? ''} />
           <Form.Separator />
-          <Form.TextField id="address1" title="Address Line 1" defaultValue={fullItem.identity.address1 ?? ""} />
-          <Form.TextField id="address2" title="Address Line 2" defaultValue={fullItem.identity.address2 ?? ""} />
-          <Form.TextField id="city" title="City" defaultValue={fullItem.identity.city ?? ""} />
-          <Form.TextField id="state" title="State" defaultValue={fullItem.identity.state ?? ""} />
-          <Form.TextField id="postalCode" title="Postal Code" defaultValue={fullItem.identity.postalCode ?? ""} />
-          <Form.TextField id="country" title="Country" defaultValue={fullItem.identity.country ?? ""} />
+          <Form.TextField
+            id="address1"
+            title="Address Line 1"
+            defaultValue={fullItem.identity.address1 ?? ''}
+          />
+          <Form.TextField
+            id="address2"
+            title="Address Line 2"
+            defaultValue={fullItem.identity.address2 ?? ''}
+          />
+          <Form.TextField id="city" title="City" defaultValue={fullItem.identity.city ?? ''} />
+          <Form.TextField id="state" title="State" defaultValue={fullItem.identity.state ?? ''} />
+          <Form.TextField
+            id="postalCode"
+            title="Postal Code"
+            defaultValue={fullItem.identity.postalCode ?? ''}
+          />
+          <Form.TextField
+            id="country"
+            title="Country"
+            defaultValue={fullItem.identity.country ?? ''}
+          />
         </>
       )}
 
@@ -230,7 +290,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
 
       <Form.Separator />
 
-      <Form.TextArea id="notes" title="Notes" defaultValue={fullItem.notes ?? ""} />
+      <Form.TextArea id="notes" title="Notes" defaultValue={fullItem.notes ?? ''} />
 
       {customFields.length > 0 && (
         <>
@@ -244,22 +304,24 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
             id={`cf_name_${field.id}`}
             title="Field Name"
             value={field.name}
-            onChange={(v) => setCustomFields(prev =>
-              prev.map(f => f.id === field.id ? { ...f, name: String(v ?? "") } : f)
-            )}
+            onChange={(v) =>
+              setCustomFields((prev) =>
+                prev.map((f) => (f.id === field.id ? { ...f, name: String(v ?? '') } : f)),
+              )
+            }
           />
           <Form.TextField
             id={`cf_value_${field.id}`}
             title="Field Value"
             value={field.value}
-            onChange={(v) => setCustomFields(prev =>
-              prev.map(f => f.id === field.id ? { ...f, value: String(v ?? "") } : f)
-            )}
+            onChange={(v) =>
+              setCustomFields((prev) =>
+                prev.map((f) => (f.id === field.id ? { ...f, value: String(v ?? '') } : f)),
+              )
+            }
           />
         </Fragment>
       ))}
     </Form>
   );
 }
-
-

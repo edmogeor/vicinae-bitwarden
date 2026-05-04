@@ -7,31 +7,31 @@ import {
   popToRoot,
   showToast,
   Toast,
-} from "@vicinae/api";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import * as bw from "./bw-executor";
-import { getErrorMessage } from "./bw-executor";
-import type { BwFolder } from "./bitwarden-types";
-import { ItemType } from "./bitwarden-types";
-import type { ItemTypeValue } from "./bitwarden-types";
-import { CARD_BRANDS, toCreatePayload } from "./item-utils";
-import { useSession } from "./use-session";
-import { getPasswordPrefs, getPreferences } from "./preferences";
-import { checkBwGate, renderUnlockGate, useUnlockGate } from "./unlock-gate";
+} from '@vicinae/api';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import * as bw from './bw-executor';
+import { getErrorMessage } from './bw-executor';
+import type { BwFolder } from './bitwarden-types';
+import { ItemType } from './bitwarden-types';
+import type { ItemTypeValue } from './bitwarden-types';
+import { CARD_BRANDS, toCreatePayload } from './item-utils';
+import { useSession } from './use-session';
+import { getPasswordPrefs, getPreferences } from './preferences';
+import { checkBwGate, renderUnlockGate, useUnlockGate } from './unlock-gate';
 
 type UIState =
-  | { kind: "checking-bw" }
-  | { kind: "bw-not-installed" }
-  | { kind: "logging-in" }
-  | { kind: "needs-unlock"; error?: string }
-  | { kind: "unlocking" }
-  | { kind: "form" };
+  | { kind: 'checking-bw' }
+  | { kind: 'bw-not-installed' }
+  | { kind: 'logging-in' }
+  | { kind: 'needs-unlock'; error?: string }
+  | { kind: 'unlocking' }
+  | { kind: 'form' };
 
 const ITEM_TYPE_MAP: Record<string, ItemTypeValue> = {
   Login: ItemType.Login,
   Card: ItemType.Card,
   Identity: ItemType.Identity,
-  "Secure Note": ItemType.SecureNote,
+  'Secure Note': ItemType.SecureNote,
 };
 
 const ITEM_TYPE_OPTIONS = Object.keys(ITEM_TYPE_MAP).map((label) => ({
@@ -39,43 +39,43 @@ const ITEM_TYPE_OPTIONS = Object.keys(ITEM_TYPE_MAP).map((label) => ({
   label,
 }));
 
-
-
 export default function CreateItem() {
   const { session, unlock, loginIfNeeded, loginError } = useSession();
-  const [state, setState] = useState<UIState>({ kind: "checking-bw" });
-  const [selectedType, setSelectedType] = useState<string>("Login");
+  const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
+  const [selectedType, setSelectedType] = useState<string>('Login');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [folders, setFolders] = useState<BwFolder[]>([]);
-  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [generatedPassword, setGeneratedPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState("");
-  const [newFolderName, setNewFolderName] = useState("");
-  const [customFields, setCustomFields] = useState<{ id: number; name: string; value: string }[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState('');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [customFields, setCustomFields] = useState<{ id: number; name: string; value: string }[]>(
+    [],
+  );
   const fieldIdRef = useRef(0);
 
   const { handleLogin, handleUnlock } = useUnlockGate({
     loginIfNeeded,
     loginError,
     unlock,
-    onUnlockStart: () => setState({ kind: "unlocking" }),
-    onUnlockReady: () => setState({ kind: "form" }),
-    onUnlockError: (error) => setState({ kind: "needs-unlock", error }),
-    onLoginReady: () => setState({ kind: "needs-unlock" }),
-    onLoginError: (error) => setState({ kind: "needs-unlock", error }),
+    onUnlockStart: () => setState({ kind: 'unlocking' }),
+    onUnlockReady: () => setState({ kind: 'form' }),
+    onUnlockError: (error) => setState({ kind: 'needs-unlock', error }),
+    onLoginReady: () => setState({ kind: 'needs-unlock' }),
+    onLoginError: (error) => setState({ kind: 'needs-unlock', error }),
   });
 
   useEffect(() => {
     void (async () => {
       const gate = await checkBwGate(session);
       switch (gate.kind) {
-        case "bw-not-installed":
-        case "logging-in":
-        case "needs-unlock":
+        case 'bw-not-installed':
+        case 'logging-in':
+        case 'needs-unlock':
           setState({ kind: gate.kind });
           return;
-        case "ready":
-          setState({ kind: "form" });
+        case 'ready':
+          setState({ kind: 'form' });
           return;
       }
     })();
@@ -84,13 +84,13 @@ export default function CreateItem() {
   // When session becomes available after mount, transition to form
   useEffect(() => {
     if (!session) return;
-    if (state.kind !== "needs-unlock") return;
-    setState({ kind: "form" });
+    if (state.kind !== 'needs-unlock') return;
+    setState({ kind: 'form' });
   }, [session, state.kind]);
 
   // Login effect
   useEffect(() => {
-    if (state.kind !== "logging-in") return;
+    if (state.kind !== 'logging-in') return;
     void handleLogin();
   }, [state.kind]);
 
@@ -113,26 +113,30 @@ export default function CreateItem() {
 
       const itemValues: Record<string, string> = {};
       for (const [key, val] of Object.entries(values)) {
-        itemValues[key] = String(val ?? "");
+        itemValues[key] = String(val ?? '');
       }
 
       const typeNum = ITEM_TYPE_MAP[selectedType] ?? ItemType.SecureNote;
       let folderId = itemValues.folder || null;
 
       // Create new folder if requested
-      if (folderId === "__new__") {
+      if (folderId === '__new__') {
         const name = itemValues.newFolderName?.trim();
         if (!name) {
-          await showToast({ style: Toast.Style.Failure, title: "Folder name is required" });
+          await showToast({ style: Toast.Style.Failure, title: 'Folder name is required' });
           return;
         }
         try {
           const created = await bw.createFolder(name, session);
           folderId = created.id;
-          await showToast({ style: Toast.Style.Success, title: "Folder created", message: name });
+          await showToast({ style: Toast.Style.Success, title: 'Folder created', message: name });
         } catch (err) {
           const message = getErrorMessage(err);
-          await showToast({ style: Toast.Style.Failure, title: "Failed to create folder", message });
+          await showToast({
+            style: Toast.Style.Failure,
+            title: 'Failed to create folder',
+            message,
+          });
           return;
         }
       }
@@ -142,13 +146,15 @@ export default function CreateItem() {
         const payload = toCreatePayload(
           itemValues,
           typeNum,
-          folderId === "" ? null : folderId,
-          customFields.length > 0 ? customFields.map(f => ({ name: f.name, value: f.value, type: 0 })) : undefined,
+          folderId === '' ? null : folderId,
+          customFields.length > 0
+            ? customFields.map((f) => ({ name: f.name, value: f.value, type: 0 }))
+            : undefined,
         );
         await bw.createItem(payload, session);
         await showToast({
           style: Toast.Style.Success,
-          title: "Item created",
+          title: 'Item created',
           message: itemValues.name,
         });
         await popToRoot();
@@ -156,7 +162,7 @@ export default function CreateItem() {
         const message = err instanceof Error ? err.message : String(err);
         await showToast({
           style: Toast.Style.Failure,
-          title: "Failed to create item",
+          title: 'Failed to create item',
           message,
         });
       } finally {
@@ -168,12 +174,12 @@ export default function CreateItem() {
 
   const gateRender = renderUnlockGate(
     state.kind,
-    state.kind === "needs-unlock" ? state.error : undefined,
+    state.kind === 'needs-unlock' ? state.error : undefined,
     handleUnlock,
   );
   if (gateRender) return gateRender;
 
-  if (state.kind === "checking-bw" || state.kind === "logging-in") {
+  if (state.kind === 'checking-bw' || state.kind === 'logging-in') {
     return (
       <Form>
         <Form.Description text="Loading..." />
@@ -187,36 +193,45 @@ export default function CreateItem() {
       actions={
         <ActionPanel>
           <Action.SubmitForm title="Create Item" icon={Icon.Plus} onSubmit={handleSubmit} />
-          {selectedType === "Login" && (
+          {selectedType === 'Login' && (
             <>
               <Action
-                title={showPassword ? "Hide Password" : "Show Password"}
+                title={showPassword ? 'Hide Password' : 'Show Password'}
                 icon={Icon.Eye}
-                onAction={() => setShowPassword(prev => !prev)}
+                onAction={() => setShowPassword((prev) => !prev)}
               />
               <Action
-              title="Generate Password"
-              icon={Icon.Key}
-              onAction={async () => {
-                try {
-                  const prefs = getPreferences();
-                  const opts = getPasswordPrefs(prefs);
-                  const pwd = await bw.generatePassword(opts);
-                  setGeneratedPassword(pwd);
-                  await Clipboard.copy(pwd);
-                  showToast({ style: Toast.Style.Success, title: "Password generated", message: "Copied to clipboard" });
-                } catch (err) {
-                  const message = getErrorMessage(err);
-                  showToast({ style: Toast.Style.Failure, title: "Generation failed", message });
-                }
-              }}
+                title="Generate Password"
+                icon={Icon.Key}
+                onAction={async () => {
+                  try {
+                    const prefs = getPreferences();
+                    const opts = getPasswordPrefs(prefs);
+                    const pwd = await bw.generatePassword(opts);
+                    setGeneratedPassword(pwd);
+                    await Clipboard.copy(pwd);
+                    showToast({
+                      style: Toast.Style.Success,
+                      title: 'Password generated',
+                      message: 'Copied to clipboard',
+                    });
+                  } catch (err) {
+                    const message = getErrorMessage(err);
+                    showToast({ style: Toast.Style.Failure, title: 'Generation failed', message });
+                  }
+                }}
               />
             </>
           )}
           <Action
             title="Add Custom Field"
             icon={Icon.Plus}
-            onAction={() => setCustomFields(prev => [...prev, { id: fieldIdRef.current++, name: "", value: "" }])}
+            onAction={() =>
+              setCustomFields((prev) => [
+                ...prev,
+                { id: fieldIdRef.current++, name: '', value: '' },
+              ])
+            }
           />
         </ActionPanel>
       }
@@ -225,7 +240,7 @@ export default function CreateItem() {
         id="itemType"
         title="Item Type"
         value={selectedType}
-        onChange={(value) => setSelectedType(String(value ?? "Login"))}
+        onChange={(value) => setSelectedType(String(value ?? 'Login'))}
       >
         {ITEM_TYPE_OPTIONS.map((opt) => (
           <Form.Dropdown.Item key={opt.value} value={opt.value} title={opt.label} />
@@ -237,7 +252,7 @@ export default function CreateItem() {
           id="folder"
           title="Folder"
           value={selectedFolder}
-          onChange={(value) => setSelectedFolder(String(value ?? ""))}
+          onChange={(value) => setSelectedFolder(String(value ?? ''))}
         >
           {folders.map((f) => (
             <Form.Dropdown.Item key={f.id} value={f.id} title={f.name} />
@@ -246,12 +261,12 @@ export default function CreateItem() {
         </Form.Dropdown>
       )}
 
-      {selectedFolder === "__new__" && (
+      {selectedFolder === '__new__' && (
         <Form.TextField
           id="newFolderName"
           title="Folder Name"
           value={newFolderName}
-          onChange={(value) => setNewFolderName(String(value ?? ""))}
+          onChange={(value) => setNewFolderName(String(value ?? ''))}
         />
       )}
 
@@ -259,7 +274,7 @@ export default function CreateItem() {
 
       <Form.TextField id="name" title="Name" />
 
-      {selectedType === "Login" && (
+      {selectedType === 'Login' && (
         <>
           <Form.TextField id="username" title="Username" />
           {showPassword ? (
@@ -267,14 +282,14 @@ export default function CreateItem() {
               id="password"
               title="Password"
               value={generatedPassword}
-              onChange={(value) => setGeneratedPassword(String(value ?? ""))}
+              onChange={(value) => setGeneratedPassword(String(value ?? ''))}
             />
           ) : (
             <Form.PasswordField
               id="password"
               title="Password"
               value={generatedPassword}
-              onChange={(value) => setGeneratedPassword(String(value ?? ""))}
+              onChange={(value) => setGeneratedPassword(String(value ?? ''))}
             />
           )}
           <Form.TextField id="url" title="URL" />
@@ -282,7 +297,7 @@ export default function CreateItem() {
         </>
       )}
 
-      {selectedType === "Card" && (
+      {selectedType === 'Card' && (
         <>
           <Form.TextField id="cardholderName" title="Cardholder Name" />
           <Form.Dropdown id="brand" title="Brand" defaultValue="Other">
@@ -297,7 +312,7 @@ export default function CreateItem() {
         </>
       )}
 
-      {selectedType === "Identity" && (
+      {selectedType === 'Identity' && (
         <>
           <Form.TextField id="title" title="Title" />
           <Form.TextField id="firstName" title="First Name" />
@@ -315,7 +330,7 @@ export default function CreateItem() {
         </>
       )}
 
-      {selectedType === "Secure Note" && (
+      {selectedType === 'Secure Note' && (
         <Form.Description text="A Secure Note stores arbitrary text. Use the Notes field below for the content." />
       )}
 
@@ -335,17 +350,21 @@ export default function CreateItem() {
             id={`cf_name_${field.id}`}
             title="Field Name"
             value={field.name}
-            onChange={(v) => setCustomFields(prev =>
-              prev.map(f => f.id === field.id ? { ...f, name: String(v ?? "") } : f)
-            )}
+            onChange={(v) =>
+              setCustomFields((prev) =>
+                prev.map((f) => (f.id === field.id ? { ...f, name: String(v ?? '') } : f)),
+              )
+            }
           />
           <Form.TextField
             id={`cf_value_${field.id}`}
             title="Field Value"
             value={field.value}
-            onChange={(v) => setCustomFields(prev =>
-              prev.map(f => f.id === field.id ? { ...f, value: String(v ?? "") } : f)
-            )}
+            onChange={(v) =>
+              setCustomFields((prev) =>
+                prev.map((f) => (f.id === field.id ? { ...f, value: String(v ?? '') } : f)),
+              )
+            }
           />
         </Fragment>
       ))}
