@@ -22,7 +22,7 @@ The `bw` (Bitwarden CLI) binary must be installed and on your PATH. Download it 
 
 ## Installation
 
-Install from the Vicinae Extensions Store, or clone and build manually:
+Install from the Vicinae Extensions Store (Pending), or clone and build manually:
 
 ```bash
 git clone https://github.com/edmogeor/vicinae-bitwarden.git
