@@ -1,0 +1,3 @@
+{
+  "entry": ["src/search-vault.tsx", "src/create-item.tsx", "src/logout.ts"]
+}
