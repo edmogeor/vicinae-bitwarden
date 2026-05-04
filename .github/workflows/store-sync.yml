@@ -1,0 +1,50 @@
+name: Sync to Vicinae Store
+
+on:
+  workflow_run:
+    workflows: ['Release']
+    types: [completed]
+
+jobs:
+  sync:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout extension
+        uses: actions/checkout@v4
+
+      - name: Checkout store fork
+        uses: actions/checkout@v4
+        with:
+          repository: edmogeor/extensions
+          path: store
+          token: ${{ secrets.STORE_REPO_PAT }}
+
+      - name: Copy extension into store
+        run: |
+          rm -rf store/extensions/bitwarden
+          mkdir -p store/extensions/bitwarden
+          cp -r package.json package-lock.json tsconfig.json CHANGELOG.md README.md assets src store/extensions/bitwarden/
+
+      - name: Push to store fork
+        run: |
+          cd store
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add extensions/bitwarden
+          git diff --cached --quiet || git commit -m "bitwarden ${{ github.ref_name }}"
+          git push origin main
+
+      - name: Create or update store PR
+        run: |
+          cd store
+          EXISTING=$(gh pr list --repo vicinaehq/extensions --head edmogeor:main --state open --json number --jq '.[0].number')
+          TITLE="bitwarden ${{ github.ref_name }}"
+          BODY="Release ${{ github.ref_name }} — see [changelog](https://github.com/edmogeor/vicinae-bitwarden/releases/tag/${{ github.ref_name }})."
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --repo vicinaehq/extensions --title "$TITLE" --body "$BODY"
+          else
+            gh pr create --repo vicinaehq/extensions --head edmogeor:main --base main --title "$TITLE" --body "$BODY"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.STORE_REPO_PAT }}
