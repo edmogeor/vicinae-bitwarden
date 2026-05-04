@@ -105,17 +105,6 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
     [item.id, item.type, session, onSaved, customFields],
   );
 
-  if (isLoading || !fullItem) {
-    return (
-      <Form>
-        <Form.Description text="Loading..." />
-      </Form>
-    );
-  }
-
-  const typeLabel = getTypeLabel(item.type);
-  const folderId = fullItem.folderId ?? "";
-
   const handleDelete = useCallback(async () => {
     const confirmed = await confirmAlert({
       title: "Delete Item",
@@ -136,6 +125,17 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
       await showToast({ style: Toast.Style.Failure, title: "Delete failed", message });
     }
   }, [item.id, item.name, session, onSaved]);
+
+  if (isLoading || !fullItem) {
+    return (
+      <Form>
+        <Form.Description text="Loading..." />
+      </Form>
+    );
+  }
+
+  const typeLabel = getTypeLabel(item.type);
+  const folderId = fullItem.folderId ?? "";
 
   return (
     <Form

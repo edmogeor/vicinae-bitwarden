@@ -360,6 +360,32 @@ describe("toCreatePayload", () => {
     );
     expect(payload.notes).toBeNull();
   });
+
+  it("includes custom fields when provided", () => {
+    const payload = toCreatePayload(
+      { name: "Item" },
+      ItemType.Login,
+      null,
+      [
+        { name: "API Key", value: "abc123", type: 0 },
+        { name: "PIN", value: "9999", type: 0 },
+      ],
+    );
+    expect(payload.fields).toEqual([
+      { name: "API Key", value: "abc123", type: 0 },
+      { name: "PIN", value: "9999", type: 0 },
+    ]);
+  });
+
+  it("omits fields when empty array provided", () => {
+    const payload = toCreatePayload(
+      { name: "Item" },
+      ItemType.Login,
+      null,
+      [],
+    );
+    expect(payload.fields).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

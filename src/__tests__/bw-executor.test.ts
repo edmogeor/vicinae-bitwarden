@@ -244,6 +244,31 @@ describe("createItem", () => {
 });
 
 // ---------------------------------------------------------------------------
+// editItem
+// ---------------------------------------------------------------------------
+describe("editItem", () => {
+  it("calls bw edit item with BW_SESSION", async () => {
+    mockExec("");
+    const payload = { name: "Updated", notes: null };
+
+    await bw.editItem("item-123", payload, "token");
+    expect(mockExecFile).toHaveBeenCalledWith(
+      "bw",
+      ["edit", "item", "item-123", JSON.stringify(payload)],
+      hasSession("token"),
+    );
+  });
+
+  it("throws BwError on failure", async () => {
+    mockExecError("Edit failed");
+
+    await expect(
+      bw.editItem("item-123", { name: "X" }, "token"),
+    ).rejects.toThrow("Edit failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // lock
 // ---------------------------------------------------------------------------
 describe("lock", () => {
