@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/edmogeor/vicinae-bitwarden/main/assets/extension_icon.png" width="140" alt="Bitwarden for Vicinae Logo"/>
+  <img src="https://raw.githubusercontent.com/edmogeor/vicinae-bitwarden/master/assets/extension_icon.png" width="140" alt="Bitwarden for Vicinae Logo"/>
   <h1>Bitwarden for Vicinae</h1>
   <p>
     <a href="https://github.com/edmogeor/vicinae-bitwarden/actions/workflows/ci.yml">
-      <img src="https://github.com/edmogeor/vicinae-bitwarden/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"/>
+      <img src="https://github.com/edmogeor/vicinae-bitwarden/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"/>
     </a>
     <a href="https://github.com/fallow-rs/fallow">
       <img src="https://raw.githubusercontent.com/edmogeor/vicinae-bitwarden/badges/badge.svg" alt="fallow health"/>
