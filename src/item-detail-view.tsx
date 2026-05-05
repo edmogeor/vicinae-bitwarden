@@ -63,6 +63,7 @@ function renderItemActionElements(
       );
     }
     if (action.fetchKind && session) {
+      const kind = action.fetchKind;
       return (
         <Action
           key={action.label}
@@ -71,7 +72,7 @@ function renderItemActionElements(
           onAction={async () => {
             try {
               const fullItem = await bw.getItem(itemId, session);
-              const value = resolveFetchValue(action.fetchKind!, fullItem);
+              const value = resolveFetchValue(kind, fullItem);
               if (value) {
                 await Clipboard.copy(value);
                 await showToast({
