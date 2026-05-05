@@ -1,12 +1,12 @@
-import { LocalStorage, showToast, Toast } from '@vicinae/api';
+import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-import { SESSION_KEY } from './use-session';
+import { deleteSession } from './session-store';
 
 export default async function Logout() {
   try {
     await bw.logout();
-    await LocalStorage.removeItem(SESSION_KEY);
+    await deleteSession();
     await showToast({
       style: Toast.Style.Success,
       title: 'Logged out',

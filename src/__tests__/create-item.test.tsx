@@ -109,6 +109,10 @@ const {
 
 vi.mock('../bw-executor', () => mockBw);
 
+vi.mock('../session-store', () => ({
+  checkInstalled: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock('../use-session', () => ({
   useSession: () => mockUseSession,
 }));
@@ -138,6 +142,8 @@ vi.mock('../item-utils', () => ({
 
 vi.mock('../bw-not-installed', () => ({
   BwNotInstalled: () => React.createElement('div', { 'data-testid': 'bw-not-installed' }),
+  SecretToolNotInstalled: () =>
+    React.createElement('div', { 'data-testid': 'secret-tool-not-installed' }),
 }));
 
 vi.mock('@vicinae/api', () => ({

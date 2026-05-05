@@ -108,7 +108,6 @@ vi.mock('../item-utils', () => ({
 
 vi.mock('../use-session', () => ({
   useSession: () => mockUseSession,
-  SESSION_KEY: 'test-session-key',
 }));
 
 vi.mock('../unlock-gate', () => ({
@@ -116,6 +115,12 @@ vi.mock('../unlock-gate', () => ({
   renderUnlockGate: (kind: string) => {
     if (kind === 'bw-not-installed')
       return React.createElement('div', { 'data-testid': 'bw-not-installed' }, 'BW Not Installed');
+    if (kind === 'secret-tool-not-installed')
+      return React.createElement(
+        'div',
+        { 'data-testid': 'secret-tool-not-installed' },
+        'Install libsecret',
+      );
     if (kind === 'needs-unlock' || kind === 'unlocking') {
       return React.createElement(
         'form',
@@ -147,6 +152,12 @@ vi.mock('../item-detail-view', () => ({
 vi.mock('../bw-not-installed', () => ({
   BwNotInstalled: () =>
     React.createElement('div', { 'data-testid': 'bw-not-installed-comp' }, 'Install BW'),
+  SecretToolNotInstalled: () =>
+    React.createElement(
+      'div',
+      { 'data-testid': 'secret-tool-not-installed-comp' },
+      'Install libsecret',
+    ),
 }));
 
 import SearchVault from '../search-vault';
