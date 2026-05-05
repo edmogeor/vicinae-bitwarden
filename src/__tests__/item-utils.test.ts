@@ -573,9 +573,144 @@ describe('saveCachedVault', () => {
     const [key, raw] = mockSetItem.mock.calls[0] as [string, string];
     expect(key).toBe('vicinae-bitwarden-cache');
     const parsed = JSON.parse(raw);
-    expect(parsed.items).toEqual(items);
     expect(parsed.folders).toEqual(folders);
     expect(parsed.timestamp).toBeGreaterThan(0);
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.items[0]).toMatchObject({ id: '1', name: 'A', type: 1 });
+  });
+
+  it('strips sensitive fields from items before caching', async () => {
+    const items: BwItem[] = [
+      {
+        id: '1',
+        organizationId: null,
+        folderId: null,
+        type: 1,
+        name: 'GitHub',
+        notes: 'private note',
+        favorite: false,
+        revisionDate: '2024-01-01',
+        creationDate: '2024-01-01',
+        deletedDate: null,
+        collectionIds: null,
+        login: {
+          username: 'user',
+          password: 'secret123',
+          totp: 'JBSWY3DPEHPK3PXP',
+          uris: [{ uri: 'https://github.com', match: null }],
+          passwordRevisionDate: null,
+        },
+        fields: [{ name: 'API Key', value: 'sk-abc123', type: 0 }],
+      },
+    ];
+    const folders: BwFolder[] = [];
+
+    await saveCachedVault(items, folders);
+
+    const [, raw] = mockSetItem.mock.calls[0] as [string, string];
+    const parsed = JSON.parse(raw);
+    const cached = parsed.items[0];
+
+    // Kept
+    expect(cached.id).toBe('1');
+    expect(cached.name).toBe('GitHub');
+    expect(cached.type).toBe(1);
+    expect(cached.favorite).toBe(false);
+    expect(cached.login.username).toBe('user');
+    expect(cached.login.uris).toEqual([{ uri: 'https://github.com', match: null }]);
+
+    // Stripped
+    expect(cached.notes).toBeNull();
+    expect(cached.login.password).toBeNull();
+    expect(cached.login.totp).toBeNull();
+    expect(cached.fields).toEqual([]);
+  });
+
+  it('strips card and identity fields', async () => {
+    const items: BwItem[] = [
+      {
+        id: '2',
+        organizationId: null,
+        folderId: null,
+        type: 3,
+        name: 'Visa Card',
+        notes: null,
+        favorite: false,
+        revisionDate: '',
+        creationDate: '',
+        deletedDate: null,
+        collectionIds: null,
+        card: {
+          cardholderName: 'John Doe',
+          brand: 'Visa',
+          number: '4111111111111111',
+          expMonth: '12',
+          expYear: '2025',
+          code: '123',
+        },
+      },
+      {
+        id: '3',
+        organizationId: null,
+        folderId: null,
+        type: 4,
+        name: 'John Doe',
+        notes: null,
+        favorite: false,
+        revisionDate: '',
+        creationDate: '',
+        deletedDate: null,
+        collectionIds: null,
+        identity: {
+          title: 'Mr',
+          firstName: 'John',
+          middleName: 'M',
+          lastName: 'Doe',
+          address1: '123 Main St',
+          address2: null,
+          address3: null,
+          city: 'Springfield',
+          state: 'IL',
+          postalCode: '62701',
+          country: 'US',
+          company: 'Acme',
+          email: 'john@example.com',
+          phone: '555-0100',
+          ssn: '123-45-6789',
+          username: 'jdoe',
+          passportNumber: 'AB123456',
+          licenseNumber: 'D1234567',
+        },
+      },
+    ];
+    const folders: BwFolder[] = [];
+
+    await saveCachedVault(items, folders);
+
+    const [, raw] = mockSetItem.mock.calls[0] as [string, string];
+    const parsed = JSON.parse(raw);
+
+    // Card: keep brand and holder, strip sensitive
+    const card = parsed.items[0].card;
+    expect(card.cardholderName).toBe('John Doe');
+    expect(card.brand).toBe('Visa');
+    expect(card.number).toBeNull();
+    expect(card.code).toBeNull();
+    expect(card.expMonth).toBeNull();
+    expect(card.expYear).toBeNull();
+
+    // Identity: keep names, strip everything else
+    const identity = parsed.items[1].identity;
+    expect(identity.firstName).toBe('John');
+    expect(identity.lastName).toBe('Doe');
+    expect(identity.middleName).toBeNull();
+    expect(identity.email).toBeNull();
+    expect(identity.phone).toBeNull();
+    expect(identity.ssn).toBeNull();
+    expect(identity.address1).toBeNull();
+    expect(identity.city).toBeNull();
+    expect(identity.passportNumber).toBeNull();
+    expect(identity.licenseNumber).toBeNull();
   });
 });
 

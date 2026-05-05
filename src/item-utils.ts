@@ -31,9 +31,87 @@ export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwF
   }
 }
 
-/** Save vault data to LocalStorage for instant load next time. */
+/**
+ * Strip sensitive fields from an Item before caching.
+ * Preserves only the fields needed for list display: name, type, id,
+ * folder association, favicon URIs, username, card brand/holder, and identity name.
+ * Passwords, card numbers, TOTP seeds, notes, custom fields, etc. are removed.
+ */
+function stripSensitiveFields(item: BwItem): BwItem {
+  const stripped: BwItem = {
+    id: item.id,
+    organizationId: null,
+    folderId: item.folderId,
+    type: item.type,
+    name: item.name,
+    notes: null,
+    favorite: item.favorite,
+    revisionDate: '',
+    creationDate: '',
+    deletedDate: null,
+    collectionIds: null,
+  };
+
+  if (item.login) {
+    stripped.login = {
+      username: item.login.username,
+      password: null,
+      totp: null,
+      uris: item.login.uris,
+      passwordRevisionDate: null,
+    };
+  }
+
+  if (item.card) {
+    stripped.card = {
+      cardholderName: item.card.cardholderName,
+      brand: item.card.brand,
+      number: null,
+      expMonth: null,
+      expYear: null,
+      code: null,
+    };
+  }
+
+  if (item.identity) {
+    stripped.identity = {
+      title: null,
+      firstName: item.identity.firstName,
+      middleName: null,
+      lastName: item.identity.lastName,
+      address1: null,
+      address2: null,
+      address3: null,
+      city: null,
+      state: null,
+      postalCode: null,
+      country: null,
+      company: null,
+      email: null,
+      phone: null,
+      ssn: null,
+      username: null,
+      passportNumber: null,
+      licenseNumber: null,
+    };
+  }
+
+  if (item.secureNote) {
+    stripped.secureNote = { type: item.secureNote.type };
+  }
+
+  stripped.fields = [];
+
+  return stripped;
+}
+
+/** Save vault data to LocalStorage for instant load next time. Sensitive fields are stripped. */
 export async function saveCachedVault(items: BwItem[], folders: BwFolder[]): Promise<void> {
-  const cache: CachedVault = { items, folders, timestamp: Date.now() };
+  const cache: CachedVault = {
+    items: items.map(stripSensitiveFields),
+    folders,
+    timestamp: Date.now(),
+  };
   await LocalStorage.setItem(CACHE_KEY, JSON.stringify(cache));
 }
 
