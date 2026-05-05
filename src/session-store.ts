@@ -8,7 +8,7 @@ const ACCOUNT = 'session';
 
 let installed: boolean | null = null;
 
-export async function checkInstalled(): Promise<boolean> {
+export async function checkSecretToolInstalled(): Promise<boolean> {
   if (installed !== null) return installed;
   try {
     await exec('secret-tool', ['--version'], { timeout: 3000 });
@@ -21,7 +21,12 @@ export async function checkInstalled(): Promise<boolean> {
 
 function writeStdin(proc: ReturnType<typeof spawn>, data: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (!proc.stdin) {
+      reject(new Error('secret-tool stdin is not available'));
+      return;
+    }
     proc.on('error', reject);
+    proc.stdin.on('error', reject);
     proc.stdin.write(data);
     proc.stdin.end();
     proc.stdin.on('finish', resolve);
@@ -46,7 +51,7 @@ export async function setSession(token: string): Promise<void> {
   const proc = spawn(
     'secret-tool',
     ['store', '--label=Vicinae Bitwarden', 'service', SERVICE, 'account', ACCOUNT],
-    { stdio: ['pipe', 'ignore', 'ignore'], timeout: 5000 },
+    { stdio: ['pipe', 'ignore', 'ignore'] },
   );
 
   await writeStdin(proc, token);
