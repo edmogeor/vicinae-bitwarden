@@ -1,7 +1,7 @@
 import { Icon, LocalStorage } from '@vicinae/api';
 import type { Image } from '@vicinae/api';
 import { BwItem, BwFolder, ItemType } from './bitwarden-types';
-import type { ItemTypeValue } from './bitwarden-types';
+import type { BwField, ItemTypeValue } from './bitwarden-types';
 import type { CreateItemPayload, ItemAction } from './bw-executor';
 import { FAVICON_CACHE_KEY } from './favicons';
 import type { FaviconMap } from './favicons';
@@ -333,6 +333,12 @@ export function toCreatePayload(
   return base;
 }
 
+function fieldMarkdown(field: BwField): string {
+  if (field.type === 1) return `- **${field.name}** — •••••••• (hidden)`;
+  if (field.type === 2) return `- **${field.name}** — ${field.value === 'true' ? 'Yes' : 'No'}`;
+  return `- **${field.name}** — ${field.value}`;
+}
+
 /**
  * Build a markdown detail string for an item.
  */
@@ -349,13 +355,7 @@ export function buildItemDetailMarkdown(item: BwItem): string {
     }
     lines.push('**Custom Fields:**', '');
     for (const field of item.fields) {
-      if (field.type === 1) {
-        lines.push(`- **${field.name}** — •••••••• (hidden)`);
-      } else if (field.type === 2) {
-        lines.push(`- **${field.name}** — ${field.value === 'true' ? 'Yes' : 'No'}`);
-      } else {
-        lines.push(`- **${field.name}** — ${field.value}`);
-      }
+      lines.push(fieldMarkdown(field));
     }
   }
 
