@@ -21,7 +21,11 @@ Keyboard-driven access to your Bitwarden vault. Search and copy passwords, usern
 
 ## Prerequisites
 
-The `bw` (Bitwarden CLI) binary must be installed and on your PATH. Download it from [bitwarden.com/download](https://bitwarden.com/download/).
+- The `bw` (Bitwarden CLI) binary must be installed and on your PATH. Download it from [bitwarden.com/download](https://bitwarden.com/download/).
+- `secret-tool` from `libsecret-tools` is required for secure session storage in the system keyring:
+  - Debian/Ubuntu: `sudo apt install libsecret-tools`
+  - Fedora: `sudo dnf install libsecret`
+  - Arch: `sudo pacman -S libsecret`
 
 ## Installation
 
@@ -63,7 +67,7 @@ Search all vault items by name (case-insensitive substring match). Items are gro
 - **Identity items** — copy name, copy email, copy phone, view detail
 - **Secure Note items** — view note text
 
-A **Sync Now** action is always available to pull the latest vault state. **Lock Vault** clears the cached Session.
+A **Sync Now** action is always available to pull the latest vault state.
 
 ### Create Item
 
@@ -71,11 +75,15 @@ Add a new Login, Card, Identity, or Secure Note to your vault. The form adapts f
 
 ### Log Out
 
-Clears the stored API key Session. The next command invocation will require re-entering your master password.
+Clears the stored API key Session and removes the cached session from the system keyring. The next command invocation will require re-entering your master password.
+
+### Generate Password
+
+Generates a random password using your configured settings (length, uppercase, lowercase, numbers, symbols) and copies it directly to the clipboard. No vault access required.
 
 ## Session Caching
 
-After unlocking, the Session token is cached in LocalStorage. On subsequent command invocations the vault list appears immediately — no need to re-enter your master password until the Session expires (governed by your Bitwarden vault timeout settings).
+After unlocking, the Session token is stored securely in your system keyring (`secret-tool`). On subsequent command invocations the vault list appears immediately — no need to re-enter your master password until the Session expires (governed by your Bitwarden vault timeout settings).
 
 ## License
 
