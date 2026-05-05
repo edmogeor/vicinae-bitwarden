@@ -11,12 +11,20 @@ let installed: boolean | null = null;
 export async function checkSecretToolInstalled(): Promise<boolean> {
   if (installed) return true;
   try {
-    await exec('secret-tool', ['--version'], { timeout: 3000 });
+    await exec('secret-tool', ['lookup', 'service', SERVICE, 'account', ACCOUNT], {
+      timeout: 3000,
+    });
     installed = true;
     return true;
-  } catch {
-    installed = false;
-    return false;
+  } catch (err: unknown) {
+    const code = (err as { code?: unknown }).code;
+    if (code === 'ENOENT') {
+      installed = false;
+      return false;
+    }
+    // Key not found, permission denied, etc. — tool is installed
+    installed = true;
+    return true;
   }
 }
 
