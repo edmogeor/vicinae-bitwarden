@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Negative `secret-tool` availability check no longer caches failures, so installing the package and re-opening the command works without restarting Vicinae
 - Use `secret-tool lookup` instead of unsupported `--version` flag for the install check
 - Stripped sensitive fields (passwords, card numbers, TOTP seeds, notes, custom fields) from the LocalStorage vault cache; only display metadata is persisted
-- Restored list-view copy actions (password, card number, security code) that were lost after sensitive-field stripping — actions now fetch fresh values from the CLI on demand
+- Restored list-view copy actions (password, card number, security code, TOTP) that were lost after sensitive-field stripping — actions fetch fresh values from the CLI on demand and only appear when the field actually exists on the item
 
 ## [0.1.0] - 2026-05-04
 
