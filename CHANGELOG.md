@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Negative `secret-tool` availability check no longer caches failures, so installing the package and re-opening the command works without restarting Vicinae
 - Use `secret-tool lookup` instead of unsupported `--version` flag for the install check
+- Stripped sensitive fields (passwords, card numbers, TOTP seeds, notes, custom fields) from the LocalStorage vault cache; only display metadata is persisted
 
 ## [0.1.0] - 2026-05-04
 
