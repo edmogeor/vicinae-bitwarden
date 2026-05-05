@@ -1,4 +1,13 @@
-import { Action, ActionPanel, Detail, Icon, showToast, Toast, useNavigation } from '@vicinae/api';
+import {
+  Action,
+  ActionPanel,
+  Clipboard,
+  Detail,
+  Icon,
+  showToast,
+  Toast,
+  useNavigation,
+} from '@vicinae/api';
 import { useEffect, useState } from 'react';
 import * as bw from './bw-executor';
 import type { Session } from './bw-executor';
@@ -12,14 +21,22 @@ import type { BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import EditItem from './edit-item';
 
+function resolveFetchValue(fetchKind: string, item: BwItem): string | undefined {
+  if (fetchKind === 'password') return item.login?.password ?? undefined;
+  if (fetchKind === 'cardNumber') return item.card?.number ?? undefined;
+  if (fetchKind === 'cardCode') return item.card?.code ?? undefined;
+  return undefined;
+}
+
 function renderItemActionElements(
   actions: ReturnType<typeof getItemActions>,
   onCopyTotp: (id: string) => void,
   itemId: string,
+  session: Session | null,
   showIcons?: boolean,
 ) {
   return actions.map((action) => {
-    if (action.label === 'Copy TOTP') {
+    if (action.fetchKind === 'totp' || action.label === 'Copy Verification Code') {
       return (
         <Action
           key={action.label}
@@ -39,6 +56,33 @@ function renderItemActionElements(
         />
       );
     }
+    if (action.fetchKind && session) {
+      return (
+        <Action
+          key={action.label}
+          title={action.label}
+          icon={Icon.CopyClipboard}
+          onAction={async () => {
+            try {
+              const fullItem = await bw.getItem(itemId, session);
+              const value = resolveFetchValue(action.fetchKind!, fullItem);
+              if (value) {
+                await Clipboard.copy(value);
+                await showToast({
+                  style: Toast.Style.Success,
+                  title: action.label,
+                });
+              }
+            } catch {
+              await showToast({
+                style: Toast.Style.Failure,
+                title: 'Failed to copy',
+              });
+            }
+          }}
+        />
+      );
+    }
     return (
       <Action.CopyToClipboard
         key={action.label}
@@ -54,6 +98,7 @@ function buildMetadata(
   item: BwItem,
   folderName: string | undefined,
   showPassword: boolean,
+  showHiddenFields: boolean,
   totpCode?: string,
 ) {
   return (
@@ -69,7 +114,17 @@ function buildMetadata(
             <Detail.Metadata.Label
               key={i}
               title={field.name}
-              text={field.type === 1 ? '••••••••' : field.value}
+              text={
+                field.type === 1
+                  ? showHiddenFields
+                    ? field.value
+                    : '••••••••'
+                  : field.type === 2
+                    ? field.value === 'true'
+                      ? 'Yes'
+                      : 'No'
+                    : field.value
+              }
             />
           ))}
         </>
@@ -181,6 +236,7 @@ export default function ItemDetailView({
   const [isLoading, setIsLoading] = useState(true);
   const [totpCode, setTotpCode] = useState<string | undefined>();
   const [showPassword, setShowPassword] = useState(false);
+  const [showHiddenFields, setShowHiddenFields] = useState(false);
   const { pop, push } = useNavigation();
 
   useEffect(() => {
@@ -224,7 +280,15 @@ export default function ItemDetailView({
   const markdown = buildItemDetailMarkdown(resolved);
   const actions = getItemActions(resolved);
   const resolvedFolderName = folderName ?? resolved.folderId ?? undefined;
-  const metadata = buildMetadata(resolved, resolvedFolderName, showPassword, totpCode);
+  const metadata = buildMetadata(
+    resolved,
+    resolvedFolderName,
+    showPassword,
+    showHiddenFields,
+    totpCode,
+  );
+
+  const hasHiddenFields = resolved.fields?.some((f) => f.type === 1) ?? false;
 
   return (
     <Detail
@@ -233,7 +297,7 @@ export default function ItemDetailView({
       metadata={metadata}
       actions={
         <ActionPanel>
-          {renderItemActionElements(actions.slice(0, 2), onCopyTotp, item.id, true)}
+          {renderItemActionElements(actions.slice(0, 2), onCopyTotp, item.id, session, true)}
           {resolved.type === ItemType.Login && resolved.login?.password && (
             <Action
               title={showPassword ? 'Hide Password' : 'Show Password'}
@@ -241,7 +305,14 @@ export default function ItemDetailView({
               onAction={() => setShowPassword((prev) => !prev)}
             />
           )}
-          {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, true)}
+          {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, session, true)}
+          {hasHiddenFields && (
+            <Action
+              title={showHiddenFields ? 'Hide Hidden Fields' : 'Show Hidden Fields'}
+              icon={Icon.Eye}
+              onAction={() => setShowHiddenFields((prev) => !prev)}
+            />
+          )}
           {session && (
             <Action
               title="Edit Item"

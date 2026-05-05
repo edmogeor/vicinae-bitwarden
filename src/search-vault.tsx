@@ -314,7 +314,7 @@ function renderItemActions(
           );
         }}
       />
-      {renderItemActionElements(actions, onCopyTotp, item.id)}
+      {renderItemActionElements(actions, onCopyTotp, item.id, session)}
       {session && (
         <Action
           title="Edit Item"

@@ -16,6 +16,7 @@ import { ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
 import { CARD_BRANDS, toCreatePayload } from './item-utils';
 import CustomFieldsSection from './custom-fields-section';
+import type { CustomField } from './custom-fields-section';
 import { useSession } from './use-session';
 import { getPasswordPrefs, getPreferences } from './preferences';
 import { checkBwGate, createUnlockCallbacks, renderUnlockGate, useUnlockGate } from './unlock-gate';
@@ -51,9 +52,7 @@ export default function CreateItem() {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
-  const [customFields, setCustomFields] = useState<{ id: number; name: string; value: string }[]>(
-    [],
-  );
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const fieldIdRef = useRef(0);
 
   const { handleLogin, handleUnlock } = useUnlockGate({
@@ -147,7 +146,7 @@ export default function CreateItem() {
           typeNum,
           folderId === '' ? null : folderId,
           customFields.length > 0
-            ? customFields.map((f) => ({ name: f.name, value: f.value, type: 0 }))
+            ? customFields.map((f) => ({ name: f.name, value: f.value, type: f.type }))
             : undefined,
         );
         await bw.createItem(payload, session);
@@ -228,7 +227,7 @@ export default function CreateItem() {
             onAction={() =>
               setCustomFields((prev) => [
                 ...prev,
-                { id: fieldIdRef.current++, name: '', value: '' },
+                { id: fieldIdRef.current++, name: '', value: '', type: 0 },
               ])
             }
           />

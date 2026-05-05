@@ -315,6 +315,8 @@ export interface ItemAction {
   label: string;
   value: string;
   icon?: string;
+  /** When set, the action fetches the real value from the bw CLI instead of using `value`. */
+  fetchKind?: 'password' | 'totp' | 'cardNumber' | 'cardCode';
 }
 
 /** Payload passed to createItem() */
