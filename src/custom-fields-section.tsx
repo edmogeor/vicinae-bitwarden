@@ -1,5 +1,5 @@
-import { Action, ActionPanel, Form, Icon } from '@vicinae/api';
-import { Fragment, useState } from 'react';
+import { Form } from '@vicinae/api';
+import { Fragment } from 'react';
 
 export interface CustomField {
   id: number;
@@ -20,6 +20,14 @@ interface CustomFieldsSectionProps {
   notes?: string;
 }
 
+function updateField(
+  setCustomFields: React.Dispatch<React.SetStateAction<CustomField[]>>,
+  fieldId: number,
+  patch: Partial<Omit<CustomField, 'id'>>,
+) {
+  setCustomFields((prev) => prev.map((f) => (f.id === fieldId ? { ...f, ...patch } : f)));
+}
+
 function renderFieldValue(
   field: CustomField,
   setCustomFields: React.Dispatch<React.SetStateAction<CustomField[]>>,
@@ -30,11 +38,7 @@ function renderFieldValue(
         id={`cf_value_${field.id}`}
         title="Field Value"
         value={field.value}
-        onChange={(v) =>
-          setCustomFields((prev) =>
-            prev.map((f) => (f.id === field.id ? { ...f, value: String(v ?? '') } : f)),
-          )
-        }
+        onChange={(v) => updateField(setCustomFields, field.id, { value: String(v ?? '') })}
       />
     );
   }
@@ -44,11 +48,7 @@ function renderFieldValue(
         id={`cf_value_${field.id}`}
         label="Field Value"
         value={field.value === 'true'}
-        onChange={(v) =>
-          setCustomFields((prev) =>
-            prev.map((f) => (f.id === field.id ? { ...f, value: String(!!v) } : f)),
-          )
-        }
+        onChange={(v) => updateField(setCustomFields, field.id, { value: String(!!v) })}
       />
     );
   }
@@ -57,13 +57,13 @@ function renderFieldValue(
       id={`cf_value_${field.id}`}
       title="Field Value"
       value={field.value}
-      onChange={(v) =>
-        setCustomFields((prev) =>
-          prev.map((f) => (f.id === field.id ? { ...f, value: String(v ?? '') } : f)),
-        )
-      }
+      onChange={(v) => updateField(setCustomFields, field.id, { value: String(v ?? '') })}
     />
   );
+}
+
+function normalizeBoolean(value: string): string {
+  return value === 'true' ? 'true' : 'false';
 }
 
 export default function CustomFieldsSection({
@@ -91,27 +91,17 @@ export default function CustomFieldsSection({
             id={`cf_name_${field.id}`}
             title="Field Name"
             value={field.name}
-            onChange={(v) =>
-              setCustomFields((prev) =>
-                prev.map((f) => (f.id === field.id ? { ...f, name: String(v ?? '') } : f)),
-              )
-            }
+            onChange={(v) => updateField(setCustomFields, field.id, { name: String(v ?? '') })}
           />
           <Form.Dropdown
             id={`cf_type_${field.id}`}
             title="Field Type"
             value={String(field.type)}
-            onChange={(v) =>
-              setCustomFields((prev) =>
-                prev.map((f) => {
-                  if (f.id !== field.id) return f;
-                  const newType = Number(v ?? '0');
-                  const newValue =
-                    newType === 2 ? (f.value === 'true' ? 'true' : 'false') : f.value;
-                  return { ...f, type: newType, value: newValue };
-                }),
-              )
-            }
+            onChange={(v) => {
+              const newType = Number(v ?? '0');
+              const value = newType === 2 ? normalizeBoolean(field.value) : field.value;
+              updateField(setCustomFields, field.id, { type: newType, value });
+            }}
           >
             {FIELD_TYPES.map((ft) => (
               <Form.Dropdown.Item key={ft.value} value={ft.value} title={ft.title} />
