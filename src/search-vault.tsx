@@ -21,7 +21,7 @@ import {
   loadCachedVault,
 } from './item-utils';
 import { useSession } from './use-session';
-import { checkBwGate, renderUnlockGate, useUnlockGate } from './unlock-gate';
+import { checkBwGate, createUnlockCallbacks, renderUnlockGate, useUnlockGate } from './unlock-gate';
 import { useVaultSync } from './use-vault-sync';
 import ItemDetailView, { renderItemActionElements } from './item-detail-view';
 import EditItem from './edit-item';
@@ -64,11 +64,7 @@ export default function SearchVault() {
     loginIfNeeded,
     loginError,
     unlock,
-    onUnlockStart: () => setState({ kind: 'unlocking' }),
-    onUnlockReady: () => setState({ kind: 'loading' }),
-    onUnlockError: (error) => setState({ kind: 'needs-unlock', error }),
-    onLoginReady: () => setState({ kind: 'needs-unlock' }),
-    onLoginError: (error) => setState({ kind: 'needs-unlock', error }),
+    ...createUnlockCallbacks(setState, () => setState({ kind: 'loading' })),
   });
 
   const { syncVault, handleSync, isSyncing } = useVaultSync(session, setVault, () =>
