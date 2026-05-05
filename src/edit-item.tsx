@@ -114,6 +114,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
             id: i,
             name: f.name,
             value: f.value,
+            type: f.type,
           })),
         );
         fieldIdRef.current = resolved.fields.length;
@@ -140,7 +141,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
 
         const fields =
           customFields.length > 0
-            ? customFields.map((f) => ({ name: f.name, value: f.value, type: 0 }))
+            ? customFields.map((f) => ({ name: f.name, value: f.value, type: f.type }))
             : undefined;
 
         const payload = toCreatePayload(
@@ -219,7 +220,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
             onAction={() =>
               setCustomFields((prev) => [
                 ...prev,
-                { id: fieldIdRef.current++, name: '', value: '' },
+                { id: fieldIdRef.current++, name: '', value: '', type: 0 },
               ])
             }
           />

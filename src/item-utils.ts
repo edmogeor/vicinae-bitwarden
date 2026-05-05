@@ -207,9 +207,17 @@ export function itemTypeLabel(item: BwItem): string {
 
 function getLoginActions(login: BwItem['login']): ItemAction[] {
   const actions: ItemAction[] = [];
-  if (login?.password) actions.push({ label: 'Copy Password', value: login.password });
+  if (login?.password) {
+    actions.push({ label: 'Copy Password', value: login.password });
+  } else if (login) {
+    actions.push({ label: 'Copy Password', value: '', fetchKind: 'password' });
+  }
   if (login?.username) actions.push({ label: 'Copy Username', value: login.username });
-  if (login?.totp) actions.push({ label: 'Copy TOTP', value: 'TOTP' });
+  if (login?.totp) {
+    actions.push({ label: 'Copy Verification Code', value: 'TOTP' });
+  } else if (login) {
+    actions.push({ label: 'Copy Verification Code', value: '', fetchKind: 'totp' });
+  }
   if (login?.uris?.length) {
     const primaryUri = login.uris[0]?.uri;
     if (primaryUri) actions.push({ label: 'Open URL', value: primaryUri });
@@ -219,8 +227,16 @@ function getLoginActions(login: BwItem['login']): ItemAction[] {
 
 function getCardActions(card: BwItem['card']): ItemAction[] {
   const actions: ItemAction[] = [];
-  if (card?.number) actions.push({ label: 'Copy Card Number', value: card.number });
-  if (card?.code) actions.push({ label: 'Copy Security Code', value: card.code });
+  if (card?.number) {
+    actions.push({ label: 'Copy Card Number', value: card.number });
+  } else if (card) {
+    actions.push({ label: 'Copy Card Number', value: '', fetchKind: 'cardNumber' });
+  }
+  if (card?.code) {
+    actions.push({ label: 'Copy Security Code', value: card.code });
+  } else if (card) {
+    actions.push({ label: 'Copy Security Code', value: '', fetchKind: 'cardCode' });
+  }
   return actions;
 }
 
@@ -325,6 +341,24 @@ export function buildItemDetailMarkdown(item: BwItem): string {
 
   if (item.notes) {
     lines.push(`**Notes:**`, '', item.notes);
+  }
+
+  if (item.fields && item.fields.length > 0) {
+    if (lines.length > 0) {
+      lines.push('', '---', '');
+    }
+    lines.push('**Custom Fields:**', '');
+    for (const field of item.fields) {
+      const value =
+        field.type === 1
+          ? '•••••••• (hidden)'
+          : field.type === 2
+            ? field.value === 'true'
+              ? 'Yes'
+              : 'No'
+            : field.value;
+      lines.push(`- **${field.name}** — ${value}`);
+    }
   }
 
   return lines.join('\n');

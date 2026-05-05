@@ -250,7 +250,7 @@ describe('itemActions', () => {
     const labels = actions.map((a) => a.label);
     expect(labels).toContain('Copy Username');
     expect(labels).toContain('Copy Password');
-    expect(labels).toContain('Copy TOTP');
+    expect(labels).toContain('Copy Verification Code');
     expect(labels).toContain('Open URL');
   });
 
@@ -263,7 +263,7 @@ describe('itemActions', () => {
     const labels = actions.map((a) => a.label);
     expect(labels).toContain('Copy Password');
     expect(labels).not.toContain('Copy Username');
-    expect(labels).not.toContain('Copy TOTP');
+    expect(labels).toContain('Copy Verification Code');
   });
 
   it('returns card number and code actions for Card items', () => {
@@ -459,7 +459,7 @@ describe('buildItemDetailMarkdown', () => {
     expect(md).toContain('My secret note');
   });
 
-  it('shows custom fields in metadata, not markdown', () => {
+  it('shows custom fields in markdown with hidden fields masked', () => {
     const item = makeItem({
       fields: [
         { name: 'API Key', value: 'abc123', type: 0, linkedId: null },
@@ -468,7 +468,13 @@ describe('buildItemDetailMarkdown', () => {
       ],
     });
     const md = buildItemDetailMarkdown(item);
-    expect(md).not.toContain('API Key');
+    expect(md).toContain('API Key');
+    expect(md).toContain('abc123');
+    expect(md).toContain('Secret');
+    expect(md).toContain('••••••••');
+    expect(md).not.toContain('xyz');
+    expect(md).toContain('Notes');
+    expect(md).toContain('some value');
   });
 
   it('shows password when showPassword is true', () => {
