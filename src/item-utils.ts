@@ -349,15 +349,13 @@ export function buildItemDetailMarkdown(item: BwItem): string {
     }
     lines.push('**Custom Fields:**', '');
     for (const field of item.fields) {
-      const value =
-        field.type === 1
-          ? '•••••••• (hidden)'
-          : field.type === 2
-            ? field.value === 'true'
-              ? 'Yes'
-              : 'No'
-            : field.value;
-      lines.push(`- **${field.name}** — ${value}`);
+      if (field.type === 1) {
+        lines.push(`- **${field.name}** — •••••••• (hidden)`);
+      } else if (field.type === 2) {
+        lines.push(`- **${field.name}** — ${field.value === 'true' ? 'Yes' : 'No'}`);
+      } else {
+        lines.push(`- **${field.name}** — ${field.value}`);
+      }
     }
   }
 

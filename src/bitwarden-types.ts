@@ -76,6 +76,8 @@ interface BwField {
   linkedId: number | null;
 }
 
+export type { BwField };
+
 export interface BwFolder {
   id: string;
   name: string;

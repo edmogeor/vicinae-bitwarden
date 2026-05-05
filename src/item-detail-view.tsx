@@ -17,15 +17,21 @@ import {
   itemTypeLabel,
   actionIcon,
 } from './item-utils';
-import type { BwItem } from './bitwarden-types';
+import type { BwField, BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import EditItem from './edit-item';
 
 function resolveFetchValue(fetchKind: string, item: BwItem): string | undefined {
-  if (fetchKind === 'password') return item.login?.password ?? undefined;
-  if (fetchKind === 'cardNumber') return item.card?.number ?? undefined;
-  if (fetchKind === 'cardCode') return item.card?.code ?? undefined;
-  return undefined;
+  switch (fetchKind) {
+    case 'password':
+      return item.login?.password ?? undefined;
+    case 'cardNumber':
+      return item.card?.number ?? undefined;
+    case 'cardCode':
+      return item.card?.code ?? undefined;
+    default:
+      return undefined;
+  }
 }
 
 function renderItemActionElements(
@@ -94,6 +100,16 @@ function renderItemActionElements(
   });
 }
 
+function fieldDisplayText(field: BwField, showHidden: boolean): string {
+  if (field.type === 1) {
+    return showHidden ? field.value : '••••••••';
+  }
+  if (field.type === 2) {
+    return field.value === 'true' ? 'Yes' : 'No';
+  }
+  return field.value;
+}
+
 function buildMetadata(
   item: BwItem,
   folderName: string | undefined,
@@ -114,17 +130,7 @@ function buildMetadata(
             <Detail.Metadata.Label
               key={i}
               title={field.name}
-              text={
-                field.type === 1
-                  ? showHiddenFields
-                    ? field.value
-                    : '••••••••'
-                  : field.type === 2
-                    ? field.value === 'true'
-                      ? 'Yes'
-                      : 'No'
-                    : field.value
-              }
+              text={fieldDisplayText(field, showHiddenFields)}
             />
           ))}
         </>
