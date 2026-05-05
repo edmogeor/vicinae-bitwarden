@@ -38,6 +38,7 @@ jobs:
           git push origin main
 
       - name: Create or update store PR
+        if: false # skip store PR for v0.1.1
         run: |
           cd store
           TAG="${{ github.event.workflow_run.head_branch }}"
