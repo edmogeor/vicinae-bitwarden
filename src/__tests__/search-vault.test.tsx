@@ -112,6 +112,13 @@ vi.mock('../use-session', () => ({
 
 vi.mock('../unlock-gate', () => ({
   checkBwGate: (session: string | null) => (session ? { kind: 'ready' } : { kind: 'needs-unlock' }),
+  createUnlockCallbacks: (_setState: unknown, onUnlockReady: () => void) => ({
+    onUnlockStart: vi.fn(),
+    onUnlockReady,
+    onUnlockError: vi.fn(),
+    onLoginReady: vi.fn(),
+    onLoginError: vi.fn(),
+  }),
   renderUnlockGate: (kind: string) => {
     if (kind === 'bw-not-installed')
       return React.createElement('div', { 'data-testid': 'bw-not-installed' }, 'BW Not Installed');

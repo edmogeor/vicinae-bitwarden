@@ -18,7 +18,7 @@ import { CARD_BRANDS, toCreatePayload } from './item-utils';
 import CustomFieldsSection from './custom-fields-section';
 import { useSession } from './use-session';
 import { getPasswordPrefs, getPreferences } from './preferences';
-import { checkBwGate, renderUnlockGate, useUnlockGate } from './unlock-gate';
+import { checkBwGate, createUnlockCallbacks, renderUnlockGate, useUnlockGate } from './unlock-gate';
 
 type UIState =
   | { kind: 'checking-bw' }
@@ -60,11 +60,7 @@ export default function CreateItem() {
     loginIfNeeded,
     loginError,
     unlock,
-    onUnlockStart: () => setState({ kind: 'unlocking' }),
-    onUnlockReady: () => setState({ kind: 'form' }),
-    onUnlockError: (error) => setState({ kind: 'needs-unlock', error }),
-    onLoginReady: () => setState({ kind: 'needs-unlock' }),
-    onLoginError: (error) => setState({ kind: 'needs-unlock', error }),
+    ...createUnlockCallbacks(setState, () => setState({ kind: 'form' })),
   });
 
   useEffect(() => {

@@ -31,6 +31,26 @@ export async function checkBwGate(
   return { kind: 'needs-unlock' };
 }
 
+type GateSetState = (
+  next: { kind: 'unlocking' } | { kind: 'needs-unlock'; error?: string },
+) => void;
+
+export function createUnlockCallbacks(
+  setState: GateSetState,
+  onUnlockReady: () => void,
+): Pick<
+  UnlockGateDeps,
+  'onUnlockStart' | 'onUnlockReady' | 'onUnlockError' | 'onLoginReady' | 'onLoginError'
+> {
+  return {
+    onUnlockStart: () => setState({ kind: 'unlocking' }),
+    onUnlockReady,
+    onUnlockError: (error) => setState({ kind: 'needs-unlock', error }),
+    onLoginReady: () => setState({ kind: 'needs-unlock' }),
+    onLoginError: (error) => setState({ kind: 'needs-unlock', error }),
+  };
+}
+
 interface UnlockGateDeps {
   loginIfNeeded: () => Promise<void>;
   loginError: string | null;
