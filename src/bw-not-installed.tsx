@@ -52,7 +52,7 @@ On Arch:
 sudo pacman -S libsecret
 \`\`\`
 
-After installing, restart Vicinae or reopen this command.`;
+After installing, reopen this command.`;
 
 export function SecretToolNotInstalled() {
   return <Detail markdown={SECRET_TOOL_NOT_INSTALLED_MARKDOWN} />;

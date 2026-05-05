@@ -45,6 +45,9 @@ declare namespace Preferences {
 
   /** Command: Log Out */
   export type Logout = ExtensionPreferences & {};
+
+  /** Command: Generate Password */
+  export type GeneratePassword = ExtensionPreferences & {};
 }
 
 declare namespace Arguments {
@@ -56,4 +59,7 @@ declare namespace Arguments {
 
   /** Command: Log Out */
   export type Logout = {};
+
+  /** Command: Generate Password */
+  export type GeneratePassword = {};
 }
