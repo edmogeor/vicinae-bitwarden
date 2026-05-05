@@ -122,6 +122,12 @@
       "title": "Log Out",
       "description": "Log out of Bitwarden, clearing your stored API key session",
       "mode": "no-view"
+    },
+    {
+      "name": "generate-password",
+      "title": "Generate Password",
+      "description": "Generate a random password using your configured settings and copy it to clipboard",
+      "mode": "no-view"
     }
   ],
   "scripts": {

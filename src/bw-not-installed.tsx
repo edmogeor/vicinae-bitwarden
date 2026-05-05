@@ -1,6 +1,6 @@
 import { Action, ActionPanel, Detail } from '@vicinae/api';
 
-const NOT_INSTALLED_MARKDOWN = `# Bitwarden CLI Not Found
+const BW_NOT_INSTALLED_MARKDOWN = `# Bitwarden CLI Not Found
 
 The \`bw\` binary is not installed or not on your \`PATH\`.
 
@@ -18,7 +18,7 @@ After installing, restart Vicinae or reopen this command.`;
 export function BwNotInstalled() {
   return (
     <Detail
-      markdown={NOT_INSTALLED_MARKDOWN}
+      markdown={BW_NOT_INSTALLED_MARKDOWN}
       actions={
         <ActionPanel>
           <Action.OpenInBrowser
@@ -29,4 +29,31 @@ export function BwNotInstalled() {
       }
     />
   );
+}
+
+const SECRET_TOOL_NOT_INSTALLED_MARKDOWN = `# libsecret-tools Not Found
+
+The \`secret-tool\` binary is not installed. It is required to store your vault session securely in the system keyring.
+
+## Install
+
+On Debian/Ubuntu:
+\`\`\`
+sudo apt install libsecret-tools
+\`\`\`
+
+On Fedora:
+\`\`\`
+sudo dnf install libsecret
+\`\`\`
+
+On Arch:
+\`\`\`
+sudo pacman -S libsecret
+\`\`\`
+
+After installing, restart Vicinae or reopen this command.`;
+
+export function SecretToolNotInstalled() {
+  return <Detail markdown={SECRET_TOOL_NOT_INSTALLED_MARKDOWN} />;
 }

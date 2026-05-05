@@ -1,11 +1,9 @@
-import { LocalStorage } from '@vicinae/api';
 import { useCallback, useEffect, useState } from 'react';
 import { getPreferences, getServerUrl } from './preferences';
 import * as bw from './bw-executor';
 import type { Session } from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-
-export const SESSION_KEY = 'vicinae-bitwarden-session';
+import { deleteSession, getSession, setSession as storeSession } from './session-store';
 
 interface SessionState {
   session: Session | null;
@@ -23,7 +21,7 @@ export function useSession(): SessionState {
 
   useEffect(() => {
     void (async () => {
-      const cached = await LocalStorage.getItem<string>(SESSION_KEY);
+      const cached = await getSession();
       if (cached) {
         setSession(cached);
       }
@@ -54,13 +52,13 @@ export function useSession(): SessionState {
 
   const unlock = useCallback(async (masterPassword: string): Promise<Session> => {
     const token = await bw.unlock(masterPassword);
-    await LocalStorage.setItem(SESSION_KEY, token);
+    await storeSession(token);
     setSession(token);
     return token;
   }, []);
 
   const clearSession = useCallback(async () => {
-    await LocalStorage.removeItem(SESSION_KEY);
+    await deleteSession();
     setSession(null);
     if (session) {
       void bw.lock(session).catch(() => {

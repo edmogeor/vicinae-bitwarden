@@ -12,7 +12,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import {
-  clearCachedVault,
   filterItems,
   itemActions as getItemActions,
   groupByFolder,
@@ -33,6 +32,7 @@ import { ItemType } from './bitwarden-types';
 type UIState =
   | { kind: 'checking-bw' }
   | { kind: 'bw-not-installed' }
+  | { kind: 'secret-tool-not-installed' }
   | { kind: 'logging-in' }
   | { kind: 'needs-unlock'; error?: string }
   | { kind: 'unlocking' }
@@ -89,6 +89,7 @@ export default function SearchVault() {
       const gate = await checkBwGate(session);
       switch (gate.kind) {
         case 'bw-not-installed':
+        case 'secret-tool-not-installed':
         case 'logging-in':
           setState({ kind: gate.kind });
           return;
@@ -190,13 +191,6 @@ export default function SearchVault() {
     void handleLogin();
   }, [state.kind]);
 
-  // Lock handler
-  const handleLock = useCallback(async () => {
-    await clearSession();
-    await clearCachedVault();
-    setState({ kind: 'needs-unlock' });
-  }, [clearSession]);
-
   // --- Derived data (must be unconditional — hooks rules) ---
   const vaultItems = state.kind === 'vault' ? state.items : [];
   const vaultFolders = state.kind === 'vault' ? state.folders : [];
@@ -281,7 +275,6 @@ export default function SearchVault() {
                         handleSync,
                       )}
                       <Action title="Sync Vault" icon={Icon.ArrowClockwise} onAction={handleSync} />
-                      <Action title="Lock Vault" icon={Icon.Lock} onAction={handleLock} />
                     </ActionPanel>
                   }
                 />

@@ -1,19 +1,24 @@
 import { Action, ActionPanel, Form, showToast, Toast } from '@vicinae/api';
 import { useCallback } from 'react';
-import { BwNotInstalled } from './bw-not-installed';
+import { BwNotInstalled, SecretToolNotInstalled } from './bw-not-installed';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
+import { checkInstalled as checkSecretToolInstalled } from './session-store';
 
 export async function checkBwGate(
   session: string | null,
 ): Promise<
   | { kind: 'bw-not-installed' }
+  | { kind: 'secret-tool-not-installed' }
   | { kind: 'logging-in' }
   | { kind: 'needs-unlock' }
   | { kind: 'ready' }
 > {
   const installed = await bw.checkInstalled();
   if (!installed) return { kind: 'bw-not-installed' };
+
+  const stInstalled = await checkSecretToolInstalled();
+  if (!stInstalled) return { kind: 'secret-tool-not-installed' };
 
   try {
     const st = await bw.status();
@@ -77,6 +82,8 @@ export function renderUnlockGate(
   onUnlock: (values: Form.Values) => Promise<void>,
 ) {
   if (kind === 'bw-not-installed') return <BwNotInstalled />;
+
+  if (kind === 'secret-tool-not-installed') return <SecretToolNotInstalled />;
 
   if (kind === 'needs-unlock' || kind === 'unlocking') {
     return (

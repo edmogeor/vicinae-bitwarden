@@ -23,6 +23,7 @@ import { checkBwGate, renderUnlockGate, useUnlockGate } from './unlock-gate';
 type UIState =
   | { kind: 'checking-bw' }
   | { kind: 'bw-not-installed' }
+  | { kind: 'secret-tool-not-installed' }
   | { kind: 'logging-in' }
   | { kind: 'needs-unlock'; error?: string }
   | { kind: 'unlocking' }
@@ -71,6 +72,7 @@ export default function CreateItem() {
       const gate = await checkBwGate(session);
       switch (gate.kind) {
         case 'bw-not-installed':
+        case 'secret-tool-not-installed':
         case 'logging-in':
         case 'needs-unlock':
           setState({ kind: gate.kind });
