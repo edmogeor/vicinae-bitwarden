@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { BwNotInstalled, SecretToolNotInstalled } from './bw-not-installed';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-import { checkInstalled as checkSecretToolInstalled } from './session-store';
+import { checkSecretToolInstalled } from './session-store';
 
 export async function checkBwGate(
   session: string | null,
