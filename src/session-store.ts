@@ -9,14 +9,15 @@ const ACCOUNT = 'session';
 let installed: boolean | null = null;
 
 export async function checkSecretToolInstalled(): Promise<boolean> {
-  if (installed !== null) return installed;
+  if (installed) return true;
   try {
     await exec('secret-tool', ['--version'], { timeout: 3000 });
     installed = true;
+    return true;
   } catch {
     installed = false;
+    return false;
   }
-  return installed;
 }
 
 function writeStdin(proc: ReturnType<typeof spawn>, data: string): Promise<void> {
