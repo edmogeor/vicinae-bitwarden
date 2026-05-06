@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-05-06
+
+### Added
+
+- Themed placeholder icons for each item type — white symbol on a coloured rounded rectangle matching Vicinae's native icon style (Login=Blue, Card=Green, Identity=Orange, SecureNote=Purple), with light/dark mode support
+- iOS-style rounded favicon corners, pre-rendered into the PNG bytes at fetch time
+
+### Fixed
+
+- Favicons are now stored on disk (`supportPath/favicons/`) with a 7-day TTL, surviving extension restarts with correct timestamps
+- Concurrent favicon fetches capped at 8 to prevent Google's favicon service timing out on large vaults
+- Search bar now disabled during gate states (loading, unlock, login) to prevent crashes when the List unmounts
+- Race condition removed: favicons are no longer cleared on Sync, so stale entries drop out when the vault item is deleted rather than on every refresh
+- Login favicon fallback now uses the themed Login placeholder icon instead of a bare key string
+
+### Changed
+
+- Favicons cached as base64 data URIs for direct rendering instead of file paths that required a separate disk read
+- Favicon cache prunes entries for domains no longer in the vault on each Sync
+
 ## [0.1.2] - 2026-05-06
 
 ### Added
