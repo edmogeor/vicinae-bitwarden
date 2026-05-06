@@ -156,7 +156,6 @@ vi.mock('../favicons', () => ({
   loadFaviconCache: () => ({}),
   resolveFavicons: () => ({}),
   clearFaviconCache: vi.fn(),
-  FAVICON_CACHE_KEY: 'test-favicon-key',
 }));
 
 vi.mock('../item-detail-view', () => ({

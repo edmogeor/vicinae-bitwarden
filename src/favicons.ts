@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSyn
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 
-export const FAVICON_CACHE_KEY = 'vicinae-bitwarden-favicons';
+const FAVICON_CACHE_KEY = 'vicinae-bitwarden-favicons';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export type FaviconMap = Record<string, string>;
@@ -20,6 +20,31 @@ function isCacheEntry(value: unknown): value is CacheEntry {
   return typeof value === 'object' && value !== null && 'dataUri' in value && 'timestamp' in value;
 }
 
+function hydrateEntry(domain: string, value: unknown, result: FaviconMap): void {
+  if (isCacheEntry(value)) {
+    const entry = value;
+    // Legacy: entries stored as file paths need converting to data URIs
+    if (entry.dataUri.startsWith('/')) {
+      try {
+        entry.dataUri = fileToDataUri(entry.dataUri);
+      } catch {
+        entry.dataUri = '';
+        entry.timestamp = 0;
+      }
+    }
+    result[domain] = entry.dataUri;
+    if (!faviconCache[domain]) {
+      faviconCache[domain] = entry;
+    }
+  } else if (typeof value === 'string') {
+    // Old plain-string format — treat as stale so it gets replaced
+    result[domain] = value;
+    if (!faviconCache[domain]) {
+      faviconCache[domain] = { dataUri: value, timestamp: 0 };
+    }
+  }
+}
+
 export async function loadFaviconCache(): Promise<FaviconMap> {
   try {
     const raw = await LocalStorage.getItem<string>(FAVICON_CACHE_KEY);
@@ -27,28 +52,7 @@ export async function loadFaviconCache(): Promise<FaviconMap> {
     const parsed: Record<string, unknown> = JSON.parse(raw);
     const result: FaviconMap = {};
     for (const [domain, value] of Object.entries(parsed)) {
-      if (isCacheEntry(value)) {
-        const entry = value;
-        // Legacy: entries stored as file paths need converting to data URIs
-        if (entry.dataUri.startsWith('/')) {
-          try {
-            entry.dataUri = fileToDataUri(entry.dataUri);
-          } catch {
-            entry.dataUri = '';
-            entry.timestamp = 0;
-          }
-        }
-        result[domain] = entry.dataUri;
-        if (!faviconCache[domain]) {
-          faviconCache[domain] = entry;
-        }
-      } else if (typeof value === 'string') {
-        // Old plain-string format — treat as stale so it gets replaced
-        result[domain] = value;
-        if (!faviconCache[domain]) {
-          faviconCache[domain] = { dataUri: value, timestamp: 0 };
-        }
-      }
+      hydrateEntry(domain, value, result);
     }
     return result;
   } catch {
