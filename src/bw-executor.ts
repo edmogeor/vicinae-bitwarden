@@ -41,11 +41,14 @@ function sessionEnv(session: Session): NodeJS.ProcessEnv {
   return { ...bwEnv(), BW_SESSION: session };
 }
 
+function hasStderr(err: unknown): err is { stderr: unknown } {
+  return typeof err === 'object' && err !== null && 'stderr' in err;
+}
+
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Error) {
-    const execErr = err as { stderr?: string };
-    const stderr = execErr.stderr?.trim() || '';
-    const cleaned = stderr
+    const stderrRaw = hasStderr(err) ? String(err.stderr ?? '').trim() : '';
+    const cleaned = stderrRaw
       .split('\n')
       .filter((line) => !line.includes('[DEP0') && !line.includes('DeprecationWarning'))
       .join('\n')

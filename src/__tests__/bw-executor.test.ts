@@ -31,10 +31,8 @@ vi.mock('node:util', () => {
   };
 });
 
-vi.mock('../preferences', () => ({
-  getPreferences: () => mockPrefs,
-  getServerUrl: vi.fn(),
-  getPasswordPrefs: vi.fn(),
+vi.mock('@vicinae/api', () => ({
+  getPreferenceValues: () => mockPrefs,
 }));
 
 function mockExec(stdout: string, stderr = '') {
