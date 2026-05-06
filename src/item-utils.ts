@@ -3,7 +3,7 @@ import type { Image } from '@vicinae/api';
 import { BwItem, BwFolder, ItemType } from './bitwarden-types';
 import type { BwField, ItemTypeValue } from './bitwarden-types';
 import type { CreateItemPayload, ItemAction } from './bw-executor';
-import { FAVICON_CACHE_KEY, extractHostname } from './favicons';
+import { extractHostname } from './favicons';
 import type { FaviconMap } from './favicons';
 
 export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'];
@@ -117,7 +117,6 @@ export async function saveCachedVault(items: BwItem[], folders: BwFolder[]): Pro
 
 export async function clearCachedVault(): Promise<void> {
   await LocalStorage.removeItem(CACHE_KEY);
-  await LocalStorage.removeItem(FAVICON_CACHE_KEY);
 }
 
 /**

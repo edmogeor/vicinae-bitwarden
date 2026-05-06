@@ -1,12 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
 const { mockBw, mockItem, mockOnSaved } = vi.hoisted(() => {
   const mockBw = {
-    getItem: vi.fn<[], Promise<unknown>>(),
-    listFolders: vi.fn<[], Promise<unknown[]>>().mockResolvedValue([]),
-    editItem: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+    getItem: vi.fn(),
+    listFolders: vi.fn().mockResolvedValue([]),
+    editItem: vi.fn().mockResolvedValue(undefined),
     deleteItem: vi.fn(),
     sync: vi.fn(),
     unlock: vi.fn(),

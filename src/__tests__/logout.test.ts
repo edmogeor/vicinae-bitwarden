@@ -2,16 +2,16 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const { mockBw, mockDeleteSession, mockShowToast, mockClearCachedVault } = vi.hoisted(() => ({
   mockBw: {
-    logout: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+    logout: vi.fn().mockResolvedValue(undefined),
     lock: vi.fn(),
     sync: vi.fn(),
     unlock: vi.fn(),
     login: vi.fn(),
     getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
   },
-  mockDeleteSession: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+  mockDeleteSession: vi.fn().mockResolvedValue(undefined),
   mockShowToast: vi.fn(),
-  mockClearCachedVault: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+  mockClearCachedVault: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../bw-executor', () => mockBw);

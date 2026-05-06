@@ -1,11 +1,11 @@
 import { LocalStorage, environment } from '@vicinae/api';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 
 export const FAVICON_CACHE_KEY = 'vicinae-bitwarden-favicons';
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export type FaviconMap = Record<string, string>;
 
@@ -241,6 +241,23 @@ export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
     },
   );
   await Promise.all(workers);
+
+  // Prune entries for domains no longer in the vault. Mirrors how
+  // saveCachedVault overwrites the items list — domains deleted from
+  // Bitwarden drop out of the favicon cache on next sync instead of
+  // accumulating forever.
+  if (unique.length > 0) {
+    const requested = new Set(unique);
+    for (const domain of Object.keys(faviconCache)) {
+      if (requested.has(domain)) continue;
+      delete faviconCache[domain];
+      try {
+        unlinkSync(join(faviconDir(), `${encodeURIComponent(domain)}.png`));
+      } catch {
+        // file already gone or never existed — nothing to do
+      }
+    }
+  }
 
   await persistFaviconCache();
   return result;

@@ -16,10 +16,10 @@ const {
   getFormSubmitHandler,
 } = vi.hoisted(() => {
   const mockBw = {
-    checkInstalled: vi.fn<[], Promise<boolean>>().mockResolvedValue(true),
-    status: vi.fn<[], Promise<{ status: string }>>().mockResolvedValue({ status: 'unlocked' }),
-    listFolders: vi.fn<[], Promise<{ id: string; name: string }[]>>().mockResolvedValue([]),
-    createItem: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+    checkInstalled: vi.fn().mockResolvedValue(true),
+    status: vi.fn().mockResolvedValue({ status: 'unlocked' }),
+    listFolders: vi.fn().mockResolvedValue([]),
+    createItem: vi.fn().mockResolvedValue(undefined),
     login: vi.fn(),
     unlock: vi.fn(),
     sync: vi.fn(),
@@ -46,7 +46,7 @@ const {
   let _handler: ((values: Record<string, unknown>) => void) | null = null;
 
   const el = (type: string, testId?: string) => {
-    return (props: Record<string, unknown>) => {
+    return (props: { children?: React.ReactNode; [key: string]: unknown }) => {
       const { children, ...rest } = props;
       return React.createElement(type, { 'data-testid': testId ?? props.id, ...rest }, children);
     };

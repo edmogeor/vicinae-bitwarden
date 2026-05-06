@@ -1,14 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const { mockGetItem, mockSetItem, mockRemoveItem } = vi.hoisted(() => ({
-  mockGetItem: vi.fn<[key: string], Promise<string | undefined>>().mockResolvedValue(undefined),
-  mockSetItem: vi.fn<[key: string, value: string], Promise<void>>().mockResolvedValue(undefined),
-  mockRemoveItem: vi.fn<[key: string], Promise<void>>().mockResolvedValue(undefined),
+  mockGetItem: vi.fn().mockResolvedValue(undefined),
+  mockSetItem: vi.fn().mockResolvedValue(undefined),
+  mockRemoveItem: vi.fn().mockResolvedValue(undefined),
 }));
 
 const { mockExistsSync, mockStatSync } = vi.hoisted(() => ({
-  mockExistsSync: vi.fn<[string], boolean>().mockReturnValue(false),
-  mockStatSync: vi.fn<[string], { mtimeMs: number }>().mockReturnValue({ mtimeMs: 0 }),
+  mockExistsSync: vi.fn().mockReturnValue(false),
+  mockStatSync: vi.fn().mockReturnValue({ mtimeMs: 0 }),
 }));
 
 vi.mock('node:fs', () => {
@@ -20,6 +20,7 @@ vi.mock('node:fs', () => {
     mkdirSync: vi.fn(),
     readFileSync: () => TEST_PNG,
     statSync: (path: string) => mockStatSync(path),
+    unlinkSync: vi.fn(),
     writeFileSync: vi.fn(),
   };
   fsMock.default = fsMock;
@@ -69,7 +70,7 @@ vi.mock('@vicinae/api', () => ({
   },
 }));
 
-import { BwItem, ItemType } from '../bitwarden-types';
+import { BwFolder, BwItem, ItemType } from '../bitwarden-types';
 import { CreateItemPayload, ItemAction } from '../bw-executor';
 import {
   buildItemDetailMarkdown,
@@ -677,7 +678,7 @@ describe('saveCachedVault', () => {
           uris: [{ uri: 'https://github.com', match: null }],
           passwordRevisionDate: null,
         },
-        fields: [{ name: 'API Key', value: 'sk-abc123', type: 0 }],
+        fields: [{ name: 'API Key', value: 'sk-abc123', type: 0, linkedId: null }],
       },
     ];
     const folders: BwFolder[] = [];
@@ -795,12 +796,11 @@ describe('saveCachedVault', () => {
 // clearCachedVault
 // ---------------------------------------------------------------------------
 describe('clearCachedVault', () => {
-  it('removes both vault and favicon cache keys', async () => {
+  it('removes the vault cache key but leaves favicons in place', async () => {
     await clearCachedVault();
 
     expect(mockRemoveItem).toHaveBeenCalledWith('vicinae-bitwarden-cache');
-    expect(mockRemoveItem).toHaveBeenCalledWith('vicinae-bitwarden-favicons');
-    expect(mockRemoveItem).toHaveBeenCalledTimes(2);
+    expect(mockRemoveItem).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -948,6 +948,23 @@ describe('resolveFavicons', () => {
     const result = await resolveFavicons(['a.com', 'a.com', 'b.com']);
     expect(Object.keys(result).sort()).toEqual(['a.com', 'b.com']);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('prunes domains no longer in the request set', async () => {
+    clearFaviconCache();
+    vi.stubGlobal('fetch', createFetchMock());
+
+    await resolveFavicons(['a.com', 'b.com']);
+    await resolveFavicons(['a.com']);
+
+    const persistCalls = mockSetItem.mock.calls.filter(
+      (c) => c[0] === 'vicinae-bitwarden-favicons',
+    );
+    const lastPersisted = JSON.parse(persistCalls[persistCalls.length - 1][1]);
+    expect(lastPersisted).toHaveProperty('a.com');
+    expect(lastPersisted).not.toHaveProperty('b.com');
 
     vi.unstubAllGlobals();
   });
