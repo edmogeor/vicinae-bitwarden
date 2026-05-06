@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const { mockDeleteSession, mockShowToast, mockBw } = vi.hoisted(() => ({
+const { mockBw, mockDeleteSession, mockShowToast, mockClearCachedVault } = vi.hoisted(() => ({
   mockBw: {
     logout: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
     lock: vi.fn(),
@@ -11,6 +11,7 @@ const { mockDeleteSession, mockShowToast, mockBw } = vi.hoisted(() => ({
   },
   mockDeleteSession: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
   mockShowToast: vi.fn(),
+  mockClearCachedVault: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
 }));
 
 vi.mock('../bw-executor', () => mockBw);
@@ -25,7 +26,7 @@ vi.mock('@vicinae/api', () => ({
 }));
 
 vi.mock('../item-utils', () => ({
-  clearCachedVault: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+  clearCachedVault: mockClearCachedVault,
 }));
 
 import Logout from '../logout';
@@ -35,11 +36,12 @@ beforeEach(() => {
 });
 
 describe('Logout', () => {
-  it('calls bw.logout, clears session, and shows success toast', async () => {
+  it('calls bw.logout, clears session, clears cached vault, and shows success toast', async () => {
     await Logout();
 
     expect(mockBw.logout).toHaveBeenCalledOnce();
     expect(mockDeleteSession).toHaveBeenCalledOnce();
+    expect(mockClearCachedVault).toHaveBeenCalledOnce();
     expect(mockShowToast).toHaveBeenCalledWith({
       style: 'success',
       title: 'Logged out',

@@ -8,6 +8,14 @@ const exec = promisify(execFile);
 /** Token that identifies an unlocked vault session */
 export type Session = string;
 
+interface BwStatus {
+  serverUrl: string | null;
+  lastSync: string | null;
+  userEmail: string;
+  userId: string;
+  status: 'unauthenticated' | 'locked' | 'unlocked';
+}
+
 function bwEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   try {
@@ -35,7 +43,8 @@ function sessionEnv(session: Session): NodeJS.ProcessEnv {
 
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Error) {
-    const stderr = (err as Error & { stderr?: string }).stderr?.trim() || '';
+    const execErr = err as { stderr?: string };
+    const stderr = execErr.stderr?.trim() || '';
     const cleaned = stderr
       .split('\n')
       .filter((line) => !line.includes('[DEP0') && !line.includes('DeprecationWarning'))

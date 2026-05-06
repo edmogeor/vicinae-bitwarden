@@ -2,6 +2,20 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import * as bw from '../bw-executor';
 
 const mockExecFile = vi.hoisted(() => vi.fn());
+const { mockPrefs } = vi.hoisted(() => ({
+  mockPrefs: {
+    serverRegion: 'bitwarden.com' as const,
+    customServerUrl: '',
+    customCertPath: '',
+    apiClientId: '',
+    apiClientSecret: '',
+    passwordLength: '20',
+    passwordUppercase: true,
+    passwordLowercase: true,
+    passwordNumbers: true,
+    passwordSymbols: true,
+  },
+}));
 
 vi.mock('node:child_process', () => {
   return {
@@ -16,6 +30,12 @@ vi.mock('node:util', () => {
     promisify: (fn: unknown) => fn,
   };
 });
+
+vi.mock('../preferences', () => ({
+  getPreferences: () => mockPrefs,
+  getServerUrl: vi.fn(),
+  getPasswordPrefs: vi.fn(),
+}));
 
 function mockExec(stdout: string, stderr = '') {
   mockExecFile.mockResolvedValueOnce({ stdout, stderr });
@@ -315,24 +335,6 @@ describe('deleteItem', () => {
 });
 
 // ---------------------------------------------------------------------------
-// logout
-// ---------------------------------------------------------------------------
-describe('logout', () => {
-  it('calls bw logout', async () => {
-    mockExec('');
-
-    await bw.logout();
-    expect(mockExecFile).toHaveBeenCalledWith('bw', ['logout'], expect.any(Object));
-  });
-
-  it('throws BwError on logout failure', async () => {
-    mockExecError('Network error');
-
-    await expect(bw.logout()).rejects.toThrow('Network error');
-  });
-});
-
-// ---------------------------------------------------------------------------
 // generatePassword
 // ---------------------------------------------------------------------------
 describe('generatePassword', () => {
@@ -383,5 +385,123 @@ describe('generatePassword', () => {
         symbols: true,
       }),
     ).rejects.toThrow('CLI error');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getErrorMessage
+// ---------------------------------------------------------------------------
+describe('getErrorMessage', () => {
+  it('filters deprecation warnings from stderr', () => {
+    const err = new Error('Command failed') as { stderr: string } & Error;
+    err.stderr =
+      '[DEP001] DeprecationWarning: old api\nactual error\n[DEP002] DeprecationWarning: another';
+
+    expect(bw.getErrorMessage(err)).toBe('actual error');
+  });
+
+  it('returns error message when stderr is all deprecation lines', () => {
+    const err = new Error('Command failed') as { stderr: string } & Error;
+    err.stderr = '[DEP001] DeprecationWarning: x\n[DEP002] DeprecationWarning: y';
+
+    expect(bw.getErrorMessage(err)).toBe('Command failed');
+  });
+
+  it('returns error message when no stderr property', () => {
+    const err = new Error('Something broke');
+
+    expect(bw.getErrorMessage(err)).toBe('Something broke');
+  });
+
+  it('handles non-Error values', () => {
+    expect(bw.getErrorMessage('plain string')).toBe('plain string');
+    expect(bw.getErrorMessage(null)).toBe('null');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// logout
+// ---------------------------------------------------------------------------
+describe('logout', () => {
+  it('calls bw logout', async () => {
+    mockExec('');
+
+    await bw.logout();
+    expect(mockExecFile).toHaveBeenCalledWith('bw', ['logout'], expect.any(Object));
+  });
+
+  it('returns silently when already logged out', async () => {
+    mockExecError('Not logged in.');
+
+    await expect(bw.logout()).resolves.toBeUndefined();
+  });
+
+  it('throws BwError on other logout failures', async () => {
+    mockExecError('Network error');
+
+    await expect(bw.logout()).rejects.toThrow('Network error');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NODE_EXTRA_CA_CERTS
+// ---------------------------------------------------------------------------
+describe('custom CA cert', () => {
+  const params = {
+    clientId: 'user.123',
+    clientSecret: 'secret',
+    serverUrl: 'https://bitwarden.com',
+  };
+
+  beforeEach(() => {
+    mockPrefs.customCertPath = '';
+  });
+
+  it('does not set NODE_EXTRA_CA_CERTS when customCertPath is empty', async () => {
+    mockExec('');
+    mockExec('');
+
+    await bw.login(params);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(
+      1,
+      'bw',
+      ['config', 'server', 'https://bitwarden.com'],
+      expect.objectContaining({
+        env: expect.not.objectContaining({ NODE_EXTRA_CA_CERTS: expect.anything() }),
+      }),
+    );
+  });
+
+  it('sets NODE_EXTRA_CA_CERTS when customCertPath is configured', async () => {
+    mockPrefs.customCertPath = '/etc/ssl/certs/custom-ca.pem';
+    mockExec('');
+    mockExec('');
+
+    await bw.login(params);
+
+    expect(mockExecFile).toHaveBeenNthCalledWith(
+      1,
+      'bw',
+      ['config', 'server', 'https://bitwarden.com'],
+      expect.objectContaining({
+        env: expect.objectContaining({ NODE_EXTRA_CA_CERTS: '/etc/ssl/certs/custom-ca.pem' }),
+      }),
+    );
+  });
+
+  it('sets NODE_EXTRA_CA_CERTS in sessionEnv calls', async () => {
+    mockPrefs.customCertPath = '/etc/ssl/certs/custom-ca.pem';
+    mockExec('');
+
+    await bw.sync('token-abc');
+
+    expect(mockExecFile).toHaveBeenCalledWith(
+      'bw',
+      ['sync'],
+      expect.objectContaining({
+        env: expect.objectContaining({ NODE_EXTRA_CA_CERTS: '/etc/ssl/certs/custom-ca.pem' }),
+      }),
+    );
   });
 });
