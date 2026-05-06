@@ -171,16 +171,14 @@ export default function CreateItem() {
     [session, selectedType, customFields],
   );
 
-  const gateRender = renderUnlockGate(
-    state.kind,
-    state.kind === 'needs-unlock'
-      ? state.error
-      : state.kind === 'login-failed'
-        ? state.error
-        : undefined,
-    handleUnlock,
-    handleLogin,
-  );
+  let gateError: string | undefined;
+  if (state.kind === 'needs-unlock') {
+    gateError = state.error;
+  } else if (state.kind === 'login-failed') {
+    gateError = state.error;
+  }
+
+  const gateRender = renderUnlockGate(state.kind, gateError, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
 
   if (state.kind === 'checking-bw' || state.kind === 'logging-in') {

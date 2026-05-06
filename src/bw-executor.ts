@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { BwError, BwFolder, BwItem, ItemType, ItemTypeValue } from './bitwarden-types';
+import { getPreferences } from './preferences';
 
 const exec = promisify(execFile);
 
@@ -15,6 +16,19 @@ interface BwStatus {
   status: 'unauthenticated' | 'locked' | 'unlocked';
 }
 
+function bwEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  try {
+    const prefs = getPreferences();
+    if (prefs.customCertPath) {
+      env.NODE_EXTRA_CA_CERTS = prefs.customCertPath;
+    }
+  } catch {
+    // Preferences not available
+  }
+  return env;
+}
+
 function parseJson<T>(stdout: string): T {
   try {
     return JSON.parse(stdout) as T;
@@ -24,12 +38,13 @@ function parseJson<T>(stdout: string): T {
 }
 
 function sessionEnv(session: Session): NodeJS.ProcessEnv {
-  return { ...process.env, BW_SESSION: session };
+  return { ...bwEnv(), BW_SESSION: session };
 }
 
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Error) {
-    const stderr = (err as Error & { stderr?: string }).stderr?.trim() || '';
+    const execErr = err as { stderr?: string };
+    const stderr = execErr.stderr?.trim() || '';
     const cleaned = stderr
       .split('\n')
       .filter((line) => !line.includes('[DEP0') && !line.includes('DeprecationWarning'))
@@ -68,7 +83,7 @@ export async function login(params: {
   serverUrl: string;
 }): Promise<void> {
   const env = {
-    ...process.env,
+    ...bwEnv(),
     BW_CLIENTID: params.clientId,
     BW_CLIENTSECRET: params.clientSecret,
   };

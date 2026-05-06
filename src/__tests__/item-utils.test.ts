@@ -477,6 +477,20 @@ describe('buildItemDetailMarkdown', () => {
     expect(md).toContain('some value');
   });
 
+  it('shows boolean custom fields as Yes/No', () => {
+    const item = makeItem({
+      fields: [
+        { name: '2FA Enabled', value: 'true', type: 2, linkedId: null },
+        { name: 'Legacy', value: 'false', type: 2, linkedId: null },
+      ],
+    });
+    const md = buildItemDetailMarkdown(item);
+    expect(md).toContain('2FA Enabled');
+    expect(md).toContain('Yes');
+    expect(md).toContain('Legacy');
+    expect(md).toContain('No');
+  });
+
   it('shows password when showPassword is true', () => {
     // Password moved to metadata sidebar — markdown no longer contains it
     const md = buildItemDetailMarkdown(makeItem({ name: 'My Item' }));

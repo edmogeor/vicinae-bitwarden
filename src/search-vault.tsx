@@ -213,16 +213,14 @@ export default function SearchVault() {
 
   // --- Render based on state ---
 
-  const gateRender = renderUnlockGate(
-    state.kind,
-    state.kind === 'needs-unlock'
-      ? state.error
-      : state.kind === 'login-failed'
-        ? state.error
-        : undefined,
-    handleUnlock,
-    handleLogin,
-  );
+  let gateError: string | undefined;
+  if (state.kind === 'needs-unlock') {
+    gateError = state.error;
+  } else if (state.kind === 'login-failed') {
+    gateError = state.error;
+  }
+
+  const gateRender = renderUnlockGate(state.kind, gateError, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
 
   // All vault states share a single persistent List to keep handler IDs stable
