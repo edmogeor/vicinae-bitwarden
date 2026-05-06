@@ -21,7 +21,7 @@ import {
   loadCachedVault,
 } from './item-utils';
 import { useSession } from './use-session';
-import { checkBwGate, createUnlockCallbacks, renderUnlockGate, useUnlockGate } from './unlock-gate';
+import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
 import { useVaultSync } from './use-vault-sync';
 import ItemDetailView, { renderItemActionElements } from './item-detail-view';
 import EditItem from './edit-item';
@@ -200,7 +200,7 @@ export default function SearchVault() {
         await Clipboard.copy(totp);
         await showToast({ style: Toast.Style.Success, title: 'Copied TOTP' });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = getErrorMessage(err);
         await showToast({
           style: Toast.Style.Failure,
           title: 'Failed to get TOTP',
@@ -213,14 +213,7 @@ export default function SearchVault() {
 
   // --- Render based on state ---
 
-  let gateError: string | undefined;
-  if (state.kind === 'needs-unlock') {
-    gateError = state.error;
-  } else if (state.kind === 'login-failed') {
-    gateError = state.error;
-  }
-
-  const gateRender = renderUnlockGate(state.kind, gateError, handleUnlock, handleLogin);
+  const gateRender = renderGate(state, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
 
   // All vault states share a single persistent List to keep handler IDs stable
