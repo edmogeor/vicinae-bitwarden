@@ -19,7 +19,7 @@ import CustomFieldsSection from './custom-fields-section';
 import type { CustomField } from './custom-fields-section';
 import { useSession } from './use-session';
 import { getPasswordPrefs, getPreferences } from './preferences';
-import { checkBwGate, createUnlockCallbacks, renderUnlockGate, useUnlockGate } from './unlock-gate';
+import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
 
 type UIState =
   | { kind: 'checking-bw' }
@@ -158,7 +158,7 @@ export default function CreateItem() {
         });
         await popToRoot();
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = getErrorMessage(err);
         await showToast({
           style: Toast.Style.Failure,
           title: 'Failed to create item',
@@ -171,14 +171,7 @@ export default function CreateItem() {
     [session, selectedType, customFields],
   );
 
-  let gateError: string | undefined;
-  if (state.kind === 'needs-unlock') {
-    gateError = state.error;
-  } else if (state.kind === 'login-failed') {
-    gateError = state.error;
-  }
-
-  const gateRender = renderUnlockGate(state.kind, gateError, handleUnlock, handleLogin);
+  const gateRender = renderGate(state, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
 
   if (state.kind === 'checking-bw' || state.kind === 'logging-in') {

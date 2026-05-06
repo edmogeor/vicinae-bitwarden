@@ -28,6 +28,7 @@ const {
     getItem: vi.fn(),
     getTotp: vi.fn(),
     deleteItem: vi.fn(),
+    getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
   };
 
   const mockUseSession = {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { makeFormMock } from './__utils__/vicinae-mocks';
 
 // ---------------------------------------------------------------------------
 // Hoisted mock values
@@ -58,20 +59,7 @@ vi.mock('@vicinae/api', () => ({
       },
     },
   ),
-  Form: Object.assign(
-    function Form({ children, actions }: { children: React.ReactNode; actions?: React.ReactNode }) {
-      return React.createElement('form', { 'data-testid': 'form' }, children, actions);
-    },
-    {
-      PasswordField(props: { id: string; title: string; error?: string }) {
-        return React.createElement('input', {
-          type: 'password',
-          'data-testid': props.id,
-          placeholder: props.title,
-        });
-      },
-    },
-  ),
+  Form: makeFormMock(),
   showToast: vi.fn(),
   Toast: { Style: { Success: 'success', Failure: 'failure' } },
   useNavigation: () => ({ push: vi.fn() }),
@@ -129,6 +117,26 @@ vi.mock('../unlock-gate', () => ({
         'Install libsecret',
       );
     if (kind === 'needs-unlock' || kind === 'unlocking') {
+      return React.createElement(
+        'form',
+        { 'data-testid': 'unlock-form' },
+        React.createElement('h2', null, 'Unlock'),
+      );
+    }
+    return null;
+  },
+  renderGate: (state: { kind: string; error?: string }) => {
+    if (state.kind === 'bw-not-installed')
+      return React.createElement('div', { 'data-testid': 'bw-not-installed' }, 'BW Not Installed');
+    if (state.kind === 'secret-tool-not-installed')
+      return React.createElement(
+        'div',
+        { 'data-testid': 'secret-tool-not-installed' },
+        'Install libsecret',
+      );
+    if (state.kind === 'login-failed')
+      return React.createElement('div', { 'data-testid': 'login-failed' }, 'Login failed');
+    if (state.kind === 'needs-unlock' || state.kind === 'unlocking') {
       return React.createElement(
         'form',
         { 'data-testid': 'unlock-form' },

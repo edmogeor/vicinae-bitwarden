@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
+import { makeFormMock } from './__utils__/vicinae-mocks';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -22,28 +23,16 @@ const { MockAction } = vi.hoisted(() => {
 vi.mock('@vicinae/api', () => ({
   Action: MockAction,
   ActionPanel: 'ActionPanel',
-  Form: Object.assign(
-    function Form({ children, actions }: { children: React.ReactNode; actions?: React.ReactNode }) {
-      return React.createElement('form', { 'data-testid': 'form' }, children, actions);
+  Form: makeFormMock({
+    Description(props: { title?: string; text?: string }) {
+      return React.createElement(
+        'div',
+        { 'data-testid': 'form-description' },
+        React.createElement('strong', null, props.title),
+        React.createElement('span', null, props.text),
+      );
     },
-    {
-      PasswordField(props: { id: string; title: string; error?: string }) {
-        return React.createElement('input', {
-          type: 'password',
-          'data-testid': props.id,
-          placeholder: props.title,
-        });
-      },
-      Description(props: { title?: string; text?: string }) {
-        return React.createElement(
-          'div',
-          { 'data-testid': 'form-description' },
-          React.createElement('strong', null, props.title),
-          React.createElement('span', null, props.text),
-        );
-      },
-    },
-  ),
+  }),
   showToast: vi.fn(),
   Toast: { Style: { Success: 'success', Failure: 'failure' } },
 }));

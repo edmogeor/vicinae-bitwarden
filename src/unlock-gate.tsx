@@ -104,6 +104,21 @@ export function useUnlockGate(deps: UnlockGateDeps) {
   return { handleLogin, handleUnlock };
 }
 
+interface GateState {
+  kind: string;
+  error?: string;
+}
+
+export function renderGate(
+  state: GateState,
+  handleUnlock: (values: Form.Values) => Promise<void>,
+  handleLogin?: () => void,
+): React.ReactElement | null {
+  const gateError =
+    state.kind === 'needs-unlock' || state.kind === 'login-failed' ? state.error : undefined;
+  return renderUnlockGate(state.kind, gateError, handleUnlock, handleLogin);
+}
+
 export function renderUnlockGate(
   kind: string,
   error: string | undefined,
