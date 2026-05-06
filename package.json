@@ -45,6 +45,14 @@
       "placeholder": "https://vault.example.com"
     },
     {
+      "name": "customCertPath",
+      "title": "Custom CA Certificate Path",
+      "description": "Path to a custom CA certificate bundle for self-hosted servers using a private CA. Example: /etc/ssl/certs/my-ca.pem",
+      "type": "textfield",
+      "required": false,
+      "placeholder": "/etc/ssl/certs/ca-bundle.pem"
+    },
+    {
       "name": "apiClientId",
       "title": "API Client ID",
       "description": "Your personal API key client_id from the Bitwarden web vault (Settings → Security → View API key)",

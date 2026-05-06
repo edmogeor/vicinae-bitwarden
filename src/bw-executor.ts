@@ -1,18 +1,24 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { BwError, BwFolder, BwItem, ItemType, ItemTypeValue } from './bitwarden-types';
+import { getPreferences } from './preferences';
 
 const exec = promisify(execFile);
 
 /** Token that identifies an unlocked vault session */
 export type Session = string;
 
-interface BwStatus {
-  serverUrl: string | null;
-  lastSync: string | null;
-  userEmail: string;
-  userId: string;
-  status: 'unauthenticated' | 'locked' | 'unlocked';
+function bwEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  try {
+    const prefs = getPreferences();
+    if (prefs.customCertPath) {
+      env.NODE_EXTRA_CA_CERTS = prefs.customCertPath;
+    }
+  } catch {
+    // Preferences not available
+  }
+  return env;
 }
 
 function parseJson<T>(stdout: string): T {
@@ -24,7 +30,7 @@ function parseJson<T>(stdout: string): T {
 }
 
 function sessionEnv(session: Session): NodeJS.ProcessEnv {
-  return { ...process.env, BW_SESSION: session };
+  return { ...bwEnv(), BW_SESSION: session };
 }
 
 export function getErrorMessage(err: unknown): string {
@@ -68,7 +74,7 @@ export async function login(params: {
   serverUrl: string;
 }): Promise<void> {
   const env = {
-    ...process.env,
+    ...bwEnv(),
     BW_CLIENTID: params.clientId,
     BW_CLIENTSECRET: params.clientSecret,
   };

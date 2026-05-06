@@ -3,6 +3,7 @@ import { getPreferenceValues } from '@vicinae/api';
 interface Preferences {
   serverRegion: 'bitwarden.com' | 'bitwarden.eu' | 'self-hosted';
   customServerUrl: string;
+  customCertPath: string;
   apiClientId: string;
   apiClientSecret: string;
   passwordLength: string;
