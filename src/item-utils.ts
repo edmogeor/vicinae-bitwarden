@@ -3,7 +3,7 @@ import type { Image } from '@vicinae/api';
 import { BwItem, BwFolder, ItemType } from './bitwarden-types';
 import type { BwField, ItemTypeValue } from './bitwarden-types';
 import type { CreateItemPayload, ItemAction } from './bw-executor';
-import { FAVICON_CACHE_KEY } from './favicons';
+import { FAVICON_CACHE_KEY, extractHostname } from './favicons';
 import type { FaviconMap } from './favicons';
 
 export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'];
@@ -391,17 +391,13 @@ export function actionIcon(action: { label: string }): Image.ImageLike | undefin
  * falls back to Vicinae built-in icons by item type.
  */
 export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
-  if (item.type === ItemType.Login && item.login?.uris?.[0]?.uri) {
-    try {
-      const domain = new URL(item.login.uris[0].uri).hostname;
-      const cached = favicons?.[domain];
-
-      // Only use favicon when we have a confirmed non-empty image
+  if (item.type === ItemType.Login) {
+    const hostname = extractHostname(item.login?.uris);
+    if (hostname) {
+      const cached = favicons?.[hostname];
       if (cached !== undefined && cached !== '') {
         return { source: cached, fallback: 'key' };
       }
-    } catch {
-      // Invalid URL, fall through to type icon
     }
   }
 

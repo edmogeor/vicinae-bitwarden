@@ -25,7 +25,7 @@ import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from '.
 import { useVaultSync } from './use-vault-sync';
 import ItemDetailView, { renderItemActionElements } from './item-detail-view';
 import EditItem from './edit-item';
-import { loadFaviconCache, resolveFavicons } from './favicons';
+import { extractHostname, loadFaviconCache, resolveFavicons } from './favicons';
 import type { BwFolder, BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 
@@ -134,13 +134,9 @@ export default function SearchVault() {
 
     const domains: string[] = [];
     for (const item of state.items) {
-      if (item.type === ItemType.Login && item.login?.uris?.[0]?.uri) {
-        try {
-          domains.push(new URL(item.login.uris[0].uri).hostname);
-        } catch {
-          // skip
-        }
-      }
+      if (item.type !== ItemType.Login) continue;
+      const hostname = extractHostname(item.login?.uris);
+      if (hostname) domains.push(hostname);
     }
 
     if (domains.length === 0) return;
