@@ -572,28 +572,35 @@ describe('itemIcon', () => {
     });
     const icon = itemIcon(item, { 'github.com': 'https://github.com/favicon.ico' }) as {
       source: string;
-      fallback: string;
+      fallback: { light: string; dark: string };
     };
     expect(icon.source).toBe('https://github.com/favicon.ico');
-    expect(icon.fallback).toBe('key');
+    expect(icon.fallback.light).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(icon.fallback.dark).toMatch(/^data:image\/svg\+xml;base64,/);
   });
 
-  it('returns key icon for Login items without URL', () => {
+  it('returns themed SVG placeholder for Login items without URL', () => {
     const item = makeItem({
       type: ItemType.Login,
       login: { username: null, password: null, totp: null },
     });
-    expect(itemIcon(item)).toBe('key');
+    const icon = itemIcon(item) as { source: { light: string; dark: string } };
+    expect(icon.source.light).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(icon.source.dark).toMatch(/^data:image\/svg\+xml;base64,/);
   });
 
-  it('returns credit-card icon for Card items', () => {
+  it('returns themed SVG placeholder for Card items', () => {
     const item = makeItem({ type: ItemType.Card });
-    expect(itemIcon(item)).toBe('credit-card');
+    const icon = itemIcon(item) as { source: { light: string; dark: string } };
+    expect(icon.source.light).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(icon.source.dark).toMatch(/^data:image\/svg\+xml;base64,/);
   });
 
-  it('returns person icon for Identity items', () => {
+  it('returns themed SVG placeholder for Identity items', () => {
     const item = makeItem({ type: ItemType.Identity });
-    expect(itemIcon(item)).toBe('person');
+    const icon = itemIcon(item) as { source: { light: string; dark: string } };
+    expect(icon.source.light).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(icon.source.dark).toMatch(/^data:image\/svg\+xml;base64,/);
   });
 });
 
