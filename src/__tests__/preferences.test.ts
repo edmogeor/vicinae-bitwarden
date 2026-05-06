@@ -11,6 +11,7 @@ function prefs(
   overrides: Partial<{
     serverRegion: 'bitwarden.com' | 'bitwarden.eu' | 'self-hosted';
     customServerUrl: string;
+    customCertPath: string;
     passwordLength: string;
     passwordUppercase: boolean;
     passwordLowercase: boolean;
@@ -21,6 +22,7 @@ function prefs(
   return {
     serverRegion: 'bitwarden.com' as const,
     customServerUrl: '',
+    customCertPath: '',
     apiClientId: 'x',
     apiClientSecret: 'x',
     passwordLength: '20',
