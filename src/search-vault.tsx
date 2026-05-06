@@ -63,9 +63,7 @@ export default function SearchVault() {
     ...createUnlockCallbacks(setState, () => setState({ kind: 'loading' })),
   });
 
-  const { syncVault, handleSync, isSyncing } = useVaultSync(session, setVault, () =>
-    setFaviconMap({}),
-  );
+  const { syncVault, handleSync, isSyncing } = useVaultSync(session, setVault);
 
   // Step 1: Load cached vault immediately, run bw checks in parallel
   useEffect(() => {
@@ -226,7 +224,7 @@ export default function SearchVault() {
   return (
     <List
       isLoading={isLoading}
-      onSearchTextChange={setSearchText}
+      onSearchTextChange={state.kind === 'vault' ? setSearchText : undefined}
       searchBarPlaceholder="Search vault by name..."
       throttle
     >

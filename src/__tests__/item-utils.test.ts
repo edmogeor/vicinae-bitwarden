@@ -6,6 +6,39 @@ const { mockGetItem, mockSetItem, mockRemoveItem } = vi.hoisted(() => ({
   mockRemoveItem: vi.fn<[key: string], Promise<void>>().mockResolvedValue(undefined),
 }));
 
+const { mockExistsSync, mockStatSync } = vi.hoisted(() => ({
+  mockExistsSync: vi.fn<[string], boolean>().mockReturnValue(false),
+  mockStatSync: vi.fn<[string], { mtimeMs: number }>().mockReturnValue({ mtimeMs: 0 }),
+}));
+
+vi.mock('node:fs', () => {
+  const fsMock: Record<string, unknown> = {
+    existsSync: (path: string) => mockExistsSync(path),
+    mkdirSync: vi.fn(),
+    statSync: (path: string) => mockStatSync(path),
+    writeFileSync: vi.fn(),
+  };
+  fsMock.default = fsMock;
+  return fsMock;
+});
+
+vi.mock('node:path', () => {
+  const pathMock = {
+    join: (...args: string[]) => args.join('/'),
+  };
+  return { default: pathMock, ...pathMock };
+});
+
+vi.mock('node:crypto', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:crypto')>();
+  return {
+    ...actual,
+    createHash: () => ({
+      update: () => ({ digest: () => 'not-the-globe-md5' }),
+    }),
+  };
+});
+
 vi.mock('@vicinae/api', () => ({
   LocalStorage: {
     getItem: (key: string) => mockGetItem(key),
@@ -13,6 +46,23 @@ vi.mock('@vicinae/api', () => ({
     removeItem: (key: string) => mockRemoveItem(key),
   },
   Image: { Mask: { Circle: 'circle', RoundedRectangle: 'roundedRectangle' } },
+  environment: {
+    supportPath: '/mock/support',
+    assetsPath: '/mock/assets',
+    raycastVersion: '1.0.0',
+    ownerOrAuthorName: 'test',
+    extensionName: 'test',
+    commandName: 'test',
+    commandMode: 'view' as const,
+    isDevelopment: true,
+    appearance: 'light' as const,
+    theme: 'light' as const,
+    textSize: 'medium' as const,
+    launchType: 'userInitiated' as const,
+    canAccess: () => false,
+    vicinaeVersion: { tag: '0.0.0', commit: 'abc' },
+    isRaycast: false,
+  },
 }));
 
 import { BwItem, ItemType } from '../bitwarden-types';
@@ -759,14 +809,17 @@ describe('loadFaviconCache', () => {
   });
 
   it('returns parsed favicon map from LocalStorage', async () => {
-    const map = {
-      'github.com': 'data:image/png;base64,abc',
-      'example.com': 'data:image/png;base64,def',
+    const entries = {
+      'github.com': { dataUri: 'https://favicon.url/github.com', timestamp: 1000 },
+      'example.com': { dataUri: 'https://favicon.url/example.com', timestamp: 1000 },
     };
-    mockGetItem.mockResolvedValue(JSON.stringify(map));
+    mockGetItem.mockResolvedValue(JSON.stringify(entries));
 
     const result = await loadFaviconCache();
-    expect(result).toEqual(map);
+    expect(result).toEqual({
+      'github.com': 'https://favicon.url/github.com',
+      'example.com': 'https://favicon.url/example.com',
+    });
   });
 
   it('returns empty object on parse error', async () => {
@@ -782,75 +835,100 @@ describe('loadFaviconCache', () => {
 // ---------------------------------------------------------------------------
 describe('clearFaviconCache', () => {
   it('clears the in-memory favicon cache', async () => {
-    // Pre-populate by calling resolveFavicons with a stubbed fetch
+    clearFaviconCache();
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       headers: { get: () => 'image/png' },
-      arrayBuffer: async () => new Uint8Array([]).buffer,
+      arrayBuffer: async () =>
+        new Uint8Array([
+          0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 32,
+        ]).buffer,
       status: 200,
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await resolveFavicons(['test.com']);
-    expect(result['test.com']).toBeTruthy();
+    const r1 = await resolveFavicons(['github.com']);
+    expect(r1['github.com']).toBe('/mock/support/favicons/github.com.png');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     clearFaviconCache();
 
-    // After clearing, a subsequent resolve should re-fetch
-    const result2 = await resolveFavicons(['test.com']);
+    const r2 = await resolveFavicons(['github.com']);
+    expect(r2['github.com']).toBe('/mock/support/favicons/github.com.png');
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     vi.unstubAllGlobals();
   });
 });
 
-// ---------------------------------------------------------------------------
-// resolveFavicons
-// ---------------------------------------------------------------------------
-
 function createFetchMock() {
   return vi.fn().mockResolvedValue({
     ok: true,
     headers: { get: () => 'image/png' },
-    arrayBuffer: async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+    arrayBuffer: async () =>
+      new Uint8Array([
+        0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 32,
+      ]).buffer,
     status: 200,
   });
 }
 
+// ---------------------------------------------------------------------------
+// resolveFavicons
+// ---------------------------------------------------------------------------
 describe('resolveFavicons', () => {
-  it('returns cached favicons without re-fetching', async () => {
+  it('downloads and caches favicons as local files', async () => {
     clearFaviconCache();
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
 
-    // First call fetches
     const r1 = await resolveFavicons(['github.com']);
+    expect(r1['github.com']).toBe('/mock/support/favicons/github.com.png');
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    // Second call uses cache
+    // Simulate file now existing on disk
+    mockExistsSync.mockReturnValue(true);
+
+    // Second call uses in-memory cache (verifies file exists)
     const r2 = await resolveFavicons(['github.com']);
     expect(r2['github.com']).toBe(r1['github.com']);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
+    mockExistsSync.mockReturnValue(false);
     vi.unstubAllGlobals();
+  });
+
+  it('uses file mtime when loading from disk cold', async () => {
+    clearFaviconCache();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    // First call: download and cache
+    await resolveFavicons(['github.com']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Wipe in-memory cache to simulate restart
+    clearFaviconCache();
+
+    // File exists on disk and is fresh
+    const now = Date.now();
+    mockExistsSync.mockReturnValue(true);
+    mockStatSync.mockReturnValue({ mtimeMs: now });
+
+    const r2 = await resolveFavicons(['github.com']);
+    expect(r2['github.com']).toBe('/mock/support/favicons/github.com.png');
+    expect(fetchMock).toHaveBeenCalledTimes(1); // No re-fetch
+
+    vi.unstubAllGlobals();
+    mockExistsSync.mockReturnValue(false);
   });
 
   it('handles HTTP errors gracefully', async () => {
     clearFaviconCache();
-
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+
     const result = await resolveFavicons(['bad.com']);
-    expect(result['bad.com']).toBe('');
-
-    vi.unstubAllGlobals();
-  });
-
-  it('handles network errors gracefully', async () => {
-    clearFaviconCache();
-
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
-    const result = await resolveFavicons(['offline.com']);
-    expect(result['offline.com']).toBe('');
+    expect(result['bad.com']).toBeUndefined();
 
     vi.unstubAllGlobals();
   });
@@ -860,7 +938,8 @@ describe('resolveFavicons', () => {
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
 
-    await resolveFavicons(['a.com', 'a.com', 'b.com']);
+    const result = await resolveFavicons(['a.com', 'a.com', 'b.com']);
+    expect(Object.keys(result).sort()).toEqual(['a.com', 'b.com']);
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     vi.unstubAllGlobals();
