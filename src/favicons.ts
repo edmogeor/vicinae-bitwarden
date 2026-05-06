@@ -16,27 +16,53 @@ let faviconCache: Record<string, CacheEntry> = {};
 export async function loadFaviconCache(): Promise<FaviconMap> {
   try {
     const raw = await LocalStorage.getItem<string>(FAVICON_CACHE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed: Record<string, unknown> = JSON.parse(raw);
+    const result: FaviconMap = {};
+    for (const [domain, value] of Object.entries(parsed)) {
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        'dataUri' in value &&
+        'timestamp' in value
+      ) {
+        const entry = value as CacheEntry;
+        result[domain] = entry.dataUri;
+        if (!faviconCache[domain]) faviconCache[domain] = entry;
+      } else if (typeof value === 'string') {
+        result[domain] = value;
+        if (!faviconCache[domain]) faviconCache[domain] = { dataUri: value, timestamp: Date.now() };
+      }
+    }
+    return result;
   } catch {
     return {};
   }
 }
 
 async function persistFaviconCache(): Promise<void> {
-  const map: FaviconMap = {};
+  const map: Record<string, CacheEntry> = {};
   for (const [domain, entry] of Object.entries(faviconCache)) {
-    if (entry.dataUri) map[domain] = entry.dataUri;
+    if (entry.dataUri) map[domain] = entry;
   }
   await LocalStorage.setItem(FAVICON_CACHE_KEY, JSON.stringify(map));
 }
 
-// Try loading persisted favicon cache on module init
-void (async () => {
-  const saved = await loadFaviconCache();
-  for (const [domain, uri] of Object.entries(saved)) {
-    faviconCache[domain] = { dataUri: uri, timestamp: Date.now() };
+// Pre-warm the in-memory cache on module init
+void loadFaviconCache();
+
+export function extractHostname(uris?: { uri: string }[]): string | null {
+  if (!uris?.length) return null;
+  for (const u of uris) {
+    if (!u.uri) continue;
+    try {
+      return new URL(/^https?:\/\//.test(u.uri) ? u.uri : `https://${u.uri}`).hostname;
+    } catch {
+      continue;
+    }
   }
-})();
+  return null;
+}
 
 // Google's globe placeholder — same 16x16 PNG regardless of sz param
 const GLOBE_MD5 = 'b8a0bf372c762e966cc99ede8682bc71';
