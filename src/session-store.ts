@@ -8,6 +8,10 @@ const ACCOUNT = 'session';
 
 let installed: boolean | null = null;
 
+function isNodeError(err: unknown): err is { code: string } & Error {
+  return err instanceof Error && 'code' in err;
+}
+
 export async function checkSecretToolInstalled(): Promise<boolean> {
   if (installed) return true;
   try {
@@ -16,9 +20,8 @@ export async function checkSecretToolInstalled(): Promise<boolean> {
     });
     installed = true;
     return true;
-  } catch (err: unknown) {
-    const code = (err as { code?: unknown }).code;
-    if (code === 'ENOENT') {
+  } catch (err) {
+    if (isNodeError(err) && err.code === 'ENOENT') {
       installed = false;
       return false;
     }

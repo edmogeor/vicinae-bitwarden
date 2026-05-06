@@ -265,44 +265,44 @@ export function itemActions(item: BwItem): ItemAction[] {
   }
 }
 
-function t(v: unknown): string | null {
+function trimToNull(v: unknown): string | null {
   return String(v ?? '').trim() || null;
 }
 
 function buildLoginFields(values: Record<string, string>): CreateItemPayload['login'] {
   return {
-    username: t(values.username),
-    password: t(values.password),
-    totp: t(values.totp),
+    username: trimToNull(values.username),
+    password: trimToNull(values.password),
+    totp: trimToNull(values.totp),
     uris: values.url?.trim() ? [{ uri: values.url.trim(), match: null }] : undefined,
   };
 }
 
 function buildCardFields(values: Record<string, string>): CreateItemPayload['card'] {
   return {
-    cardholderName: t(values.cardholderName),
-    brand: t(values.brand),
-    number: t(values.number),
-    expMonth: t(values.expMonth),
-    expYear: t(values.expYear),
-    code: t(values.code),
+    cardholderName: trimToNull(values.cardholderName),
+    brand: trimToNull(values.brand),
+    number: trimToNull(values.number),
+    expMonth: trimToNull(values.expMonth),
+    expYear: trimToNull(values.expYear),
+    code: trimToNull(values.code),
   };
 }
 
 function buildIdentityFields(values: Record<string, string>): CreateItemPayload['identity'] {
   return {
-    title: t(values.title),
-    firstName: t(values.firstName),
-    middleName: t(values.middleName),
-    lastName: t(values.lastName),
-    email: t(values.email),
-    phone: t(values.phone),
-    address1: t(values.address1),
-    address2: t(values.address2),
-    city: t(values.city),
-    state: t(values.state),
-    postalCode: t(values.postalCode),
-    country: t(values.country),
+    title: trimToNull(values.title),
+    firstName: trimToNull(values.firstName),
+    middleName: trimToNull(values.middleName),
+    lastName: trimToNull(values.lastName),
+    email: trimToNull(values.email),
+    phone: trimToNull(values.phone),
+    address1: trimToNull(values.address1),
+    address2: trimToNull(values.address2),
+    city: trimToNull(values.city),
+    state: trimToNull(values.state),
+    postalCode: trimToNull(values.postalCode),
+    country: trimToNull(values.country),
   };
 }
 
@@ -318,8 +318,8 @@ export function toCreatePayload(
   const base: CreateItemPayload = {
     type,
     name: formValues.name ?? '',
-    notes: t(formValues.notes),
-    folderId: folderId || null,
+    notes: trimToNull(formValues.notes),
+    folderId: folderId ?? null,
     favorite: false,
   };
 

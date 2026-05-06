@@ -16,6 +16,10 @@ interface CacheEntry {
 
 let faviconCache: Record<string, CacheEntry> = {};
 
+function isCacheEntry(value: unknown): value is CacheEntry {
+  return typeof value === 'object' && value !== null && 'dataUri' in value && 'timestamp' in value;
+}
+
 export async function loadFaviconCache(): Promise<FaviconMap> {
   try {
     const raw = await LocalStorage.getItem<string>(FAVICON_CACHE_KEY);
@@ -23,13 +27,8 @@ export async function loadFaviconCache(): Promise<FaviconMap> {
     const parsed: Record<string, unknown> = JSON.parse(raw);
     const result: FaviconMap = {};
     for (const [domain, value] of Object.entries(parsed)) {
-      if (
-        typeof value === 'object' &&
-        value !== null &&
-        'dataUri' in value &&
-        'timestamp' in value
-      ) {
-        const entry = value as CacheEntry;
+      if (isCacheEntry(value)) {
+        const entry = value;
         // Legacy: entries stored as file paths need converting to data URIs
         if (entry.dataUri.startsWith('/')) {
           try {
@@ -40,11 +39,15 @@ export async function loadFaviconCache(): Promise<FaviconMap> {
           }
         }
         result[domain] = entry.dataUri;
-        if (!faviconCache[domain]) faviconCache[domain] = entry;
+        if (!faviconCache[domain]) {
+          faviconCache[domain] = entry;
+        }
       } else if (typeof value === 'string') {
         // Old plain-string format — treat as stale so it gets replaced
         result[domain] = value;
-        if (!faviconCache[domain]) faviconCache[domain] = { dataUri: value, timestamp: 0 };
+        if (!faviconCache[domain]) {
+          faviconCache[domain] = { dataUri: value, timestamp: 0 };
+        }
       }
     }
     return result;
@@ -69,7 +72,8 @@ export function extractHostname(uris?: { uri: string }[]): string | null {
   for (const u of uris) {
     if (!u.uri) continue;
     try {
-      return new URL(/^https?:\/\//.test(u.uri) ? u.uri : `https://${u.uri}`).hostname;
+      const urlString = /^https?:\/\//.test(u.uri) ? u.uri : `https://${u.uri}`;
+      return new URL(urlString).hostname;
     } catch {
       continue;
     }

@@ -144,12 +144,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
             ? customFields.map((f) => ({ name: f.name, value: f.value, type: f.type }))
             : undefined;
 
-        const payload = toCreatePayload(
-          formValues,
-          item.type as ItemTypeValue,
-          formValues.folder || null,
-          fields,
-        );
+        const payload = toCreatePayload(formValues, item.type, formValues.folder || null, fields);
         await bw.editItem(item.id, payload, session);
         await showToast({
           style: Toast.Style.Success,
