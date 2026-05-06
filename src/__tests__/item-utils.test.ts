@@ -263,7 +263,7 @@ describe('itemActions', () => {
     const labels = actions.map((a) => a.label);
     expect(labels).toContain('Copy Password');
     expect(labels).not.toContain('Copy Username');
-    expect(labels).toContain('Copy Verification Code');
+    expect(labels).not.toContain('Copy Verification Code');
   });
 
   it('returns card number and code actions for Card items', () => {
@@ -625,10 +625,10 @@ describe('saveCachedVault', () => {
     expect(cached.login.username).toBe('user');
     expect(cached.login.uris).toEqual([{ uri: 'https://github.com', match: null }]);
 
-    // Stripped
+    // Stripped (empty string sentinel means "exists but hidden")
     expect(cached.notes).toBeNull();
-    expect(cached.login.password).toBeNull();
-    expect(cached.login.totp).toBeNull();
+    expect(cached.login.password).toBe('');
+    expect(cached.login.totp).toBe('');
     expect(cached.fields).toEqual([]);
   });
 
@@ -696,12 +696,12 @@ describe('saveCachedVault', () => {
     const [, raw] = mockSetItem.mock.calls[0] as [string, string];
     const parsed = JSON.parse(raw);
 
-    // Card: keep brand and holder, strip sensitive
+    // Card: keep brand and holder, strip sensitive (empty string = exists but hidden)
     const card = parsed.items[0].card;
     expect(card.cardholderName).toBe('John Doe');
     expect(card.brand).toBe('Visa');
-    expect(card.number).toBeNull();
-    expect(card.code).toBeNull();
+    expect(card.number).toBe('');
+    expect(card.code).toBe('');
     expect(card.expMonth).toBeNull();
     expect(card.expYear).toBeNull();
 

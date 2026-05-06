@@ -26,6 +26,7 @@ type UIState =
   | { kind: 'bw-not-installed' }
   | { kind: 'secret-tool-not-installed' }
   | { kind: 'logging-in' }
+  | { kind: 'login-failed'; error: string }
   | { kind: 'needs-unlock'; error?: string }
   | { kind: 'unlocking' }
   | { kind: 'form' };
@@ -172,8 +173,13 @@ export default function CreateItem() {
 
   const gateRender = renderUnlockGate(
     state.kind,
-    state.kind === 'needs-unlock' ? state.error : undefined,
+    state.kind === 'needs-unlock'
+      ? state.error
+      : state.kind === 'login-failed'
+        ? state.error
+        : undefined,
     handleUnlock,
+    handleLogin,
   );
   if (gateRender) return gateRender;
 
