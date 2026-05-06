@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Favicon cache now persists timestamps so the 24-hour TTL survives extension restarts; previously all entries were reset to `Date.now()` on every module init
+- Favicon resolution handles bare domain URIs (e.g. `example.com` without a protocol) and tries all item URIs, not just the first one
 - Login failures are now surfaced as a dedicated error screen with a Retry button, instead of showing the Unlock form
 - Logout no longer throws when the CLI is already logged out — handles the "not logged in" response gracefully
 
