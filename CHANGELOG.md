@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-05-06
+
+### Added
+
+- Custom CA certificate path preference for self-hosted servers using a private CA — sets `NODE_EXTRA_CA_CERTS` in the `bw` process environment
+
+### Fixed
+
+- Login failures are now surfaced as a dedicated error screen with a Retry button, instead of showing the Unlock form
+- Logout no longer throws when the CLI is already logged out — handles the "not logged in" response gracefully
+
+### Changed
+
+- Startup time reduced by running CLI checks (`bw status`, `secret-tool`, `bw --version`) in parallel via `Promise.allSettled`
+- Cached vault favicons and item list load synchronously on mount for instant display; sync runs in the background
+- `getErrorMessage` now filters Node.js deprecation warnings from `bw` stderr output
+- Logout now clears the cached vault in addition to the session
+- De-duplicated gate error rendering pattern into a shared `renderGate` function
+- Extracted shared test mock utilities to reduce test boilerplate
+
 ## [0.1.1] - 2026-05-05
 
 ### Changed
