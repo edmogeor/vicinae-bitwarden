@@ -2,6 +2,7 @@ import { LocalStorage, environment } from '@vicinae/api';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { PNG } from 'pngjs';
 
 export const FAVICON_CACHE_KEY = 'vicinae-bitwarden-favicons';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
@@ -100,9 +101,55 @@ function isGlobeFavicon(buf: Buffer, status: number): boolean {
   return hash === GLOBE_MD5;
 }
 
+// iOS-style corner radius ratio. Vicinae has no native cornerRadius prop, so
+// we mask the corners into the PNG bytes once at fetch (and on cold-disk hit
+// for icons cached before this change), then everything renders pre-rounded.
+const CORNER_RADIUS_RATIO = 0.22;
+
+function roundPngCorners(buf: Buffer): Buffer {
+  let png: PNG;
+  try {
+    png = PNG.sync.read(buf);
+  } catch {
+    return buf; // not decodable — hand back the original bytes
+  }
+  const { width, height, data } = png;
+  const radius = Math.max(1, Math.round(Math.min(width, height) * CORNER_RADIUS_RATIO));
+
+  const maskCorner = (
+    cx: number,
+    cy: number,
+    xRange: [number, number],
+    yRange: [number, number],
+  ) => {
+    for (let y = yRange[0]; y < yRange[1]; y++) {
+      for (let x = xRange[0]; x < xRange[1]; x++) {
+        const dx = x + 0.5 - cx;
+        const dy = y + 0.5 - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= radius - 0.5) continue;
+        const idx = (y * width + x) * 4 + 3;
+        if (dist >= radius + 0.5) {
+          data[idx] = 0;
+        } else {
+          // 1px antialiased band
+          const factor = radius + 0.5 - dist;
+          data[idx] = Math.round(data[idx] * factor);
+        }
+      }
+    }
+  };
+  maskCorner(radius, radius, [0, radius], [0, radius]);
+  maskCorner(width - radius, radius, [width - radius, width], [0, radius]);
+  maskCorner(radius, height - radius, [0, radius], [height - radius, height]);
+  maskCorner(width - radius, height - radius, [width - radius, width], [height - radius, height]);
+  return PNG.sync.write(png);
+}
+
 function fileToDataUri(filePath: string): string {
   const buf = readFileSync(filePath);
-  return `data:image/png;base64,${buf.toString('base64')}`;
+  const rounded = roundPngCorners(buf);
+  return `data:image/png;base64,${rounded.toString('base64')}`;
 }
 
 function resolveDomain(domain: string, now: number, result: FaviconMap): boolean {
@@ -153,9 +200,9 @@ async function fetchAndWrite(domain: string, filePath: string, now: number): Pro
       faviconCache[domain] = { dataUri: '', timestamp: now };
       return '';
     }
-    writeFileSync(filePath, buf);
-    const mime = res.headers.get('content-type') ?? 'image/png';
-    const dataUri = `data:${mime};base64,${buf.toString('base64')}`;
+    const rounded = roundPngCorners(buf);
+    writeFileSync(filePath, rounded);
+    const dataUri = `data:image/png;base64,${rounded.toString('base64')}`;
     faviconCache[domain] = { dataUri, timestamp: now };
     return dataUri;
   } catch {
