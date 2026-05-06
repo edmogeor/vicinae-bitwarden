@@ -28,7 +28,16 @@ function sessionEnv(session: Session): NodeJS.ProcessEnv {
 }
 
 export function getErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  if (err instanceof Error) {
+    const stderr = (err as Error & { stderr?: string }).stderr?.trim() || '';
+    const cleaned = stderr
+      .split('\n')
+      .filter((line) => !line.includes('[DEP0') && !line.includes('DeprecationWarning'))
+      .join('\n')
+      .trim();
+    return cleaned || err.message;
+  }
+  return String(err);
 }
 
 function toBwError(err: unknown): BwError {
@@ -267,6 +276,8 @@ export async function logout(): Promise<void> {
   try {
     await exec('bw', ['logout'], { timeout: 10000 });
   } catch (err) {
+    const message = getErrorMessage(err);
+    if (message.toLowerCase().includes('not logged in')) return;
     throw toBwError(err);
   }
 }

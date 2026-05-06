@@ -14,17 +14,22 @@ export async function checkBwGate(
   | { kind: 'needs-unlock' }
   | { kind: 'ready' }
 > {
-  const installed = await bw.checkInstalled();
-  if (!installed) return { kind: 'bw-not-installed' };
+  const [installed, stInstalled, statusResult] = await Promise.allSettled([
+    bw.checkInstalled(),
+    checkSecretToolInstalled(),
+    bw.status(),
+  ]);
 
-  const stInstalled = await checkSecretToolInstalled();
-  if (!stInstalled) return { kind: 'secret-tool-not-installed' };
+  if (installed.status === 'rejected' || !installed.value) {
+    return { kind: 'bw-not-installed' };
+  }
 
-  try {
-    const st = await bw.status();
-    if (st.status === 'unauthenticated') return { kind: 'logging-in' };
-  } catch {
-    // If status fails, proceed — session check will handle it
+  if (stInstalled.status === 'rejected' || !stInstalled.value) {
+    return { kind: 'secret-tool-not-installed' };
+  }
+
+  if (statusResult.status === 'fulfilled' && statusResult.value.status === 'unauthenticated') {
+    return { kind: 'logging-in' };
   }
 
   if (session) return { kind: 'ready' };
@@ -32,7 +37,10 @@ export async function checkBwGate(
 }
 
 type GateSetState = (
-  next: { kind: 'unlocking' } | { kind: 'needs-unlock'; error?: string },
+  next:
+    | { kind: 'unlocking' }
+    | { kind: 'needs-unlock'; error?: string }
+    | { kind: 'login-failed'; error: string },
 ) => void;
 
 export function createUnlockCallbacks(
@@ -47,7 +55,7 @@ export function createUnlockCallbacks(
     onUnlockReady,
     onUnlockError: (error) => setState({ kind: 'needs-unlock', error }),
     onLoginReady: () => setState({ kind: 'needs-unlock' }),
-    onLoginError: (error) => setState({ kind: 'needs-unlock', error }),
+    onLoginError: (error) => setState({ kind: 'login-failed', error }),
   };
 }
 
@@ -100,10 +108,28 @@ export function renderUnlockGate(
   kind: string,
   error: string | undefined,
   onUnlock: (values: Form.Values) => Promise<void>,
+  onRetryLogin?: () => void,
 ) {
   if (kind === 'bw-not-installed') return <BwNotInstalled />;
 
   if (kind === 'secret-tool-not-installed') return <SecretToolNotInstalled />;
+
+  if (kind === 'login-failed') {
+    return (
+      <Form
+        actions={
+          <ActionPanel>
+            {onRetryLogin && <Action title="Retry Login" onAction={onRetryLogin} />}
+          </ActionPanel>
+        }
+      >
+        <Form.Description
+          title="Login failed"
+          text={error ?? 'Check your API key in extension preferences'}
+        />
+      </Form>
+    );
+  }
 
   if (kind === 'needs-unlock' || kind === 'unlocking') {
     return (

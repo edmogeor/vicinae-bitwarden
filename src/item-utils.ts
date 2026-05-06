@@ -55,8 +55,8 @@ function stripSensitiveFields(item: BwItem): BwItem {
   if (item.login) {
     stripped.login = {
       username: item.login.username,
-      password: null,
-      totp: null,
+      password: item.login.password ? '' : null,
+      totp: item.login.totp ? '' : null,
       uris: item.login.uris,
       passwordRevisionDate: null,
     };
@@ -66,10 +66,10 @@ function stripSensitiveFields(item: BwItem): BwItem {
     stripped.card = {
       cardholderName: item.card.cardholderName,
       brand: item.card.brand,
-      number: null,
+      number: item.card.number ? '' : null,
       expMonth: null,
       expYear: null,
-      code: null,
+      code: item.card.code ? '' : null,
     };
   }
 
@@ -209,13 +209,13 @@ function getLoginActions(login: BwItem['login']): ItemAction[] {
   const actions: ItemAction[] = [];
   if (login?.password) {
     actions.push({ label: 'Copy Password', value: login.password });
-  } else if (login) {
+  } else if (login && login.password !== null) {
     actions.push({ label: 'Copy Password', value: '', fetchKind: 'password' });
   }
   if (login?.username) actions.push({ label: 'Copy Username', value: login.username });
   if (login?.totp) {
     actions.push({ label: 'Copy Verification Code', value: 'TOTP' });
-  } else if (login) {
+  } else if (login && login.totp !== null) {
     actions.push({ label: 'Copy Verification Code', value: '', fetchKind: 'totp' });
   }
   if (login?.uris?.length) {
@@ -229,12 +229,12 @@ function getCardActions(card: BwItem['card']): ItemAction[] {
   const actions: ItemAction[] = [];
   if (card?.number) {
     actions.push({ label: 'Copy Card Number', value: card.number });
-  } else if (card) {
+  } else if (card && card.number !== null) {
     actions.push({ label: 'Copy Card Number', value: '', fetchKind: 'cardNumber' });
   }
   if (card?.code) {
     actions.push({ label: 'Copy Security Code', value: card.code });
-  } else if (card) {
+  } else if (card && card.code !== null) {
     actions.push({ label: 'Copy Security Code', value: '', fetchKind: 'cardCode' });
   }
   return actions;

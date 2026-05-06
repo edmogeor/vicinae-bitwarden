@@ -24,6 +24,10 @@ vi.mock('@vicinae/api', () => ({
   Toast: { Style: { Success: 'success', Failure: 'failure' } },
 }));
 
+vi.mock('../item-utils', () => ({
+  clearCachedVault: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+}));
+
 import Logout from '../logout';
 
 beforeEach(() => {

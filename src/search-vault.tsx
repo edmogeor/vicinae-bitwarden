@@ -34,22 +34,18 @@ type UIState =
   | { kind: 'bw-not-installed' }
   | { kind: 'secret-tool-not-installed' }
   | { kind: 'logging-in' }
+  | { kind: 'login-failed'; error: string }
   | { kind: 'needs-unlock'; error?: string }
   | { kind: 'unlocking' }
   | { kind: 'loading' }
   | { kind: 'vault'; items: BwItem[]; folders: BwFolder[] };
 
-// Module-level cache for instant synchronous initial render
+// Module-level cache updated by setVault for subsequent renders
 let memoryVault: { items: BwItem[]; folders: BwFolder[] } | null = null;
 
 export default function SearchVault() {
   const { session, unlock, clearSession, loginIfNeeded, loginError } = useSession();
-  const [state, setState] = useState<UIState>(() => {
-    if (memoryVault) {
-      return { kind: 'vault', items: memoryVault.items, folders: memoryVault.folders };
-    }
-    return { kind: 'checking-bw' };
-  });
+  const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
 
   const setVault = (items: BwItem[], folders: BwFolder[]) => {
     memoryVault = { items, folders };
@@ -99,6 +95,7 @@ export default function SearchVault() {
       // Sync in background (cache already shown above) — session is non-null at this point
       try {
         await syncVault(session!);
+        await showToast({ style: Toast.Style.Success, title: 'Vault synced' });
       } catch {
         if (!cached) {
           await clearSession();
@@ -124,6 +121,7 @@ export default function SearchVault() {
     void (async () => {
       try {
         await syncVault(session);
+        await showToast({ style: Toast.Style.Success, title: 'Vault synced' });
       } catch {
         // Cache already showing — silent fail
       }
@@ -217,8 +215,13 @@ export default function SearchVault() {
 
   const gateRender = renderUnlockGate(
     state.kind,
-    state.kind === 'needs-unlock' ? state.error : undefined,
+    state.kind === 'needs-unlock'
+      ? state.error
+      : state.kind === 'login-failed'
+        ? state.error
+        : undefined,
     handleUnlock,
+    handleLogin,
   );
   if (gateRender) return gateRender;
 
