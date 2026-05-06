@@ -3,13 +3,11 @@ import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { saveCachedVault } from './item-utils';
-import { clearFaviconCache } from './favicons';
 import type { BwFolder, BwItem } from './bitwarden-types';
 
 export function useVaultSync(
   session: string | null,
   setVault: (items: BwItem[], folders: BwFolder[]) => void,
-  resetFavicons: () => void,
 ) {
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -19,10 +17,8 @@ export function useVaultSync(
       const [items, folders] = await Promise.all([bw.listItems(token), bw.listFolders(token)]);
       await saveCachedVault(items, folders);
       setVault(items, folders);
-      clearFaviconCache();
-      resetFavicons();
     },
-    [setVault, resetFavicons],
+    [setVault],
   );
 
   const handleSync = useCallback(async () => {
