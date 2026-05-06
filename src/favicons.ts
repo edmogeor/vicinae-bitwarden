@@ -1,6 +1,6 @@
 import { LocalStorage, environment } from '@vicinae/api';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const FAVICON_CACHE_KEY = 'vicinae-bitwarden-favicons';
@@ -29,6 +29,15 @@ export async function loadFaviconCache(): Promise<FaviconMap> {
         'timestamp' in value
       ) {
         const entry = value as CacheEntry;
+        // Legacy: entries stored as file paths need converting to data URIs
+        if (entry.dataUri.startsWith('/')) {
+          try {
+            entry.dataUri = fileToDataUri(entry.dataUri);
+          } catch {
+            entry.dataUri = '';
+            entry.timestamp = 0;
+          }
+        }
         result[domain] = entry.dataUri;
         if (!faviconCache[domain]) faviconCache[domain] = entry;
       } else if (typeof value === 'string') {
@@ -91,6 +100,11 @@ function isGlobeFavicon(buf: Buffer, status: number): boolean {
   return hash === GLOBE_MD5;
 }
 
+function fileToDataUri(filePath: string): string {
+  const buf = readFileSync(filePath);
+  return `data:image/png;base64,${buf.toString('base64')}`;
+}
+
 function resolveDomain(domain: string, now: number, result: FaviconMap): boolean {
   const entry = faviconCache[domain];
   const filePath = join(faviconDir(), `${encodeURIComponent(domain)}.png`);
@@ -109,8 +123,9 @@ function resolveDomain(domain: string, now: number, result: FaviconMap): boolean
     try {
       const mtime = statSync(filePath).mtimeMs;
       if (now - mtime <= CACHE_TTL) {
-        result[domain] = filePath;
-        faviconCache[domain] = { dataUri: filePath, timestamp: mtime };
+        const dataUri = fileToDataUri(filePath);
+        result[domain] = dataUri;
+        faviconCache[domain] = { dataUri, timestamp: mtime };
         return true;
       }
     } catch {
@@ -122,8 +137,8 @@ function resolveDomain(domain: string, now: number, result: FaviconMap): boolean
 }
 
 /**
- * Fetch a fresh favicon from Google, write it to disk, and cache the file path.
- * Returns the file path on success, empty string on failure.
+ * Fetch a fresh favicon from Google, write it to disk, and cache as a data URI.
+ * Returns a data URI on success, empty string on failure.
  */
 async function fetchAndWrite(domain: string, filePath: string, now: number): Promise<string> {
   const url = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
@@ -139,29 +154,46 @@ async function fetchAndWrite(domain: string, filePath: string, now: number): Pro
       return '';
     }
     writeFileSync(filePath, buf);
-    faviconCache[domain] = { dataUri: filePath, timestamp: now };
-    return filePath;
+    const mime = res.headers.get('content-type') ?? 'image/png';
+    const dataUri = `data:${mime};base64,${buf.toString('base64')}`;
+    faviconCache[domain] = { dataUri, timestamp: now };
+    return dataUri;
   } catch {
     faviconCache[domain] = { dataUri: '', timestamp: now };
     return '';
   }
 }
 
+// Cap concurrent network fetches: Google's favicon service times out under
+// burst load (we hit ~5% timeouts at ~50 parallel requests, more above that).
+const MAX_CONCURRENT_FETCHES = 8;
+
 export async function resolveFavicons(domains: string[]): Promise<FaviconMap> {
   const now = Date.now();
   ensureFaviconDir();
   const result: FaviconMap = {};
+  const unique = [...new Set(domains)];
 
-  await Promise.all(
-    [...new Set(domains)].map(async (domain) => {
-      const resolved = resolveDomain(domain, now, result);
-      if (resolved) return;
+  // First pass: resolve everything we can from cache/disk synchronously.
+  const toFetch: string[] = [];
+  for (const domain of unique) {
+    if (!resolveDomain(domain, now, result)) toFetch.push(domain);
+  }
 
-      const filePath = join(faviconDir(), `${encodeURIComponent(domain)}.png`);
-      const path = await fetchAndWrite(domain, filePath, now);
-      if (path) result[domain] = path;
-    }),
+  // Second pass: fetch the rest with bounded concurrency.
+  let cursor = 0;
+  const workers = Array.from(
+    { length: Math.min(MAX_CONCURRENT_FETCHES, toFetch.length) },
+    async () => {
+      while (cursor < toFetch.length) {
+        const domain = toFetch[cursor++];
+        const filePath = join(faviconDir(), `${encodeURIComponent(domain)}.png`);
+        const dataUri = await fetchAndWrite(domain, filePath, now);
+        if (dataUri) result[domain] = dataUri;
+      }
+    },
   );
+  await Promise.all(workers);
 
   await persistFaviconCache();
   return result;

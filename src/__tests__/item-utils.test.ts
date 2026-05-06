@@ -12,9 +12,13 @@ const { mockExistsSync, mockStatSync } = vi.hoisted(() => ({
 }));
 
 vi.mock('node:fs', () => {
+  const TEST_PNG = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 32,
+  ]);
   const fsMock: Record<string, unknown> = {
     existsSync: (path: string) => mockExistsSync(path),
     mkdirSync: vi.fn(),
+    readFileSync: () => TEST_PNG,
     statSync: (path: string) => mockStatSync(path),
     writeFileSync: vi.fn(),
   };
@@ -81,6 +85,9 @@ import {
   toCreatePayload,
 } from '../item-utils';
 import { clearFaviconCache, loadFaviconCache, resolveFavicons } from '../favicons';
+
+// Expected data URI for the 24-byte test PNG used by createFetchMock and readFileSync mock
+const TEST_DATA_URI = 'data:image/png;base64,iVBORwAAAAAAAAAAAAAAAAAAACAAAAAg';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -848,13 +855,13 @@ describe('clearFaviconCache', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const r1 = await resolveFavicons(['github.com']);
-    expect(r1['github.com']).toBe('/mock/support/favicons/github.com.png');
+    expect(r1['github.com']).toBe(TEST_DATA_URI);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     clearFaviconCache();
 
     const r2 = await resolveFavicons(['github.com']);
-    expect(r2['github.com']).toBe('/mock/support/favicons/github.com.png');
+    expect(r2['github.com']).toBe(TEST_DATA_URI);
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     vi.unstubAllGlobals();
@@ -883,7 +890,7 @@ describe('resolveFavicons', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const r1 = await resolveFavicons(['github.com']);
-    expect(r1['github.com']).toBe('/mock/support/favicons/github.com.png');
+    expect(r1['github.com']).toBe(TEST_DATA_URI);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     // Simulate file now existing on disk
@@ -916,7 +923,7 @@ describe('resolveFavicons', () => {
     mockStatSync.mockReturnValue({ mtimeMs: now });
 
     const r2 = await resolveFavicons(['github.com']);
-    expect(r2['github.com']).toBe('/mock/support/favicons/github.com.png');
+    expect(r2['github.com']).toBe(TEST_DATA_URI);
     expect(fetchMock).toHaveBeenCalledTimes(1); // No re-fetch
 
     vi.unstubAllGlobals();
