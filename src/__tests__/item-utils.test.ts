@@ -842,17 +842,7 @@ describe('loadFaviconCache', () => {
 // ---------------------------------------------------------------------------
 describe('clearFaviconCache', () => {
   it('clears the in-memory favicon cache', async () => {
-    clearFaviconCache();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: () => 'image/png' },
-      arrayBuffer: async () =>
-        new Uint8Array([
-          0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 32,
-        ]).buffer,
-      status: 200,
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubFaviconFetch();
 
     const r1 = await resolveFavicons(['github.com']);
     expect(r1['github.com']).toBe(TEST_DATA_URI);
@@ -880,14 +870,19 @@ function createFetchMock() {
   });
 }
 
+function stubFaviconFetch() {
+  clearFaviconCache();
+  const fetchMock = createFetchMock();
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 // ---------------------------------------------------------------------------
 // resolveFavicons
 // ---------------------------------------------------------------------------
 describe('resolveFavicons', () => {
   it('downloads and caches favicons as local files', async () => {
-    clearFaviconCache();
-    const fetchMock = createFetchMock();
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubFaviconFetch();
 
     const r1 = await resolveFavicons(['github.com']);
     expect(r1['github.com']).toBe(TEST_DATA_URI);
@@ -906,9 +901,7 @@ describe('resolveFavicons', () => {
   });
 
   it('uses file mtime when loading from disk cold', async () => {
-    clearFaviconCache();
-    const fetchMock = createFetchMock();
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubFaviconFetch();
 
     // First call: download and cache
     await resolveFavicons(['github.com']);
@@ -941,9 +934,7 @@ describe('resolveFavicons', () => {
   });
 
   it('deduplicates domains', async () => {
-    clearFaviconCache();
-    const fetchMock = createFetchMock();
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubFaviconFetch();
 
     const result = await resolveFavicons(['a.com', 'a.com', 'b.com']);
     expect(Object.keys(result).sort()).toEqual(['a.com', 'b.com']);
