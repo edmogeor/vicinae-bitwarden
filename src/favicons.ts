@@ -105,10 +105,6 @@ function isGlobeFavicon(buf: Buffer, status: number): boolean {
 // we mask the corners into the PNG bytes once at fetch (and on cold-disk hit
 // for icons cached before this change), then everything renders pre-rounded.
 const CORNER_RADIUS_RATIO = 0.22;
-// Mid-grey backing so transparent-PNG favicons (e.g. logo-only icons on a
-// clear background) get a consistent neutral tile instead of bleeding through
-// to the launcher background.
-const BG_GREY = 0x80;
 
 function roundPngCorners(buf: Buffer): Buffer {
   let png: PNG;
@@ -119,17 +115,6 @@ function roundPngCorners(buf: Buffer): Buffer {
   }
   const { width, height, data } = png;
   const radius = Math.max(1, Math.round(Math.min(width, height) * CORNER_RADIUS_RATIO));
-
-  // Composite over mid-grey, fully opaque. After this every pixel's RGB is
-  // its rendered color and alpha is 255 — the corner pass below then carves
-  // alpha back out for the rounded shape (idempotent across re-rounds).
-  for (let i = 0; i < data.length; i += 4) {
-    const a = data[i + 3] / 255;
-    data[i] = Math.round(data[i] * a + BG_GREY * (1 - a));
-    data[i + 1] = Math.round(data[i + 1] * a + BG_GREY * (1 - a));
-    data[i + 2] = Math.round(data[i + 2] * a + BG_GREY * (1 - a));
-    data[i + 3] = 255;
-  }
 
   const maskCorner = (
     cx: number,
@@ -148,7 +133,8 @@ function roundPngCorners(buf: Buffer): Buffer {
           data[idx] = 0;
         } else {
           // 1px antialiased band
-          data[idx] = Math.round(255 * (radius + 0.5 - dist));
+          const factor = radius + 0.5 - dist;
+          data[idx] = Math.round(data[idx] * factor);
         }
       }
     }
