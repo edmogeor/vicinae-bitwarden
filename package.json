@@ -142,6 +142,7 @@
     "build": "vici build",
     "dev": "vici develop",
     "lint": "vici lint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"
