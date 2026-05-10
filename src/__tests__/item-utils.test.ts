@@ -496,8 +496,22 @@ describe('toCreatePayload', () => {
 // buildItemDetailMarkdown
 // ---------------------------------------------------------------------------
 describe('buildItemDetailMarkdown', () => {
-  it('returns empty string when no notes or custom fields', () => {
+  it('returns empty string when no notes', () => {
     const md = buildItemDetailMarkdown(makeItem({ name: 'My Item' }));
+    expect(md).toBe('');
+  });
+
+  it('does not render custom fields in markdown (rendered in metadata sidebar)', () => {
+    const item = makeItem({
+      name: 'My Item',
+      fields: [
+        { name: 'API Key', value: 'abc123', type: 0, linkedId: null },
+        { name: 'Secret', value: 'xyz', type: 1, linkedId: null },
+      ],
+    });
+    const md = buildItemDetailMarkdown(item);
+    expect(md).not.toContain('API Key');
+    expect(md).not.toContain('Secret');
     expect(md).toBe('');
   });
 
@@ -515,38 +529,6 @@ describe('buildItemDetailMarkdown', () => {
     });
     const md = buildItemDetailMarkdown(item);
     expect(md).toContain('My secret note');
-  });
-
-  it('shows custom fields in markdown with hidden fields masked', () => {
-    const item = makeItem({
-      fields: [
-        { name: 'API Key', value: 'abc123', type: 0, linkedId: null },
-        { name: 'Secret', value: 'xyz', type: 1, linkedId: null },
-        { name: 'Notes', value: 'some value', type: 0, linkedId: null },
-      ],
-    });
-    const md = buildItemDetailMarkdown(item);
-    expect(md).toContain('API Key');
-    expect(md).toContain('abc123');
-    expect(md).toContain('Secret');
-    expect(md).toContain('••••••••');
-    expect(md).not.toContain('xyz');
-    expect(md).toContain('Notes');
-    expect(md).toContain('some value');
-  });
-
-  it('shows boolean custom fields as Yes/No', () => {
-    const item = makeItem({
-      fields: [
-        { name: '2FA Enabled', value: 'true', type: 2, linkedId: null },
-        { name: 'Legacy', value: 'false', type: 2, linkedId: null },
-      ],
-    });
-    const md = buildItemDetailMarkdown(item);
-    expect(md).toContain('2FA Enabled');
-    expect(md).toContain('Yes');
-    expect(md).toContain('Legacy');
-    expect(md).toContain('No');
   });
 
   it('shows password when showPassword is true', () => {
