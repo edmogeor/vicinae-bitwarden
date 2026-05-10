@@ -221,6 +221,41 @@ export default function SearchVault() {
     a.folderName.localeCompare(b.folderName),
   );
 
+  function renderVaultContent() {
+    if (sortedSections.length === 0) {
+      return (
+        <List.EmptyView
+          title={searchText ? 'No matching items' : 'No items in vault'}
+          description={
+            searchText
+              ? 'Try a different search or Sync to refresh your vault'
+              : 'Sync to pull your vault data, or create an item'
+          }
+        />
+      );
+    }
+
+    return sortedSections.map(([folderId, { folderName, items: sectionItems }]) => (
+      <List.Section key={folderId ?? 'unfiled'} title={folderName}>
+        {sectionItems.map((item) => (
+          <List.Item
+            key={item.id}
+            icon={itemIcon(item, faviconMap)}
+            title={item.name}
+            subtitle={itemSubtitle(item)}
+            accessories={[{ text: itemTypeLabel(item) }]}
+            actions={
+              <ActionPanel>
+                {renderItemActions(item, session, handleCopyTotp, push, vaultFolders, handleSync)}
+                <Action title="Sync Vault" icon={Icon.ArrowClockwise} onAction={handleSync} />
+              </ActionPanel>
+            }
+          />
+        ))}
+      </List.Section>
+    ));
+  }
+
   return (
     <List
       isLoading={isLoading}
@@ -228,47 +263,7 @@ export default function SearchVault() {
       searchBarPlaceholder="Search vault by name..."
       throttle
     >
-      {state.kind === 'vault' ? (
-        sortedSections.length === 0 ? (
-          <List.EmptyView
-            title={searchText ? 'No matching items' : 'No items in vault'}
-            description={
-              searchText
-                ? 'Try a different search or Sync to refresh your vault'
-                : 'Sync to pull your vault data, or create an item'
-            }
-          />
-        ) : (
-          sortedSections.map(([folderId, { folderName, items: sectionItems }]) => (
-            <List.Section key={folderId ?? 'unfiled'} title={folderName}>
-              {sectionItems.map((item) => (
-                <List.Item
-                  key={item.id}
-                  icon={itemIcon(item, faviconMap)}
-                  title={item.name}
-                  subtitle={itemSubtitle(item)}
-                  accessories={[{ text: itemTypeLabel(item) }]}
-                  actions={
-                    <ActionPanel>
-                      {renderItemActions(
-                        item,
-                        session,
-                        handleCopyTotp,
-                        push,
-                        vaultFolders,
-                        handleSync,
-                      )}
-                      <Action title="Sync Vault" icon={Icon.ArrowClockwise} onAction={handleSync} />
-                    </ActionPanel>
-                  }
-                />
-              ))}
-            </List.Section>
-          ))
-        )
-      ) : (
-        <List.EmptyView title="Loading..." />
-      )}
+      {state.kind === 'vault' ? renderVaultContent() : <List.EmptyView title="Loading..." />}
     </List>
   );
 }

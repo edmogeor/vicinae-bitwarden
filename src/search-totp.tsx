@@ -226,6 +226,52 @@ export default function SearchTotp() {
     a.folderName.localeCompare(b.folderName),
   );
 
+  function renderVaultContent() {
+    if (sortedSections.length === 0) {
+      return (
+        <List.EmptyView
+          title={searchText ? 'No matching items' : 'No TOTP accounts'}
+          description={
+            searchText
+              ? 'Try a different search or Sync to refresh'
+              : 'No accounts with TOTP set up in your vault'
+          }
+        />
+      );
+    }
+
+    return sortedSections.map(([folderId, { folderName, items: sectionItems }]) => (
+      <List.Section key={folderId ?? 'unfiled'} title={folderName}>
+        {sectionItems.map((item) => {
+          const code = totpMap[item.id];
+          return (
+            <List.Item
+              key={item.id}
+              icon={itemIcon(item, faviconMap)}
+              title={item.name}
+              subtitle={itemSubtitle(item)}
+              accessories={
+                code
+                  ? [{ text: formatTotp(code) }, { text: `(${countdown}s)` }]
+                  : [{ text: 'Loading...' }]
+              }
+              actions={
+                <ActionPanel>
+                  <Action
+                    title="Copy TOTP"
+                    icon={Icon.CopyClipboard}
+                    onAction={() => handleCopyTotp(item.id)}
+                  />
+                  <Action title="Sync Vault" icon={Icon.ArrowClockwise} onAction={handleSync} />
+                </ActionPanel>
+              }
+            />
+          );
+        })}
+      </List.Section>
+    ));
+  }
+
   return (
     <List
       isLoading={isLoading}
@@ -233,55 +279,7 @@ export default function SearchTotp() {
       searchBarPlaceholder="Search accounts with TOTP..."
       throttle
     >
-      {state.kind === 'vault' ? (
-        sortedSections.length === 0 ? (
-          <List.EmptyView
-            title={searchText ? 'No matching items' : 'No TOTP accounts'}
-            description={
-              searchText
-                ? 'Try a different search or Sync to refresh'
-                : 'No accounts with TOTP set up in your vault'
-            }
-          />
-        ) : (
-          sortedSections.map(([folderId, { folderName, items: sectionItems }]) => (
-            <List.Section key={folderId ?? 'unfiled'} title={folderName}>
-              {sectionItems.map((item) => {
-                const code = totpMap[item.id];
-                return (
-                  <List.Item
-                    key={item.id}
-                    icon={itemIcon(item, faviconMap)}
-                    title={item.name}
-                    subtitle={itemSubtitle(item)}
-                    accessories={
-                      code
-                        ? [{ text: formatTotp(code) }, { text: `(${countdown}s)` }]
-                        : [{ text: 'Loading...' }]
-                    }
-                    actions={
-                      <ActionPanel>
-                        <Action
-                          title="Copy TOTP"
-                          icon={Icon.CopyClipboard}
-                          onAction={() => handleCopyTotp(item.id)}
-                        />
-                        <Action
-                          title="Sync Vault"
-                          icon={Icon.ArrowClockwise}
-                          onAction={handleSync}
-                        />
-                      </ActionPanel>
-                    }
-                  />
-                );
-              })}
-            </List.Section>
-          ))
-        )
-      ) : (
-        <List.EmptyView title="Loading..." />
-      )}
+      {state.kind === 'vault' ? renderVaultContent() : <List.EmptyView title="Loading..." />}
     </List>
   );
 }

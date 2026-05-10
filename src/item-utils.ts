@@ -69,12 +69,12 @@ export function itemSubtitle(item: BwItem): string | undefined {
         return `${item.card.brand} *${item.card.number.slice(-4)}`;
       }
       return undefined;
-    case ItemType.Identity:
-      if (item.identity) {
-        const parts = [item.identity.firstName, item.identity.lastName].filter(Boolean);
-        return parts.length > 0 ? parts.join(' ') : undefined;
-      }
-      return undefined;
+    case ItemType.Identity: {
+      const identity = item.identity;
+      if (!identity) return undefined;
+      const parts = [identity.firstName, identity.lastName].filter(Boolean);
+      return parts.length > 0 ? parts.join(' ') : undefined;
+    }
     case ItemType.SecureNote:
       return undefined;
     default:
@@ -299,22 +299,20 @@ function buildPlaceholderIcon(type: ItemTypeValue): Image.ImageLike {
 
 /** Get an icon for a list item. Uses processed favicons when available, falls back to themed placeholder icons. */
 export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
-  if (item.type === ItemType.Login) {
-    const hostname = extractHostname(item.login?.uris);
-    if (hostname) {
-      const cached = favicons?.[hostname];
-      if (cached !== undefined && cached !== '') {
-        const fallback = buildPlaceholderIcon(ItemType.Login);
-        if (typeof fallback === 'object' && 'source' in fallback) {
-          return {
-            source: cached,
-            fallback: (fallback as { source: { light: string; dark: string } }).source,
-          };
-        }
-        return { source: cached };
-      }
-    }
-  }
+  if (item.type !== ItemType.Login) return buildPlaceholderIcon(item.type);
 
-  return buildPlaceholderIcon(item.type);
+  const hostname = extractHostname(item.login?.uris);
+  if (!hostname) return buildPlaceholderIcon(item.type);
+
+  const cached = favicons?.[hostname];
+  if (cached === undefined || cached === '') return buildPlaceholderIcon(item.type);
+
+  const fallback = buildPlaceholderIcon(ItemType.Login);
+  if (typeof fallback === 'object' && 'source' in fallback) {
+    return {
+      source: cached,
+      fallback: (fallback as { source: { light: string; dark: string } }).source,
+    };
+  }
+  return { source: cached };
 }
