@@ -73,11 +73,7 @@ export default function CustomFieldsSection({
 }: CustomFieldsSectionProps) {
   return (
     <>
-      <Form.TextArea
-        id="notes"
-        title="Notes"
-        defaultValue={notes !== undefined ? notes : undefined}
-      />
+      <Form.TextArea id="notes" title="Notes" defaultValue={notes} />
 
       {customFields.length > 0 && (
         <>
