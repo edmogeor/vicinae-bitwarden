@@ -109,6 +109,14 @@
       ]
     },
     {
+      "name": "downloadDir",
+      "title": "Download Directory",
+      "description": "Directory where attached files will be saved. Defaults to ~/Downloads if empty.",
+      "type": "textfield",
+      "required": false,
+      "placeholder": "/home/user/Downloads"
+    },
+    {
       "name": "passwordLength",
       "title": "Password Length",
       "description": "Number of characters for generated passwords",

@@ -21,6 +21,7 @@ export interface BwItem {
   card?: BwCard;
   identity?: BwIdentity;
   fields?: BwField[];
+  attachments?: BwAttachment[];
   revisionDate: string;
   creationDate: string;
   deletedDate: string | null;
@@ -76,7 +77,14 @@ interface BwField {
   linkedId: number | null;
 }
 
-export type { BwField };
+interface BwAttachment {
+  id: string;
+  fileName: string;
+  size: number;
+  sizeName: string;
+}
+
+export type { BwField, BwAttachment };
 
 export interface BwFolder {
   id: string;

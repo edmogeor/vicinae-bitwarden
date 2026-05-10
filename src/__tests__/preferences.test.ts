@@ -27,6 +27,7 @@ function prefs(
     apiClientId: 'x',
     apiClientSecret: 'x',
     autoLockTimeout: '21600',
+    downloadDir: '',
     passwordLength: '20',
     passwordUppercase: true,
     passwordLowercase: true,
