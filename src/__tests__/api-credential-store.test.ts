@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { mockExec, mockExecError, mockSpawnSuccess } from './__utils__/exec-mocks';
 
 const mockExecFile = vi.hoisted(() => vi.fn());
 const mockSpawn = vi.hoisted(() => vi.fn());
@@ -51,37 +52,9 @@ beforeEach(async () => {
   apiCredStore = await import('../api-credential-store');
 });
 
-function mockExec(stdout: string, stderr = '') {
-  mockExecFile.mockResolvedValueOnce({ stdout, stderr });
-}
-
-function mockExecError(message: string) {
-  const err = new Error(message) as Error & { stderr: string; code: number };
-  err.stderr = message;
-  err.code = 1;
-  mockExecFile.mockRejectedValueOnce(err);
-}
-
-function mockSpawnSuccess() {
-  const child = {
-    stdin: { write: vi.fn(), end: vi.fn(), on: vi.fn() },
-    on: vi.fn(),
-  };
-  child.stdin.on.mockImplementation((event: string, cb: () => void) => {
-    if (event === 'finish') cb();
-    return child;
-  });
-  child.on.mockImplementation((event: string, cb: (code?: number) => void) => {
-    if (event === 'close') cb(0);
-    return child;
-  });
-  mockSpawn.mockReturnValueOnce(child);
-  return child;
-}
-
 describe('storeApiCredentials', () => {
   it('stores credentials as JSON via secret-tool spawn', async () => {
-    mockSpawnSuccess();
+    mockSpawnSuccess(mockSpawn);
 
     await apiCredStore.storeApiCredentials('my-client-id', 'my-client-secret');
 
@@ -107,28 +80,28 @@ describe('storeApiCredentials', () => {
 
 describe('getApiCredentials', () => {
   it('returns parsed credentials from secret-tool lookup', async () => {
-    mockExec(JSON.stringify({ clientId: 'id1', clientSecret: 'sec1' }) + '\n');
+    mockExec(mockExecFile, JSON.stringify({ clientId: 'id1', clientSecret: 'sec1' }) + '\n');
 
     const result = await apiCredStore.getApiCredentials();
     expect(result).toEqual({ clientId: 'id1', clientSecret: 'sec1' });
   });
 
   it('returns null when lookup fails', async () => {
-    mockExecError('secret-tool: Cannot find item');
+    mockExecError(mockExecFile, 'secret-tool: Cannot find item');
 
     const result = await apiCredStore.getApiCredentials();
     expect(result).toBeNull();
   });
 
   it('returns null when stdout is empty', async () => {
-    mockExec('\n');
+    mockExec(mockExecFile, '\n');
 
     const result = await apiCredStore.getApiCredentials();
     expect(result).toBeNull();
   });
 
   it('passes correct args to secret-tool lookup', async () => {
-    mockExec(JSON.stringify({ clientId: 'x', clientSecret: 'y' }) + '\n');
+    mockExec(mockExecFile, JSON.stringify({ clientId: 'x', clientSecret: 'y' }) + '\n');
 
     await apiCredStore.getApiCredentials();
 
@@ -154,7 +127,7 @@ describe('deleteApiCredentials', () => {
   });
 
   it('does not throw when clear fails', async () => {
-    mockExecError('secret-tool: Cannot find item');
+    mockExecError(mockExecFile, 'secret-tool: Cannot find item');
 
     await expect(apiCredStore.deleteApiCredentials()).resolves.toBeUndefined();
   });
