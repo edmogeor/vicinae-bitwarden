@@ -310,7 +310,6 @@ export default function ItemDetailView({
               onAction={() => setShowPassword((prev) => !prev)}
             />
           )}
-          {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, session, true)}
           {resolved.fields?.map((field, i) => {
             const elements: React.ReactNode[] = [];
             if (field.type === 1) {
@@ -341,6 +340,7 @@ export default function ItemDetailView({
             );
             return elements;
           })}
+          {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, session, true)}
           {session && (
             <Action
               title="Edit Item"
