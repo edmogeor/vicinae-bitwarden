@@ -6,6 +6,7 @@ interface Preferences {
   customCertPath: string;
   apiClientId: string;
   apiClientSecret: string;
+  autoLockTimeout: string;
   passwordLength: string;
   passwordUppercase: boolean;
   passwordLowercase: boolean;
@@ -23,6 +24,10 @@ interface PasswordPrefs {
 
 export function getPreferences(): Preferences {
   return getPreferenceValues<Preferences>();
+}
+
+export function getAutoLockSeconds(prefs: Preferences): number {
+  return Math.max(0, Number(prefs.autoLockTimeout) || 0);
 }
 
 export function getServerUrl(prefs: Preferences): string {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import * as bw from '../bw-executor';
 
 const mockExecFile = vi.hoisted(() => vi.fn());
+const mockSpawn = vi.hoisted(() => vi.fn());
 const { mockPrefs } = vi.hoisted(() => ({
   mockPrefs: {
     serverRegion: 'bitwarden.com' as const,
@@ -9,6 +10,7 @@ const { mockPrefs } = vi.hoisted(() => ({
     customCertPath: '',
     apiClientId: '',
     apiClientSecret: '',
+    autoLockTimeout: '21600',
     passwordLength: '20',
     passwordUppercase: true,
     passwordLowercase: true,
@@ -19,8 +21,9 @@ const { mockPrefs } = vi.hoisted(() => ({
 
 vi.mock('node:child_process', () => {
   return {
-    default: { execFile: mockExecFile },
+    default: { execFile: mockExecFile, spawn: mockSpawn },
     execFile: mockExecFile,
+    spawn: mockSpawn,
   };
 });
 
@@ -44,6 +47,30 @@ function mockExecError(message: string, stderr = '') {
   err.stderr = stderr;
   err.code = 1;
   mockExecFile.mockRejectedValueOnce(err);
+}
+
+function spawnMockChild(stdout: string, exitCode = 0) {
+  const child = {
+    stdout: { on: vi.fn() },
+    stderr: { on: vi.fn() },
+    stdin: { write: vi.fn(), end: vi.fn(), on: vi.fn() },
+    on: vi.fn(),
+  };
+  child.stdout.on.mockImplementation((event: string, cb: (d: Buffer) => void) => {
+    if (event === 'data') cb(Buffer.from(stdout));
+    return child;
+  });
+  child.stderr.on.mockImplementation((event: string, cb: (d: Buffer) => void) => {
+    if (event === 'data' && exitCode !== 0) cb(Buffer.from(stdout));
+    return child;
+  });
+  child.stdin.on.mockReturnValue(child);
+  child.on.mockImplementation((event: string, cb: (...args: unknown[]) => void) => {
+    if (event === 'close') cb(exitCode);
+    return child;
+  });
+  mockSpawn.mockReturnValueOnce(child);
+  return child;
 }
 
 const hasSession = (token: string) =>
@@ -113,15 +140,17 @@ describe('login', () => {
 // unlock
 // ---------------------------------------------------------------------------
 describe('unlock', () => {
-  it('calls bw unlock <password> --raw and returns session', async () => {
+  it('calls bw unlock --passwordenv BW_PASSWORD --raw and returns session', async () => {
     mockExec('session-token-abc\n');
 
     const sessionToken = await bw.unlock('mypassword');
     expect(sessionToken).toBe('session-token-abc');
     expect(mockExecFile).toHaveBeenCalledWith(
       'bw',
-      ['unlock', 'mypassword', '--raw'],
-      expect.any(Object),
+      ['unlock', '--passwordenv', 'BW_PASSWORD', '--raw'],
+      expect.objectContaining({
+        env: expect.objectContaining({ BW_PASSWORD: 'mypassword' }),
+      }),
     );
   });
 
@@ -230,8 +259,11 @@ describe('getTotp', () => {
 // createItem
 // ---------------------------------------------------------------------------
 describe('createItem', () => {
-  it('calls bw create item with BW_SESSION', async () => {
-    mockExec('');
+  it('encodes payload and creates item via bw encode + bw create item', async () => {
+    const encoded = Buffer.from(JSON.stringify({ name: 'Test' })).toString('base64');
+    spawnMockChild(encoded);
+    spawnMockChild('');
+
     const payload = {
       type: 1 as const,
       name: 'Test',
@@ -241,10 +273,25 @@ describe('createItem', () => {
     };
 
     await bw.createItem(payload, 'token');
-    expect(mockExecFile).toHaveBeenCalledWith(
+
+    expect(mockSpawn).toHaveBeenCalledTimes(2);
+    expect(mockSpawn).toHaveBeenNthCalledWith(
+      1,
       'bw',
-      ['create', 'item', JSON.stringify(payload)],
-      hasSession('token'),
+      ['encode'],
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: expect.objectContaining({ BW_SESSION: 'token' }),
+      }),
+    );
+    expect(mockSpawn).toHaveBeenNthCalledWith(
+      2,
+      'bw',
+      ['create', 'item'],
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: expect.objectContaining({ BW_SESSION: 'token' }),
+      }),
     );
   });
 });
@@ -253,22 +300,75 @@ describe('createItem', () => {
 // editItem
 // ---------------------------------------------------------------------------
 describe('editItem', () => {
-  it('calls bw edit item with BW_SESSION', async () => {
-    mockExec('');
+  it('encodes payload and edits item via bw encode + bw edit item', async () => {
+    const encoded = Buffer.from(JSON.stringify({ name: 'Updated' })).toString('base64');
+    spawnMockChild(encoded);
+    spawnMockChild('');
+
     const payload = { name: 'Updated', notes: null };
 
     await bw.editItem('item-123', payload, 'token');
-    expect(mockExecFile).toHaveBeenCalledWith(
+
+    expect(mockSpawn).toHaveBeenCalledTimes(2);
+    expect(mockSpawn).toHaveBeenNthCalledWith(
+      1,
       'bw',
-      ['edit', 'item', 'item-123', JSON.stringify(payload)],
-      hasSession('token'),
+      ['encode'],
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: expect.objectContaining({ BW_SESSION: 'token' }),
+      }),
+    );
+    expect(mockSpawn).toHaveBeenNthCalledWith(
+      2,
+      'bw',
+      ['edit', 'item', 'item-123'],
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: expect.objectContaining({ BW_SESSION: 'token' }),
+      }),
     );
   });
 
   it('throws BwError on failure', async () => {
-    mockExecError('Edit failed');
+    spawnMockChild('Edit failed', 1);
 
     await expect(bw.editItem('item-123', { name: 'X' }, 'token')).rejects.toThrow('Edit failed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createFolder
+// ---------------------------------------------------------------------------
+describe('createFolder', () => {
+  it('encodes folder name and creates folder via bw encode + bw create folder', async () => {
+    const folderJson = JSON.stringify({ id: 'f1', name: 'Work' });
+    const encoded = Buffer.from(JSON.stringify({ name: 'Work' })).toString('base64');
+    spawnMockChild(encoded);
+    spawnMockChild(folderJson);
+
+    const result = await bw.createFolder('Work', 'token');
+    expect(result).toEqual({ id: 'f1', name: 'Work' });
+
+    expect(mockSpawn).toHaveBeenCalledTimes(2);
+    expect(mockSpawn).toHaveBeenNthCalledWith(
+      1,
+      'bw',
+      ['encode'],
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: expect.objectContaining({ BW_SESSION: 'token' }),
+      }),
+    );
+    expect(mockSpawn).toHaveBeenNthCalledWith(
+      2,
+      'bw',
+      ['create', 'folder'],
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: expect.objectContaining({ BW_SESSION: 'token' }),
+      }),
+    );
   });
 });
 

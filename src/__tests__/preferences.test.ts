@@ -5,13 +5,14 @@ vi.mock('@vicinae/api', () => ({
   LocalStorage: {},
 }));
 
-import { getServerUrl } from '../preferences';
+import { getServerUrl, getAutoLockSeconds } from '../preferences';
 
 function prefs(
   overrides: Partial<{
     serverRegion: 'bitwarden.com' | 'bitwarden.eu' | 'self-hosted';
     customServerUrl: string;
     customCertPath: string;
+    autoLockTimeout: string;
     passwordLength: string;
     passwordUppercase: boolean;
     passwordLowercase: boolean;
@@ -25,6 +26,7 @@ function prefs(
     customCertPath: '',
     apiClientId: 'x',
     apiClientSecret: 'x',
+    autoLockTimeout: '21600',
     passwordLength: '20',
     passwordUppercase: true,
     passwordLowercase: true,
@@ -69,5 +71,27 @@ describe('getServerUrl', () => {
     expect(() =>
       getServerUrl(prefs({ serverRegion: 'self-hosted', customServerUrl: '   ' })),
     ).toThrow('Custom Server URL is required');
+  });
+});
+
+describe('getAutoLockSeconds', () => {
+  it('returns 0 for "Never" (value "0")', () => {
+    expect(getAutoLockSeconds(prefs({ autoLockTimeout: '0' }))).toBe(0);
+  });
+
+  it('returns 900 for 15 minutes', () => {
+    expect(getAutoLockSeconds(prefs({ autoLockTimeout: '900' }))).toBe(900);
+  });
+
+  it('returns 21600 for 6 hours (default)', () => {
+    expect(getAutoLockSeconds(prefs({ autoLockTimeout: '21600' }))).toBe(21600);
+  });
+
+  it('returns 0 for invalid values', () => {
+    expect(getAutoLockSeconds(prefs({ autoLockTimeout: 'invalid' }))).toBe(0);
+  });
+
+  it('returns 0 for negative values', () => {
+    expect(getAutoLockSeconds(prefs({ autoLockTimeout: '-500' }))).toBe(0);
   });
 });

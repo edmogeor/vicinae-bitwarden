@@ -67,6 +67,48 @@
       "required": true
     },
     {
+      "name": "autoLockTimeout",
+      "title": "Auto-Lock Timeout",
+      "description": "Automatically lock the vault after this period of inactivity",
+      "type": "dropdown",
+      "required": false,
+      "default": "21600",
+      "data": [
+        {
+          "title": "Never",
+          "value": "0"
+        },
+        {
+          "title": "15 minutes",
+          "value": "900"
+        },
+        {
+          "title": "30 minutes",
+          "value": "1800"
+        },
+        {
+          "title": "1 hour",
+          "value": "3600"
+        },
+        {
+          "title": "2 hours",
+          "value": "7200"
+        },
+        {
+          "title": "6 hours",
+          "value": "21600"
+        },
+        {
+          "title": "12 hours",
+          "value": "43200"
+        },
+        {
+          "title": "24 hours",
+          "value": "86400"
+        }
+      ]
+    },
+    {
       "name": "passwordLength",
       "title": "Password Length",
       "description": "Number of characters for generated passwords",
@@ -154,11 +196,13 @@
   },
   "dependencies": {
     "@vicinae/api": "^0.19.9",
+    "better-sqlite3": "^12.9.0",
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.0.0",
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",
