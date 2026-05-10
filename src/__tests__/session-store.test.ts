@@ -121,11 +121,11 @@ describe('getSession', () => {
     expect(result).toBe('still-valid');
   });
 
-  it('returns raw token for old format (backward compat)', async () => {
+  it('returns null for unparseable data (old plain-text format)', async () => {
     mockExec(mockExecFile, 'legacy-session-token\n');
 
     const result = await sessionStore.getSession();
-    expect(result).toBe('legacy-session-token');
+    expect(result).toBeNull();
   });
 
   it('passes correct args to secret-tool lookup', async () => {

@@ -18,8 +18,8 @@ import {
   itemIcon,
   itemSubtitle,
   itemTypeLabel,
-  loadCachedVault,
 } from './item-utils';
+import { loadCachedVault } from './vault-cache';
 import { useSession } from './use-session';
 import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
 import { useVaultSync } from './use-vault-sync';

@@ -418,13 +418,12 @@ export async function downloadAttachment(
   fileName: string,
   session: Session,
 ): Promise<string> {
-  let prefs;
+  let downloadDir: string;
   try {
-    prefs = getPreferences();
+    downloadDir = getDownloadDir(getPreferences());
   } catch {
-    prefs = { downloadDir: '' } as unknown as ReturnType<typeof getPreferences>;
+    downloadDir = `${process.env.HOME ?? '/tmp'}/Downloads`;
   }
-  const downloadDir = getDownloadDir(prefs);
   const outPath = join(downloadDir, fileName);
   try {
     await exec('bw', ['get', 'attachment', attachmentId, '--itemid', itemId, '--output', outPath], {

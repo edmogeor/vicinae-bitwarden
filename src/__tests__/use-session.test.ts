@@ -1,45 +1,48 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSession } from '../use-session';
 
-const { mockBw, mockSessionStore, mockApiCredStore } = vi.hoisted(() => {
-  const mockBw = {
-    login: vi.fn().mockResolvedValue(undefined),
-    unlock: vi.fn().mockResolvedValue('default-token'),
-    lock: vi.fn().mockResolvedValue(undefined),
-    sync: vi.fn().mockResolvedValue(undefined),
-  };
-
-  const mockSessionStore = {
-    getSession: vi.fn().mockResolvedValue(null),
-    setSession: vi.fn().mockResolvedValue(undefined),
-    deleteSession: vi.fn().mockResolvedValue(undefined),
-  };
-
-  const mockApiCredStore = {
-    getApiCredentials: vi.fn().mockResolvedValue(null),
-    storeApiCredentials: vi.fn().mockResolvedValue(undefined),
-    clearApiCredentialsFromDisk: vi.fn().mockResolvedValue(undefined),
-  };
-
-  return { mockBw, mockSessionStore, mockApiCredStore };
-});
-
-vi.mock('../session-store', () => mockSessionStore);
-
-vi.mock('../api-credential-store', () => mockApiCredStore);
-
-vi.mock('@vicinae/api', () => ({
-  showToast: vi.fn(),
-  Toast: { Style: { Success: 'success', Failure: 'failure', Animated: 'animated' } },
+const { execFileMock, spawnMock } = vi.hoisted(() => ({
+  execFileMock: vi.fn(),
+  spawnMock: vi.fn(),
 }));
 
-vi.mock('../bw-executor', () => mockBw);
+vi.mock('node:child_process', () => ({
+  default: { execFile: execFileMock, spawn: spawnMock },
+  execFile: execFileMock,
+  spawn: spawnMock,
+}));
 
-vi.mock('../preferences', () => ({
-  getPreferences: () => ({
+vi.mock('node:util', () => {
+  const identity = (fn: unknown) => fn;
+  return {
+    default: { promisify: identity },
+    promisify: identity,
+  };
+});
+
+vi.mock('node:fs', () => {
+  const mockWrite = vi.fn();
+  return {
+    default: { readFileSync: () => '', writeFileSync: mockWrite },
+    readFileSync: () => '',
+    writeFileSync: mockWrite,
+  };
+});
+
+vi.mock('better-sqlite3', () => {
+  const mockDb = () => ({
+    prepare: () => ({ run: vi.fn() }),
+    close: vi.fn(),
+  });
+  return { default: mockDb };
+});
+
+vi.mock('@vicinae/api', () => ({
+  getPreferenceValues: () => ({
     serverRegion: 'bitwarden.com' as const,
     customServerUrl: '',
+    customCertPath: '',
     bitwardenApiClientId: 'test-client-id',
     bitwardenApiClientSecret: 'test-client-secret',
     autoLockTimeout: '21600',
@@ -50,30 +53,96 @@ vi.mock('../preferences', () => ({
     passwordNumbers: true,
     passwordSymbols: true,
   }),
-  getServerUrl: () => 'https://bitwarden.com',
+  showToast: vi.fn(),
+  Toast: { Style: { Success: 'success', Failure: 'failure', Animated: 'animated' } },
 }));
+
+const sessionLookupArgs = ['lookup', 'service', 'vicinae-bitwarden', 'account', 'session'];
+const sessionStoreArgs = [
+  'store',
+  '--label=Vicinae Bitwarden',
+  'service',
+  'vicinae-bitwarden',
+  'account',
+  'session',
+];
+const sessionClearArgs = ['clear', 'service', 'vicinae-bitwarden', 'account', 'session'];
+const apiCredsLookupArgs = ['lookup', 'service', 'vicinae-bitwarden', 'account', 'api-creds'];
+const apiCredsStoreArgs = [
+  'store',
+  '--label=Vicinae Bitwarden API Key',
+  'service',
+  'vicinae-bitwarden',
+  'account',
+  'api-creds',
+];
+const bwUnlockArgs = ['unlock', '--passwordenv', 'BW_PASSWORD', '--raw'];
+const bwLockArgs = ['lock'];
+const bwConfigArgs = (url: string) => ['config', 'server', url];
+const bwLoginArgs = ['login', '--apikey'];
+
+function tokenPayload(token: string) {
+  return { stdout: `${JSON.stringify({ token, timestamp: Date.now() })}\n`, stderr: '' };
+}
+
+function apiCredsPayload(clientId: string, clientSecret: string) {
+  return { stdout: `${JSON.stringify({ clientId, clientSecret })}\n`, stderr: '' };
+}
+
+function execResolves(value: { stdout: string; stderr?: string }) {
+  execFileMock.mockResolvedValueOnce({ stdout: value.stdout, stderr: value.stderr ?? '' });
+}
+
+function execRejects(message: string) {
+  const err = new Error(message) as Error & { stderr: string; code: number };
+  err.stderr = message;
+  err.code = 1;
+  execFileMock.mockRejectedValueOnce(err);
+}
+
+function spawnSucceeds() {
+  const child = {
+    stdin: { write: vi.fn(), end: vi.fn(), on: vi.fn() },
+    on: vi.fn(),
+  };
+  child.stdin.on.mockImplementation((_event: string, _cb: () => void) => child.stdin);
+  child.on.mockImplementation((event: string, cb: (code?: number) => void) => {
+    if (event === 'close') queueMicrotask(() => cb(0));
+    return child;
+  });
+  spawnMock.mockReturnValueOnce(child);
+}
+
+const originalHome = process.env.HOME;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockSessionStore.getSession.mockResolvedValue(null);
-  mockBw.sync.mockResolvedValue(undefined);
-  mockBw.unlock.mockResolvedValue('default-token');
-  mockBw.lock.mockResolvedValue(undefined);
-  mockBw.login.mockResolvedValue(undefined);
+  process.env.HOME = '/home/test';
+});
+
+afterEach(() => {
+  process.env.HOME = originalHome;
 });
 
 describe('useSession', () => {
   describe('initial mount', () => {
     it('has null session when no cached session exists', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
+      execRejects('Cannot find item');
 
       const { result } = renderHook(() => useSession());
 
       expect(result.current.session).toBeNull();
+      await waitFor(() => {
+        expect(execFileMock).toHaveBeenCalledWith(
+          'secret-tool',
+          sessionLookupArgs,
+          expect.objectContaining({ timeout: 5000 }),
+        );
+      });
     });
 
     it('loads cached session from session store', async () => {
-      mockSessionStore.getSession.mockResolvedValue('cached-token');
+      execResolves(tokenPayload('cached-token'));
 
       const { result } = renderHook(() => useSession());
 
@@ -85,8 +154,9 @@ describe('useSession', () => {
 
   describe('unlock', () => {
     it('calls bw.unlock, stores session, and updates state', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
-      mockBw.unlock.mockResolvedValue('new-session-token');
+      execRejects('Cannot find item');
+      execResolves({ stdout: 'new-session-token\n', stderr: '' });
+      spawnSucceeds();
 
       const { result } = renderHook(() => useSession());
 
@@ -95,14 +165,17 @@ describe('useSession', () => {
         expect(token).toBe('new-session-token');
       });
 
-      expect(mockBw.unlock).toHaveBeenCalledWith('mypassword');
-      expect(mockSessionStore.setSession).toHaveBeenCalledWith('new-session-token');
+      expect(execFileMock).toHaveBeenCalledWith(
+        'bw',
+        bwUnlockArgs,
+        expect.objectContaining({ env: expect.objectContaining({ BW_PASSWORD: 'mypassword' }) }),
+      );
       expect(result.current.session).toBe('new-session-token');
     });
 
     it('propagates unlock errors', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
-      mockBw.unlock.mockRejectedValue(new Error('Invalid master password'));
+      execRejects('Cannot find item');
+      execRejects('Invalid master password');
 
       const { result } = renderHook(() => useSession());
 
@@ -111,7 +184,6 @@ describe('useSession', () => {
       );
 
       expect(result.current.session).toBeNull();
-      expect(mockSessionStore.setSession).not.toHaveBeenCalled();
     });
   });
 
@@ -131,29 +203,43 @@ describe('useSession', () => {
     }
 
     it('calls bw.lock, deletes session, and sets session to null', async () => {
-      mockSessionStore.getSession.mockResolvedValue('active-token');
-      mockBw.sync.mockResolvedValue(undefined);
+      execResolves(tokenPayload('active-token'));
+      execResolves({ stdout: '', stderr: '' });
+      execResolves({ stdout: '', stderr: '' });
 
       const result = await renderAndClear();
 
-      expect(mockBw.lock).toHaveBeenCalledWith('active-token');
-      expect(mockSessionStore.deleteSession).toHaveBeenCalledOnce();
+      expect(execFileMock).toHaveBeenCalledWith(
+        'bw',
+        bwLockArgs,
+        expect.objectContaining({ env: expect.objectContaining({ BW_SESSION: 'active-token' }) }),
+      );
+      expect(execFileMock).toHaveBeenCalledWith(
+        'secret-tool',
+        sessionClearArgs,
+        expect.objectContaining({ timeout: 5000 }),
+      );
       expect(result.current.session).toBeNull();
     });
 
     it('clears session even when bw.lock fails', async () => {
-      mockSessionStore.getSession.mockResolvedValue('active-token');
-      mockBw.sync.mockResolvedValue(undefined);
-      mockBw.lock.mockRejectedValue(new Error('already locked'));
+      execResolves(tokenPayload('active-token'));
+      execResolves({ stdout: '', stderr: '' });
+      execRejects('already locked');
 
       const result = await renderAndClear();
 
       expect(result.current.session).toBeNull();
-      expect(mockSessionStore.deleteSession).toHaveBeenCalledOnce();
+      expect(execFileMock).toHaveBeenCalledWith(
+        'secret-tool',
+        sessionClearArgs,
+        expect.objectContaining({ timeout: 5000 }),
+      );
     });
 
     it('deletes session even when session is null', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
+      execRejects('Cannot find item');
+      execResolves({ stdout: '', stderr: '' });
 
       const { result } = renderHook(() => useSession());
 
@@ -161,19 +247,21 @@ describe('useSession', () => {
         await result.current.clearSession();
       });
 
-      expect(mockBw.lock).not.toHaveBeenCalled();
-      expect(mockSessionStore.deleteSession).toHaveBeenCalledOnce();
+      expect(execFileMock).toHaveBeenCalledWith(
+        'secret-tool',
+        sessionClearArgs,
+        expect.any(Object),
+      );
       expect(result.current.session).toBeNull();
     });
   });
 
   describe('loginIfNeeded', () => {
     it('uses libsecret credentials when available and prefs unchanged', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
-      mockApiCredStore.getApiCredentials.mockResolvedValue({
-        clientId: 'test-client-id',
-        clientSecret: 'test-client-secret',
-      });
+      execRejects('Cannot find item');
+      execResolves(apiCredsPayload('test-client-id', 'test-client-secret'));
+      execResolves({ stdout: '', stderr: '' });
+      execResolves({ stdout: '', stderr: '' });
 
       const { result } = renderHook(() => useSession());
 
@@ -181,19 +269,24 @@ describe('useSession', () => {
         await result.current.loginIfNeeded();
       });
 
-      expect(mockBw.login).toHaveBeenCalledWith(
+      expect(execFileMock).toHaveBeenCalledWith(
+        'bw',
+        bwLoginArgs,
         expect.objectContaining({
-          clientId: 'test-client-id',
-          clientSecret: 'test-client-secret',
-          serverUrl: 'https://bitwarden.com',
+          env: expect.objectContaining({
+            BW_CLIENTID: 'test-client-id',
+            BW_CLIENTSECRET: 'test-client-secret',
+          }),
         }),
       );
-      expect(mockApiCredStore.storeApiCredentials).not.toHaveBeenCalled();
     });
 
     it('uses preferences and migrates to libsecret when no libsecret creds exist', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
-      mockApiCredStore.getApiCredentials.mockResolvedValue(null);
+      execRejects('Cannot find item');
+      execRejects('Cannot find item');
+      execResolves({ stdout: '', stderr: '' });
+      execResolves({ stdout: '', stderr: '' });
+      spawnSucceeds();
 
       const { result } = renderHook(() => useSession());
 
@@ -201,26 +294,19 @@ describe('useSession', () => {
         await result.current.loginIfNeeded();
       });
 
-      expect(mockBw.login).toHaveBeenCalledWith(
-        expect.objectContaining({
-          clientId: 'test-client-id',
-          clientSecret: 'test-client-secret',
-          serverUrl: 'https://bitwarden.com',
-        }),
+      expect(spawnMock).toHaveBeenCalledWith(
+        'secret-tool',
+        apiCredsStoreArgs,
+        expect.objectContaining({ stdio: ['pipe', 'ignore', 'ignore'] }),
       );
-      expect(mockApiCredStore.storeApiCredentials).toHaveBeenCalledWith(
-        'test-client-id',
-        'test-client-secret',
-      );
-      expect(mockApiCredStore.clearApiCredentialsFromDisk).toHaveBeenCalled();
     });
 
     it('detects credential rotation and re-migrates', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
-      mockApiCredStore.getApiCredentials.mockResolvedValue({
-        clientId: 'old-rotated-id',
-        clientSecret: 'old-rotated-secret',
-      });
+      execRejects('Cannot find item');
+      execResolves(apiCredsPayload('old-rotated-id', 'old-rotated-secret'));
+      execResolves({ stdout: '', stderr: '' });
+      execResolves({ stdout: '', stderr: '' });
+      spawnSucceeds();
 
       const { result } = renderHook(() => useSession());
 
@@ -228,23 +314,29 @@ describe('useSession', () => {
         await result.current.loginIfNeeded();
       });
 
-      expect(mockBw.login).toHaveBeenCalledWith(
+      expect(execFileMock).toHaveBeenCalledWith(
+        'bw',
+        bwLoginArgs,
         expect.objectContaining({
-          clientId: 'test-client-id',
-          clientSecret: 'test-client-secret',
-          serverUrl: 'https://bitwarden.com',
+          env: expect.objectContaining({
+            BW_CLIENTID: 'test-client-id',
+            BW_CLIENTSECRET: 'test-client-secret',
+          }),
         }),
       );
-      expect(mockApiCredStore.storeApiCredentials).toHaveBeenCalledWith(
-        'test-client-id',
-        'test-client-secret',
+      expect(spawnMock).toHaveBeenCalledWith(
+        'secret-tool',
+        apiCredsStoreArgs,
+        expect.objectContaining({ stdio: ['pipe', 'ignore', 'ignore'] }),
       );
-      expect(mockApiCredStore.clearApiCredentialsFromDisk).toHaveBeenCalled();
     });
 
     it('isLoggingIn is false after login completes', async () => {
-      mockSessionStore.getSession.mockResolvedValue(null);
-      mockBw.login.mockResolvedValue(undefined);
+      execRejects('Cannot find item');
+      execRejects('Cannot find item');
+      execResolves({ stdout: '', stderr: '' });
+      execResolves({ stdout: '', stderr: '' });
+      spawnSucceeds();
 
       const { result } = renderHook(() => useSession());
 

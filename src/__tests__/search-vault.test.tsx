@@ -81,17 +81,20 @@ vi.mock('../bw-executor', () => ({
   lock: vi.fn(),
 }));
 
+vi.mock('../vault-cache', () => ({
+  loadCachedVault: () => null,
+  saveCachedVault: vi.fn(),
+  clearCachedVault: vi.fn(),
+}));
+
 vi.mock('../item-utils', () => ({
   buildItemDetailMarkdown: () => '',
-  clearCachedVault: vi.fn(),
   filterItems: (items: unknown[]) => items,
   itemActions: () => [],
   groupByFolder: () => new Map(),
   itemIcon: () => 'key',
   itemSubtitle: () => undefined,
   itemTypeLabel: () => 'Login',
-  loadCachedVault: () => null,
-  saveCachedVault: vi.fn(),
 }));
 
 vi.mock('../use-session', () => ({

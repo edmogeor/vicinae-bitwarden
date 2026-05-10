@@ -51,7 +51,7 @@ export async function getSession(): Promise<string | null> {
     try {
       obj = JSON.parse(raw);
     } catch {
-      return raw;
+      return null;
     }
 
     if (typeof obj !== 'object' || obj === null || !('token' in obj) || !('timestamp' in obj)) {

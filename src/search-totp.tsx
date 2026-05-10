@@ -2,7 +2,8 @@ import { Action, ActionPanel, Clipboard, Icon, List, showToast, Toast } from '@v
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-import { filterItems, groupByFolder, itemIcon, itemSubtitle, loadCachedVault } from './item-utils';
+import { filterItems, formatTotp, groupByFolder, itemIcon, itemSubtitle } from './item-utils';
+import { loadCachedVault } from './vault-cache';
 import { useSession } from './use-session';
 import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
 import { useVaultSync } from './use-vault-sync';
@@ -21,8 +22,6 @@ type UIState =
   | { kind: 'loading' }
   | { kind: 'vault'; items: BwItem[]; folders: BwFolder[] };
 
-let memoryVault: { items: BwItem[]; folders: BwFolder[] } | null = null;
-
 function totpItems(items: BwItem[]): BwItem[] {
   return items.filter(
     (item) =>
@@ -30,17 +29,11 @@ function totpItems(items: BwItem[]): BwItem[] {
   );
 }
 
-function formatTotp(code: string): string {
-  const mid = Math.floor(code.length / 2);
-  return `${code.slice(0, mid)} ${code.slice(mid)}`;
-}
-
 export default function SearchTotp() {
   const { session, unlock, clearSession, loginIfNeeded, loginError } = useSession();
   const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
 
   const setVault = (items: BwItem[], folders: BwFolder[]) => {
-    memoryVault = { items, folders };
     setState({ kind: 'vault', items, folders });
   };
 

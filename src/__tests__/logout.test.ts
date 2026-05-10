@@ -25,7 +25,7 @@ vi.mock('@vicinae/api', () => ({
   Toast: { Style: { Success: 'success', Failure: 'failure' } },
 }));
 
-vi.mock('../item-utils', () => ({
+vi.mock('../vault-cache', () => ({
   clearCachedVault: mockClearCachedVault,
 }));
 

@@ -127,19 +127,7 @@ vi.mock('../item-utils', () => ({
     folderId: null,
     favorite: false,
   })),
-  buildItemDetailMarkdown: vi.fn(),
-  clearCachedVault: vi.fn(),
-  clearFaviconCache: vi.fn(),
-  filterItems: vi.fn(),
-  itemActions: vi.fn(),
-  groupByFolder: vi.fn(),
-  itemIcon: vi.fn(),
-  itemSubtitle: vi.fn(),
-  itemTypeLabel: vi.fn(),
-  loadCachedVault: vi.fn(),
-  loadFaviconCache: vi.fn(),
-  resolveFavicons: vi.fn(),
-  saveCachedVault: vi.fn(),
+  CARD_BRANDS: ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'],
 }));
 
 vi.mock('../bw-not-installed', () => ({
