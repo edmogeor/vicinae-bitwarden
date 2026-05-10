@@ -1,4 +1,4 @@
-import { Icon, LocalStorage } from '@vicinae/api';
+import { Icon } from '@vicinae/api';
 import type { Image } from '@vicinae/api';
 import { BwItem, BwFolder, ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
@@ -6,119 +6,14 @@ import type { CreateItemPayload, ItemAction } from './bw-executor';
 import { extractHostname } from './favicons';
 import type { FaviconMap } from './favicons';
 
+export function formatTotp(code: string): string {
+  const mid = Math.floor(code.length / 2);
+  return `${code.slice(0, mid)} ${code.slice(mid)}`;
+}
+
 export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'];
 
-const CACHE_KEY = 'vicinae-bitwarden-cache';
-
-interface CachedVault {
-  items: BwItem[];
-  folders: BwFolder[];
-  timestamp: number;
-}
-
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
-/** Load cached vault data from LocalStorage. Returns null if not found or stale. */
-export async function loadCachedVault(): Promise<{ items: BwItem[]; folders: BwFolder[] } | null> {
-  try {
-    const raw = await LocalStorage.getItem<string>(CACHE_KEY);
-    if (!raw) return null;
-    const cached: CachedVault = JSON.parse(raw);
-    if (Date.now() - cached.timestamp > CACHE_TTL) return null;
-    return { items: cached.items, folders: cached.folders };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Strip sensitive fields from an Item before caching.
- * Preserves only the fields needed for list display: name, type, id,
- * folder association, favicon URIs, username, card brand/holder, and identity name.
- * Passwords, card numbers, TOTP seeds, notes, custom fields, etc. are removed.
- */
-function stripSensitiveFields(item: BwItem): BwItem {
-  const stripped: BwItem = {
-    id: item.id,
-    organizationId: null,
-    folderId: item.folderId,
-    type: item.type,
-    name: item.name,
-    notes: null,
-    favorite: item.favorite,
-    revisionDate: '',
-    creationDate: '',
-    deletedDate: null,
-    collectionIds: null,
-  };
-
-  if (item.login) {
-    stripped.login = {
-      username: item.login.username,
-      password: item.login.password ? '' : null,
-      totp: item.login.totp ? '' : null,
-      uris: item.login.uris,
-      passwordRevisionDate: null,
-    };
-  }
-
-  if (item.card) {
-    stripped.card = {
-      cardholderName: item.card.cardholderName,
-      brand: item.card.brand,
-      number: item.card.number ? '' : null,
-      expMonth: null,
-      expYear: null,
-      code: item.card.code ? '' : null,
-    };
-  }
-
-  if (item.identity) {
-    stripped.identity = {
-      title: null,
-      firstName: item.identity.firstName,
-      middleName: null,
-      lastName: item.identity.lastName,
-      address1: null,
-      address2: null,
-      address3: null,
-      city: null,
-      state: null,
-      postalCode: null,
-      country: null,
-      company: null,
-      email: null,
-      phone: null,
-      ssn: null,
-      username: null,
-      passportNumber: null,
-      licenseNumber: null,
-    };
-  }
-
-  if (item.secureNote) {
-    stripped.secureNote = { type: item.secureNote.type };
-  }
-
-  stripped.fields = [];
-  stripped.attachments = [];
-
-  return stripped;
-}
-
-/** Save vault data to LocalStorage for instant load next time. Sensitive fields are stripped. */
-export async function saveCachedVault(items: BwItem[], folders: BwFolder[]): Promise<void> {
-  const cache: CachedVault = {
-    items: items.map(stripSensitiveFields),
-    folders,
-    timestamp: Date.now(),
-  };
-  await LocalStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-}
-
-export async function clearCachedVault(): Promise<void> {
-  await LocalStorage.removeItem(CACHE_KEY);
-}
+export { loadCachedVault, saveCachedVault, clearCachedVault } from './vault-cache';
 
 /**
  * Filter items by a case-insensitive substring match against the item name.
@@ -410,8 +305,13 @@ export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
       const cached = favicons?.[hostname];
       if (cached !== undefined && cached !== '') {
         const fallback = buildPlaceholderIcon(ItemType.Login);
-        const fallbackSource = (fallback as { source: { light: string; dark: string } }).source;
-        return { source: cached, fallback: fallbackSource };
+        if (typeof fallback === 'object' && 'source' in fallback) {
+          return {
+            source: cached,
+            fallback: (fallback as { source: { light: string; dark: string } }).source,
+          };
+        }
+        return { source: cached };
       }
     }
   }

@@ -16,6 +16,7 @@ import * as bw from './bw-executor';
 import type { Session } from './bw-executor';
 import {
   buildItemDetailMarkdown,
+  formatTotp,
   itemActions as getItemActions,
   itemTypeLabel,
   actionIcon,
@@ -178,11 +179,6 @@ function renderTypeMetadata(
     default:
       return null;
   }
-}
-
-function formatTotp(code: string): string {
-  const mid = Math.floor(code.length / 2);
-  return `${code.slice(0, mid)} ${code.slice(mid)}`;
 }
 
 function LoginMetadata({

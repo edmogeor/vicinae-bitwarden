@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-import { saveCachedVault } from './item-utils';
+import { saveCachedVault } from './vault-cache';
 import type { BwFolder, BwItem } from './bitwarden-types';
 
 export function useVaultSync(

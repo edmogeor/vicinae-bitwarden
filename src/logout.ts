@@ -2,7 +2,7 @@ import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { deleteSession } from './session-store';
-import { clearCachedVault } from './item-utils';
+import { clearCachedVault } from './vault-cache';
 
 export default async function Logout() {
   try {
