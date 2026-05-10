@@ -54,6 +54,7 @@ export default function CreateItem() {
   const [selectedFolder, setSelectedFolder] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
   const fieldIdRef = useRef(0);
 
   const { handleLogin, handleUnlock } = useUnlockGate({
@@ -150,7 +151,21 @@ export default function CreateItem() {
             ? customFields.map((f) => ({ name: f.name, value: f.value, type: f.type }))
             : undefined,
         );
-        await bw.createItem(payload, session);
+        const created = await bw.createItem(payload, session);
+
+        for (const filePath of attachmentPaths) {
+          try {
+            await bw.createAttachment(created.id, filePath, session);
+          } catch (err) {
+            const message = getErrorMessage(err);
+            await showToast({
+              style: Toast.Style.Failure,
+              title: 'Failed to attach file',
+              message,
+            });
+          }
+        }
+
         await showToast({
           style: Toast.Style.Success,
           title: 'Item created',
@@ -168,7 +183,7 @@ export default function CreateItem() {
         setIsSubmitting(false);
       }
     },
-    [session, selectedType, customFields],
+    [session, selectedType, customFields, attachmentPaths],
   );
 
   const gateRender = renderGate(state, handleUnlock, handleLogin);
@@ -332,6 +347,16 @@ export default function CreateItem() {
       <Form.Separator />
 
       <CustomFieldsSection customFields={customFields} setCustomFields={setCustomFields} />
+
+      <Form.Separator />
+
+      <Form.FilePicker
+        id="attachments"
+        title="Attachments"
+        allowMultipleSelection
+        value={attachmentPaths}
+        onChange={(paths: string[]) => setAttachmentPaths(paths)}
+      />
     </Form>
   );
 }

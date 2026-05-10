@@ -48,9 +48,8 @@
       "name": "customCertPath",
       "title": "Custom CA Certificate Path",
       "description": "Path to a custom CA certificate bundle for self-hosted servers using a private CA. Example: /etc/ssl/certs/my-ca.pem",
-      "type": "textfield",
-      "required": false,
-      "placeholder": "/etc/ssl/certs/ca-bundle.pem"
+      "type": "file",
+      "required": false
     },
     {
       "name": "apiClientId",
@@ -63,7 +62,7 @@
       "name": "apiClientSecret",
       "title": "API Client Secret",
       "description": "Your personal API key client_secret from the Bitwarden web vault",
-      "type": "password",
+      "type": "textfield",
       "required": true
     },
     {
