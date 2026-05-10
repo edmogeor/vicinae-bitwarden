@@ -1,20 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { SpawnOptions } from 'node:child_process';
 
-export function writeStdin(proc: ReturnType<typeof spawn>, data: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!proc.stdin) {
-      reject(new Error('stdin is not available'));
-      return;
-    }
-    proc.on('error', reject);
-    proc.stdin.on('error', reject);
-    proc.stdin.write(data);
-    proc.stdin.end();
-    proc.stdin.on('finish', resolve);
-  });
-}
-
 export function spawnWait(
   bin: string,
   args: string[],

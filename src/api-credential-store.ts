@@ -26,26 +26,20 @@ export async function storeApiCredentials(clientId: string, clientSecret: string
 }
 
 function parseJsonRecord(raw: string): { clientId: string; clientSecret: string } | null {
-  let parsed: unknown;
+  let obj: unknown;
   try {
-    parsed = JSON.parse(raw);
+    obj = JSON.parse(raw);
   } catch {
     return null;
   }
-  if (
-    typeof parsed === 'object' &&
-    parsed !== null &&
-    'clientId' in parsed &&
-    'clientSecret' in parsed &&
-    typeof (parsed as Record<string, unknown>).clientId === 'string' &&
-    typeof (parsed as Record<string, unknown>).clientSecret === 'string'
-  ) {
-    return {
-      clientId: (parsed as Record<string, string>).clientId,
-      clientSecret: (parsed as Record<string, string>).clientSecret,
-    };
+  if (typeof obj !== 'object' || obj === null || !('clientId' in obj) || !('clientSecret' in obj)) {
+    return null;
   }
-  return null;
+  const record = obj as Record<string, unknown>;
+  if (typeof record.clientId !== 'string' || typeof record.clientSecret !== 'string') {
+    return null;
+  }
+  return { clientId: record.clientId, clientSecret: record.clientSecret };
 }
 
 export async function getApiCredentials(): Promise<{
