@@ -1,29 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const { mockBw, mockDeleteSession, mockDeleteApiCredentials, mockShowToast, mockClearCachedVault } =
-  vi.hoisted(() => ({
-    mockBw: {
-      logout: vi.fn().mockResolvedValue(undefined),
-      lock: vi.fn(),
-      sync: vi.fn(),
-      unlock: vi.fn(),
-      login: vi.fn(),
-      getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
-    },
-    mockDeleteSession: vi.fn().mockResolvedValue(undefined),
-    mockDeleteApiCredentials: vi.fn().mockResolvedValue(undefined),
-    mockShowToast: vi.fn(),
-    mockClearCachedVault: vi.fn().mockResolvedValue(undefined),
-  }));
+const { mockBw, mockDeleteSession, mockShowToast, mockClearCachedVault } = vi.hoisted(() => ({
+  mockBw: {
+    logout: vi.fn().mockResolvedValue(undefined),
+    lock: vi.fn(),
+    sync: vi.fn(),
+    unlock: vi.fn(),
+    login: vi.fn(),
+    getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
+  },
+  mockDeleteSession: vi.fn().mockResolvedValue(undefined),
+  mockShowToast: vi.fn(),
+  mockClearCachedVault: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('../bw-executor', () => mockBw);
 
 vi.mock('../session-store', () => ({
   deleteSession: mockDeleteSession,
-}));
-
-vi.mock('../api-credential-store', () => ({
-  deleteApiCredentials: mockDeleteApiCredentials,
 }));
 
 vi.mock('@vicinae/api', () => ({
@@ -42,12 +36,11 @@ beforeEach(() => {
 });
 
 describe('Logout', () => {
-  it('calls bw.logout, clears session, clears api creds, clears cached vault, and shows success toast', async () => {
+  it('calls bw.logout, clears session, clears cached vault, and shows success toast', async () => {
     await Logout();
 
     expect(mockBw.logout).toHaveBeenCalledOnce();
     expect(mockDeleteSession).toHaveBeenCalledOnce();
-    expect(mockDeleteApiCredentials).toHaveBeenCalledOnce();
     expect(mockClearCachedVault).toHaveBeenCalledOnce();
     expect(mockShowToast).toHaveBeenCalledWith({
       style: 'success',

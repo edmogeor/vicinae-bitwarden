@@ -44,7 +44,6 @@ export function useSession(): SessionState {
       const libsecretCreds = await getApiCredentials();
 
       if (libsecretCreds) {
-        // Check if preferences have different credentials (user rotated keys)
         const prefClientId = prefs.apiClientId;
         const prefClientSecret = prefs.apiClientSecret;
         const isRotated =
@@ -60,7 +59,6 @@ export function useSession(): SessionState {
             serverUrl,
           });
           await storeApiCredentials(prefClientId, prefClientSecret);
-          void clearApiCredentialsFromDisk();
         } else {
           await bw.login({
             clientId: libsecretCreds.clientId,
@@ -69,7 +67,6 @@ export function useSession(): SessionState {
           });
         }
       } else {
-        // No libsecret — use preferences
         const prefClientId = prefs.apiClientId;
         const prefClientSecret = prefs.apiClientSecret;
 
@@ -83,14 +80,14 @@ export function useSession(): SessionState {
           serverUrl,
         });
 
-        // Migrate to libsecret
         try {
           await storeApiCredentials(prefClientId, prefClientSecret);
-          void clearApiCredentialsFromDisk();
         } catch {
           // Migration failure is non-fatal — login already succeeded
         }
       }
+
+      void clearApiCredentialsFromDisk();
     } catch (err) {
       const message = getErrorMessage(err);
       setLoginError(message);
