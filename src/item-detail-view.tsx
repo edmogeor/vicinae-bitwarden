@@ -117,12 +117,13 @@ function buildMetadata(
   showPassword: boolean,
   revealedFields: Set<number>,
   totpCode?: string,
+  totpCountdown?: number,
 ) {
   return (
     <Detail.Metadata>
       <Detail.Metadata.Label title="Type" text={itemTypeLabel(item)} />
       {folderName && <Detail.Metadata.Label title="Folder" text={folderName} />}
-      {renderTypeMetadata(item, showPassword, totpCode)}
+      {renderTypeMetadata(item, showPassword, totpCode, totpCountdown)}
       {item.fields && item.fields.length > 0 && (
         <>
           <Detail.Metadata.Separator />
@@ -140,11 +141,21 @@ function buildMetadata(
   );
 }
 
-function renderTypeMetadata(item: BwItem, showPassword: boolean, totpCode?: string) {
+function renderTypeMetadata(
+  item: BwItem,
+  showPassword: boolean,
+  totpCode?: string,
+  totpCountdown?: number,
+) {
   switch (item.type) {
     case ItemType.Login:
       return item.login ? (
-        <LoginMetadata login={item.login} showPassword={showPassword} totpCode={totpCode} />
+        <LoginMetadata
+          login={item.login}
+          showPassword={showPassword}
+          totpCode={totpCode}
+          totpCountdown={totpCountdown ?? 0}
+        />
       ) : null;
     case ItemType.Card:
       return item.card ? <CardMetadata card={item.card} /> : null;
@@ -155,14 +166,21 @@ function renderTypeMetadata(item: BwItem, showPassword: boolean, totpCode?: stri
   }
 }
 
+function formatTotp(code: string): string {
+  const mid = Math.floor(code.length / 2);
+  return `${code.slice(0, mid)} ${code.slice(mid)}`;
+}
+
 function LoginMetadata({
   login,
   showPassword,
   totpCode,
+  totpCountdown,
 }: {
   login: NonNullable<BwItem['login']>;
   showPassword: boolean;
   totpCode?: string;
+  totpCountdown: number;
 }) {
   return (
     <>
@@ -174,7 +192,12 @@ function LoginMetadata({
           text={showPassword ? login.password : '••••••••••••'}
         />
       )}
-      {login.totp && <Detail.Metadata.Label title="TOTP" text={totpCode ?? 'Loading...'} />}
+      {login.totp && (
+        <Detail.Metadata.Label
+          title="TOTP"
+          text={totpCode ? `${formatTotp(totpCode)} (${totpCountdown}s)` : 'Loading...'}
+        />
+      )}
       {login.uris && login.uris.length > 0 && (
         <Detail.Metadata.Label title="URL" text={login.uris.map((u) => u.uri).join(', ')} />
       )}
@@ -242,6 +265,7 @@ export default function ItemDetailView({
   const [fullItem, setFullItem] = useState<BwItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [totpCode, setTotpCode] = useState<string | undefined>();
+  const [totpCountdown, setTotpCountdown] = useState(30);
   const [showPassword, setShowPassword] = useState(false);
   const [revealedFields, setRevealedFields] = useState<Set<number>>(new Set());
   const { pop, push } = useNavigation();
@@ -283,6 +307,18 @@ export default function ItemDetailView({
     };
   }, [session, fullItem]);
 
+  useEffect(() => {
+    const resolved = fullItem ?? item;
+    if (resolved.type !== ItemType.Login || !resolved.login?.totp) return;
+
+    const tick = () => {
+      setTotpCountdown(30 - (Math.floor(Date.now() / 1000) % 30));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [session, fullItem]);
+
   const resolved = fullItem ?? item;
   const markdown = buildItemDetailMarkdown(resolved);
   const actions = getItemActions(resolved);
@@ -293,6 +329,7 @@ export default function ItemDetailView({
     showPassword,
     revealedFields,
     totpCode,
+    totpCountdown,
   );
 
   return (
