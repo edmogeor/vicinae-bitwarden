@@ -181,6 +181,12 @@
       "mode": "no-view"
     },
     {
+      "name": "search-totp",
+      "title": "Search TOTP Codes",
+      "description": "Search accounts that have TOTP set up and copy verification codes",
+      "mode": "view"
+    },
+    {
       "name": "generate-password",
       "title": "Generate Password",
       "description": "Generate a random password using your configured settings and copy it to clipboard",
