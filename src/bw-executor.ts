@@ -94,6 +94,22 @@ function toBwError(err: unknown): BwError {
 }
 
 /**
+ * Encode JSON payload and pipe it to a bw command that reads from stdin.
+ * Returns the trimmed stdout of the target command.
+ */
+async function encodeAndExec(
+  payload: unknown,
+  cmd: string,
+  args: string[],
+  session: Session,
+): Promise<string> {
+  const json = JSON.stringify(payload);
+  const env = sessionEnv(session);
+  const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
+  return execStdin('bw', [cmd, ...args], encoded, { env, timeout: 15000 });
+}
+
+/**
  * Check whether the `bw` binary is installed and on PATH.
  */
 export async function checkInstalled(): Promise<boolean> {
@@ -258,11 +274,8 @@ export async function getTotp(id: string, session: Session): Promise<string> {
  * matching Bitwarden's internal item schema.
  */
 export async function createItem(payload: CreateItemPayload, session: Session): Promise<void> {
-  const json = JSON.stringify(payload);
   try {
-    const env = sessionEnv(session);
-    const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
-    await execStdin('bw', ['create', 'item'], encoded, { env, timeout: 15000 });
+    await encodeAndExec(payload, 'create', ['item'], session);
   } catch (err) {
     throw toBwError(err);
   }
@@ -274,11 +287,8 @@ export async function createItem(payload: CreateItemPayload, session: Session): 
  * with only the fields to update.
  */
 export async function editItem(id: string, payload: object, session: Session): Promise<void> {
-  const json = JSON.stringify(payload);
   try {
-    const env = sessionEnv(session);
-    const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
-    await execStdin('bw', ['edit', 'item', id], encoded, { env, timeout: 15000 });
+    await encodeAndExec(payload, 'edit', ['item', id], session);
   } catch (err) {
     throw toBwError(err);
   }
@@ -289,11 +299,8 @@ export async function editItem(id: string, payload: object, session: Session): P
  * Requires a valid Session. Returns the created folder with its id.
  */
 export async function createFolder(name: string, session: Session): Promise<BwFolder> {
-  const json = JSON.stringify({ name });
   try {
-    const env = sessionEnv(session);
-    const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
-    const stdout = await execStdin('bw', ['create', 'folder'], encoded, { env, timeout: 15000 });
+    const stdout = await encodeAndExec({ name }, 'create', ['folder'], session);
     return parseJson<BwFolder>(stdout);
   } catch (err) {
     throw toBwError(err);

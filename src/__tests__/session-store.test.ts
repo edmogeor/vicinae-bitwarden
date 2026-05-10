@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { mockExec, mockExecError, mockSpawnSuccess, mockSpawnError } from './__utils__/exec-mocks';
 
 const mockExecFile = vi.hoisted(() => vi.fn());
 const mockSpawn = vi.hoisted(() => vi.fn());
@@ -37,54 +38,9 @@ beforeEach(async () => {
   sessionStore = await import('../session-store');
 });
 
-function mockExec(stdout: string, stderr = '') {
-  mockExecFile.mockResolvedValueOnce({ stdout, stderr });
-}
-
-function mockExecError(message: string) {
-  const err = new Error(message) as Error & { stderr: string; code: number };
-  err.stderr = message;
-  err.code = 1;
-  mockExecFile.mockRejectedValueOnce(err);
-}
-
-function mockSpawnSuccess() {
-  const child = {
-    stdin: { write: vi.fn(), end: vi.fn(), on: vi.fn() },
-    on: vi.fn(),
-  };
-  child.stdin.on.mockImplementation((event: string, cb: () => void) => {
-    if (event === 'finish') cb();
-    return child;
-  });
-  child.on.mockImplementation((event: string, cb: (code?: number) => void) => {
-    if (event === 'close') cb(0);
-    return child;
-  });
-  mockSpawn.mockReturnValueOnce(child);
-  return child;
-}
-
-function mockSpawnError(code: number) {
-  const child = {
-    stdin: { write: vi.fn(), end: vi.fn(), on: vi.fn() },
-    on: vi.fn(),
-  };
-  child.stdin.on.mockImplementation((event: string, cb: () => void) => {
-    if (event === 'finish') cb();
-    return child;
-  });
-  child.on.mockImplementation((event: string, cb: (code?: number) => void) => {
-    if (event === 'close') cb(code);
-    return child;
-  });
-  mockSpawn.mockReturnValueOnce(child);
-  return child;
-}
-
 describe('checkSecretToolInstalled', () => {
   it('returns true when secret-tool lookup succeeds', async () => {
-    mockExec('session-token\n');
+    mockExec(mockExecFile, 'session-token\n');
     const result = await sessionStore.checkSecretToolInstalled();
     expect(result).toBe(true);
   });
@@ -99,14 +55,14 @@ describe('checkSecretToolInstalled', () => {
   });
 
   it('returns true when lookup fails for other reasons (key not found)', async () => {
-    mockExecError('secret-tool: Cannot find item');
+    mockExecError(mockExecFile, 'secret-tool: Cannot find item');
 
     const result = await sessionStore.checkSecretToolInstalled();
     expect(result).toBe(true);
   });
 
   it('caches result after first call', async () => {
-    mockExec('token\n');
+    mockExec(mockExecFile, 'token\n');
 
     await sessionStore.checkSecretToolInstalled();
     await sessionStore.checkSecretToolInstalled();
@@ -117,32 +73,31 @@ describe('checkSecretToolInstalled', () => {
 
 describe('getSession', () => {
   it('returns null when secret-tool lookup fails', async () => {
-    mockExecError('secret-tool: Cannot find item');
+    mockExecError(mockExecFile, 'secret-tool: Cannot find item');
     const result = await sessionStore.getSession();
     expect(result).toBeNull();
   });
 
   it('returns null when stdout is empty', async () => {
-    mockExec('\n');
+    mockExec(mockExecFile, '\n');
     const result = await sessionStore.getSession();
     expect(result).toBeNull();
   });
 
   it('returns token from valid session payload (new format)', async () => {
     const payload = JSON.stringify({ token: 'session-abc', timestamp: Date.now() });
-    mockExec(payload + '\n');
+    mockExec(mockExecFile, payload + '\n');
 
     const result = await sessionStore.getSession();
     expect(result).toBe('session-abc');
   });
 
   it('returns null for expired session', async () => {
-    mockGetAutoLockSeconds.mockReturnValue(900); // 15 min timeout
-    const oldTimestamp = Date.now() - 1000 * 1000; // ~16 min ago — expired
+    mockGetAutoLockSeconds.mockReturnValue(900);
+    const oldTimestamp = Date.now() - 1000 * 1000;
     const payload = JSON.stringify({ token: 'expired-token', timestamp: oldTimestamp });
-    mockExec(payload + '\n');
+    mockExec(mockExecFile, payload + '\n');
 
-    // deleteSession will be called for expiry — mock it
     mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
 
     const result = await sessionStore.getSession();
@@ -160,14 +115,14 @@ describe('getSession', () => {
     mockGetAutoLockSeconds.mockReturnValue(0);
     const oldTimestamp = Date.now() - 1000 * 1000;
     const payload = JSON.stringify({ token: 'still-valid', timestamp: oldTimestamp });
-    mockExec(payload + '\n');
+    mockExec(mockExecFile, payload + '\n');
 
     const result = await sessionStore.getSession();
     expect(result).toBe('still-valid');
   });
 
   it('returns raw token for old format (backward compat)', async () => {
-    mockExec('legacy-session-token\n');
+    mockExec(mockExecFile, 'legacy-session-token\n');
 
     const result = await sessionStore.getSession();
     expect(result).toBe('legacy-session-token');
@@ -175,7 +130,7 @@ describe('getSession', () => {
 
   it('passes correct args to secret-tool lookup', async () => {
     const payload = JSON.stringify({ token: 'tok', timestamp: Date.now() });
-    mockExec(payload + '\n');
+    mockExec(mockExecFile, payload + '\n');
 
     await sessionStore.getSession();
 
@@ -190,7 +145,7 @@ describe('getSession', () => {
 describe('setSession', () => {
   it('stores session with current timestamp via secret-tool spawn', async () => {
     const before = Date.now();
-    mockSpawnSuccess();
+    mockSpawnSuccess(mockSpawn);
 
     await sessionStore.setSession('my-session-token');
 
@@ -209,7 +164,7 @@ describe('setSession', () => {
   });
 
   it('rejects when spawn process exits with non-zero code', async () => {
-    mockSpawnError(1);
+    mockSpawnError(mockSpawn, 1);
 
     await expect(sessionStore.setSession('token')).rejects.toThrow(
       'secret-tool exited with code 1',
@@ -249,7 +204,7 @@ describe('deleteSession', () => {
   });
 
   it('does not throw when clear fails', async () => {
-    mockExecError('secret-tool: Cannot find item');
+    mockExecError(mockExecFile, 'secret-tool: Cannot find item');
 
     await expect(sessionStore.deleteSession()).resolves.toBeUndefined();
   });

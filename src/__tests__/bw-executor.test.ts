@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import * as bw from '../bw-executor';
+import { mockExec, mockExecError, expectEncodeAndExec } from './__utils__/exec-mocks';
 
 const mockExecFile = vi.hoisted(() => vi.fn());
 const mockSpawn = vi.hoisted(() => vi.fn());
@@ -38,17 +39,6 @@ vi.mock('@vicinae/api', () => ({
   getPreferenceValues: () => mockPrefs,
 }));
 
-function mockExec(stdout: string, stderr = '') {
-  mockExecFile.mockResolvedValueOnce({ stdout, stderr });
-}
-
-function mockExecError(message: string, stderr = '') {
-  const err = new Error(message) as Error & { stderr: string; code: number };
-  err.stderr = stderr;
-  err.code = 1;
-  mockExecFile.mockRejectedValueOnce(err);
-}
-
 function spawnMockChild(stdout: string, exitCode = 0) {
   const child = {
     stdout: { on: vi.fn() },
@@ -85,7 +75,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 describe('checkInstalled', () => {
   it('returns true when bw --version succeeds', async () => {
-    mockExec('Bitwarden CLI v2024.1.0');
+    mockExec(mockExecFile, 'Bitwarden CLI v2024.1.0');
     expect(await bw.checkInstalled()).toBe(true);
     expect(mockExecFile).toHaveBeenCalledWith('bw', ['--version'], expect.any(Object));
   });
@@ -107,8 +97,8 @@ describe('login', () => {
   };
 
   it('calls bw config server then bw login --apikey with env vars', async () => {
-    mockExec('');
-    mockExec('');
+    mockExec(mockExecFile, '');
+    mockExec(mockExecFile, '');
 
     await bw.login(params);
 
@@ -130,7 +120,7 @@ describe('login', () => {
   });
 
   it('throws BwError when config server fails', async () => {
-    mockExecError('Network error');
+    mockExecError(mockExecFile, 'Network error');
 
     await expect(bw.login(params)).rejects.toThrow('Network error');
   });
@@ -141,7 +131,7 @@ describe('login', () => {
 // ---------------------------------------------------------------------------
 describe('unlock', () => {
   it('calls bw unlock --passwordenv BW_PASSWORD --raw and returns session', async () => {
-    mockExec('session-token-abc\n');
+    mockExec(mockExecFile, 'session-token-abc\n');
 
     const sessionToken = await bw.unlock('mypassword');
     expect(sessionToken).toBe('session-token-abc');
@@ -155,7 +145,7 @@ describe('unlock', () => {
   });
 
   it('throws BwError with INVALID_PASSWORD for invalid password', async () => {
-    mockExecError('Invalid master password');
+    mockExecError(mockExecFile, 'Invalid master password');
 
     await expect(bw.unlock('wrong')).rejects.toMatchObject({
       message: 'Invalid master password',
@@ -164,7 +154,7 @@ describe('unlock', () => {
   });
 
   it('throws generic BwError for other unlock errors', async () => {
-    mockExecError('Network timeout');
+    mockExecError(mockExecFile, 'Network timeout');
 
     await expect(bw.unlock('pass')).rejects.toMatchObject({
       message: 'Network timeout',
@@ -178,14 +168,14 @@ describe('unlock', () => {
 // ---------------------------------------------------------------------------
 describe('sync', () => {
   it('calls bw sync with BW_SESSION env var', async () => {
-    mockExec('');
+    mockExec(mockExecFile, '');
 
     await bw.sync('token-abc');
     expect(mockExecFile).toHaveBeenCalledWith('bw', ['sync'], hasSession('token-abc'));
   });
 
   it('throws BwError on sync failure', async () => {
-    mockExecError('Sync failed');
+    mockExecError(mockExecFile, 'Sync failed');
 
     await expect(bw.sync('token')).rejects.toThrow('Sync failed');
   });
@@ -197,7 +187,7 @@ describe('sync', () => {
 describe('listItems', () => {
   it('calls bw list items with BW_SESSION and parses JSON', async () => {
     const items = [{ id: '1', name: 'GitHub', type: 1 }];
-    mockExec(JSON.stringify(items));
+    mockExec(mockExecFile, JSON.stringify(items));
 
     const result = await bw.listItems('token-abc');
     expect(result).toEqual(items);
@@ -205,7 +195,7 @@ describe('listItems', () => {
   });
 
   it('throws BwError when JSON parsing fails', async () => {
-    mockExec('not valid json {{{');
+    mockExec(mockExecFile, 'not valid json {{{');
 
     await expect(bw.listItems('token')).rejects.toMatchObject({
       message: 'Failed to parse `bw` output as JSON',
@@ -220,7 +210,7 @@ describe('listItems', () => {
 describe('listFolders', () => {
   it('calls bw list folders with BW_SESSION and parses JSON', async () => {
     const folders = [{ id: 'f1', name: 'Work' }];
-    mockExec(JSON.stringify(folders));
+    mockExec(mockExecFile, JSON.stringify(folders));
 
     const result = await bw.listFolders('token');
     expect(result).toEqual(folders);
@@ -234,7 +224,7 @@ describe('listFolders', () => {
 describe('getItem', () => {
   it('calls bw get item with BW_SESSION and returns parsed item', async () => {
     const itemObj = { id: '1', name: 'GitHub', type: 1 };
-    mockExec(JSON.stringify(itemObj));
+    mockExec(mockExecFile, JSON.stringify(itemObj));
 
     const result = await bw.getItem('1', 'token');
     expect(result).toEqual(itemObj);
@@ -247,7 +237,7 @@ describe('getItem', () => {
 // ---------------------------------------------------------------------------
 describe('getTotp', () => {
   it('calls bw get totp with BW_SESSION and returns trimmed code', async () => {
-    mockExec('123456\n');
+    mockExec(mockExecFile, '123456\n');
 
     const code = await bw.getTotp('1', 'token');
     expect(code).toBe('123456');
@@ -274,25 +264,7 @@ describe('createItem', () => {
 
     await bw.createItem(payload, 'token');
 
-    expect(mockSpawn).toHaveBeenCalledTimes(2);
-    expect(mockSpawn).toHaveBeenNthCalledWith(
-      1,
-      'bw',
-      ['encode'],
-      expect.objectContaining({
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: expect.objectContaining({ BW_SESSION: 'token' }),
-      }),
-    );
-    expect(mockSpawn).toHaveBeenNthCalledWith(
-      2,
-      'bw',
-      ['create', 'item'],
-      expect.objectContaining({
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: expect.objectContaining({ BW_SESSION: 'token' }),
-      }),
-    );
+    expectEncodeAndExec(mockSpawn, 'token', 'create', ['item']);
   });
 });
 
@@ -309,25 +281,7 @@ describe('editItem', () => {
 
     await bw.editItem('item-123', payload, 'token');
 
-    expect(mockSpawn).toHaveBeenCalledTimes(2);
-    expect(mockSpawn).toHaveBeenNthCalledWith(
-      1,
-      'bw',
-      ['encode'],
-      expect.objectContaining({
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: expect.objectContaining({ BW_SESSION: 'token' }),
-      }),
-    );
-    expect(mockSpawn).toHaveBeenNthCalledWith(
-      2,
-      'bw',
-      ['edit', 'item', 'item-123'],
-      expect.objectContaining({
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: expect.objectContaining({ BW_SESSION: 'token' }),
-      }),
-    );
+    expectEncodeAndExec(mockSpawn, 'token', 'edit', ['item', 'item-123']);
   });
 
   it('throws BwError on failure', async () => {
@@ -350,25 +304,7 @@ describe('createFolder', () => {
     const result = await bw.createFolder('Work', 'token');
     expect(result).toEqual({ id: 'f1', name: 'Work' });
 
-    expect(mockSpawn).toHaveBeenCalledTimes(2);
-    expect(mockSpawn).toHaveBeenNthCalledWith(
-      1,
-      'bw',
-      ['encode'],
-      expect.objectContaining({
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: expect.objectContaining({ BW_SESSION: 'token' }),
-      }),
-    );
-    expect(mockSpawn).toHaveBeenNthCalledWith(
-      2,
-      'bw',
-      ['create', 'folder'],
-      expect.objectContaining({
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: expect.objectContaining({ BW_SESSION: 'token' }),
-      }),
-    );
+    expectEncodeAndExec(mockSpawn, 'token', 'create', ['folder']);
   });
 });
 
@@ -377,7 +313,7 @@ describe('createFolder', () => {
 // ---------------------------------------------------------------------------
 describe('lock', () => {
   it('calls bw lock with BW_SESSION', async () => {
-    mockExec('');
+    mockExec(mockExecFile, '');
 
     await bw.lock('token');
     expect(mockExecFile).toHaveBeenCalledWith('bw', ['lock'], hasSession('token'));
@@ -402,7 +338,7 @@ describe('status', () => {
       userId: 'x',
       status: 'unlocked' as const,
     };
-    mockExec(JSON.stringify(statusObj));
+    mockExec(mockExecFile, JSON.stringify(statusObj));
 
     const result = await bw.status();
     expect(result).toEqual(statusObj);
@@ -415,7 +351,7 @@ describe('status', () => {
 // ---------------------------------------------------------------------------
 describe('deleteItem', () => {
   it('calls bw delete item with BW_SESSION', async () => {
-    mockExec('');
+    mockExec(mockExecFile, '');
 
     await bw.deleteItem('item-1', 'token');
     expect(mockExecFile).toHaveBeenCalledWith(
@@ -426,7 +362,7 @@ describe('deleteItem', () => {
   });
 
   it('throws BwError on delete failure', async () => {
-    mockExecError('Item not found');
+    mockExecError(mockExecFile, 'Item not found');
 
     await expect(bw.deleteItem('missing', 'token')).rejects.toThrow('Item not found');
   });
@@ -437,7 +373,7 @@ describe('deleteItem', () => {
 // ---------------------------------------------------------------------------
 describe('generatePassword', () => {
   it('calls bw generate with all flags enabled', async () => {
-    mockExec('aB3$xY9!pQ2&wE5!rT');
+    mockExec(mockExecFile, 'aB3$xY9!pQ2&wE5!rT');
 
     const result = await bw.generatePassword({
       length: 20,
@@ -455,7 +391,7 @@ describe('generatePassword', () => {
   });
 
   it('calls bw generate with subset of flags', async () => {
-    mockExec('abc123');
+    mockExec(mockExecFile, 'abc123');
 
     await bw.generatePassword({
       length: 12,
@@ -472,7 +408,7 @@ describe('generatePassword', () => {
   });
 
   it('throws BwError on failure', async () => {
-    mockExecError('CLI error');
+    mockExecError(mockExecFile, 'CLI error');
 
     await expect(
       bw.generatePassword({
@@ -522,20 +458,20 @@ describe('getErrorMessage', () => {
 // ---------------------------------------------------------------------------
 describe('logout', () => {
   it('calls bw logout', async () => {
-    mockExec('');
+    mockExec(mockExecFile, '');
 
     await bw.logout();
     expect(mockExecFile).toHaveBeenCalledWith('bw', ['logout'], expect.any(Object));
   });
 
   it('returns silently when already logged out', async () => {
-    mockExecError('Not logged in.');
+    mockExecError(mockExecFile, 'Not logged in.');
 
     await expect(bw.logout()).resolves.toBeUndefined();
   });
 
   it('throws BwError on other logout failures', async () => {
-    mockExecError('Network error');
+    mockExecError(mockExecFile, 'Network error');
 
     await expect(bw.logout()).rejects.toThrow('Network error');
   });
@@ -556,8 +492,8 @@ describe('custom CA cert', () => {
   });
 
   it('does not set NODE_EXTRA_CA_CERTS when customCertPath is empty', async () => {
-    mockExec('');
-    mockExec('');
+    mockExec(mockExecFile, '');
+    mockExec(mockExecFile, '');
 
     await bw.login(params);
 
@@ -573,8 +509,8 @@ describe('custom CA cert', () => {
 
   it('sets NODE_EXTRA_CA_CERTS when customCertPath is configured', async () => {
     mockPrefs.customCertPath = '/etc/ssl/certs/custom-ca.pem';
-    mockExec('');
-    mockExec('');
+    mockExec(mockExecFile, '');
+    mockExec(mockExecFile, '');
 
     await bw.login(params);
 
@@ -590,7 +526,7 @@ describe('custom CA cert', () => {
 
   it('sets NODE_EXTRA_CA_CERTS in sessionEnv calls', async () => {
     mockPrefs.customCertPath = '/etc/ssl/certs/custom-ca.pem';
-    mockExec('');
+    mockExec(mockExecFile, '');
 
     await bw.sync('token-abc');
 
