@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSession } from '../use-session';
 
-const { mockBw, mockSessionStore } = vi.hoisted(() => {
+const { mockBw, mockSessionStore, mockApiCredStore } = vi.hoisted(() => {
   const mockBw = {
     login: vi.fn().mockResolvedValue(undefined),
     unlock: vi.fn().mockResolvedValue('default-token'),
@@ -16,10 +16,18 @@ const { mockBw, mockSessionStore } = vi.hoisted(() => {
     deleteSession: vi.fn().mockResolvedValue(undefined),
   };
 
-  return { mockBw, mockSessionStore };
+  const mockApiCredStore = {
+    getApiCredentials: vi.fn().mockResolvedValue(null),
+    storeApiCredentials: vi.fn().mockResolvedValue(undefined),
+    clearApiCredentialsFromDisk: vi.fn().mockResolvedValue(undefined),
+  };
+
+  return { mockBw, mockSessionStore, mockApiCredStore };
 });
 
 vi.mock('../session-store', () => mockSessionStore);
+
+vi.mock('../api-credential-store', () => mockApiCredStore);
 
 vi.mock('@vicinae/api', () => ({
   showToast: vi.fn(),
@@ -34,6 +42,7 @@ vi.mock('../preferences', () => ({
     customServerUrl: '',
     apiClientId: 'test-client-id',
     apiClientSecret: 'test-client-secret',
+    autoLockTimeout: '21600',
     passwordLength: '20',
     passwordUppercase: true,
     passwordLowercase: true,
@@ -158,8 +167,12 @@ describe('useSession', () => {
   });
 
   describe('loginIfNeeded', () => {
-    it('calls bw.login with preferences', async () => {
+    it('uses libsecret credentials when available and prefs unchanged', async () => {
       mockSessionStore.getSession.mockResolvedValue(null);
+      mockApiCredStore.getApiCredentials.mockResolvedValue({
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret',
+      });
 
       const { result } = renderHook(() => useSession());
 
@@ -174,6 +187,58 @@ describe('useSession', () => {
           serverUrl: 'https://bitwarden.com',
         }),
       );
+      expect(mockApiCredStore.storeApiCredentials).not.toHaveBeenCalled();
+    });
+
+    it('uses preferences and migrates to libsecret when no libsecret creds exist', async () => {
+      mockSessionStore.getSession.mockResolvedValue(null);
+      mockApiCredStore.getApiCredentials.mockResolvedValue(null);
+
+      const { result } = renderHook(() => useSession());
+
+      await act(async () => {
+        await result.current.loginIfNeeded();
+      });
+
+      expect(mockBw.login).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret',
+          serverUrl: 'https://bitwarden.com',
+        }),
+      );
+      expect(mockApiCredStore.storeApiCredentials).toHaveBeenCalledWith(
+        'test-client-id',
+        'test-client-secret',
+      );
+      expect(mockApiCredStore.clearApiCredentialsFromDisk).toHaveBeenCalled();
+    });
+
+    it('detects credential rotation and re-migrates', async () => {
+      mockSessionStore.getSession.mockResolvedValue(null);
+      mockApiCredStore.getApiCredentials.mockResolvedValue({
+        clientId: 'old-rotated-id',
+        clientSecret: 'old-rotated-secret',
+      });
+
+      const { result } = renderHook(() => useSession());
+
+      await act(async () => {
+        await result.current.loginIfNeeded();
+      });
+
+      expect(mockBw.login).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret',
+          serverUrl: 'https://bitwarden.com',
+        }),
+      );
+      expect(mockApiCredStore.storeApiCredentials).toHaveBeenCalledWith(
+        'test-client-id',
+        'test-client-secret',
+      );
+      expect(mockApiCredStore.clearApiCredentialsFromDisk).toHaveBeenCalled();
     });
 
     it('isLoggingIn is false after login completes', async () => {

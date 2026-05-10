@@ -1,10 +1,16 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
+import { getAutoLockSeconds, getPreferences } from './preferences';
 
 const exec = promisify(execFile);
 
 const SERVICE = 'vicinae-bitwarden';
 const ACCOUNT = 'session';
+
+interface SessionPayload {
+  token: string;
+  timestamp: number;
+}
 
 let installed: boolean | null = null;
 
@@ -52,21 +58,36 @@ export async function getSession(): Promise<string | null> {
       ['lookup', 'service', SERVICE, 'account', ACCOUNT],
       { timeout: 5000 },
     );
-    const token = stdout.trim();
-    return token || null;
+    const raw = stdout.trim();
+    if (!raw) return null;
+
+    // Backward compat: old format is a raw token string (no JSON wrapper)
+    try {
+      const parsed: SessionPayload = JSON.parse(raw);
+      const timeout = getAutoLockSeconds(getPreferences());
+      if (timeout > 0 && Date.now() - parsed.timestamp > timeout * 1000) {
+        await deleteSession(); // Expired — clear it
+        return null;
+      }
+      return parsed.token;
+    } catch {
+      // Old format: raw token string — treat as valid
+      return raw;
+    }
   } catch {
     return null;
   }
 }
 
 export async function setSession(token: string): Promise<void> {
+  const payload: SessionPayload = { token, timestamp: Date.now() };
   const proc = spawn(
     'secret-tool',
     ['store', '--label=Vicinae Bitwarden', 'service', SERVICE, 'account', ACCOUNT],
     { stdio: ['pipe', 'ignore', 'ignore'] },
   );
 
-  await writeStdin(proc, token);
+  await writeStdin(proc, JSON.stringify(payload));
 
   await new Promise<void>((resolve, reject) => {
     proc.on('error', reject);

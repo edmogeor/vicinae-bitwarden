@@ -4,6 +4,11 @@ import * as bw from './bw-executor';
 import type { Session } from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { deleteSession, getSession, setSession as storeSession } from './session-store';
+import {
+  getApiCredentials,
+  storeApiCredentials,
+  clearApiCredentialsFromDisk,
+} from './api-credential-store';
 
 interface SessionState {
   session: Session | null;
@@ -36,11 +41,56 @@ export function useSession(): SessionState {
       const prefs = getPreferences();
       const serverUrl = getServerUrl(prefs);
 
-      await bw.login({
-        clientId: prefs.apiClientId,
-        clientSecret: prefs.apiClientSecret,
-        serverUrl,
-      });
+      const libsecretCreds = await getApiCredentials();
+
+      if (libsecretCreds) {
+        // Check if preferences have different credentials (user rotated keys)
+        const prefClientId = prefs.apiClientId;
+        const prefClientSecret = prefs.apiClientSecret;
+        const isRotated =
+          prefClientId &&
+          prefClientSecret &&
+          (prefClientId !== libsecretCreds.clientId ||
+            prefClientSecret !== libsecretCreds.clientSecret);
+
+        if (isRotated) {
+          await bw.login({
+            clientId: prefClientId,
+            clientSecret: prefClientSecret,
+            serverUrl,
+          });
+          await storeApiCredentials(prefClientId, prefClientSecret);
+          void clearApiCredentialsFromDisk();
+        } else {
+          await bw.login({
+            clientId: libsecretCreds.clientId,
+            clientSecret: libsecretCreds.clientSecret,
+            serverUrl,
+          });
+        }
+      } else {
+        // No libsecret — use preferences
+        const prefClientId = prefs.apiClientId;
+        const prefClientSecret = prefs.apiClientSecret;
+
+        if (!prefClientId || !prefClientSecret) {
+          throw new Error('No API credentials configured');
+        }
+
+        await bw.login({
+          clientId: prefClientId,
+          clientSecret: prefClientSecret,
+          serverUrl,
+        });
+
+        // Migrate to libsecret
+        try {
+          await storeApiCredentials(prefClientId, prefClientSecret);
+          void clearApiCredentialsFromDisk();
+        } catch {
+          // Migration failure is non-fatal — login already succeeded
+        }
+      }
     } catch (err) {
       const message = getErrorMessage(err);
       setLoginError(message);

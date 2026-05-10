@@ -1,9 +1,39 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { BwError, BwFolder, BwItem, ItemType, ItemTypeValue } from './bitwarden-types';
 import { getPreferences } from './preferences';
 
 const exec = promisify(execFile);
+
+function execStdin(
+  bin: string,
+  args: string[],
+  stdin: string,
+  opts?: { env?: NodeJS.ProcessEnv; timeout?: number },
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, {
+      env: opts?.env ?? process.env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: opts?.timeout,
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (d: Buffer) => {
+      stdout += d.toString();
+    });
+    child.stderr.on('data', (d: Buffer) => {
+      stderr += d.toString();
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) resolve(stdout.trim());
+      else reject(new Error(stderr.trim() || `Process exited with code ${code}`));
+    });
+    child.stdin.write(stdin);
+    child.stdin.end();
+  });
+}
 
 /** Token that identifies an unlocked vault session */
 export type Session = string;
@@ -128,8 +158,9 @@ export async function status(): Promise<BwStatus> {
  */
 export async function unlock(masterPassword: string): Promise<Session> {
   try {
-    const { stdout } = await exec('bw', ['unlock', masterPassword, '--raw'], {
+    const { stdout } = await exec('bw', ['unlock', '--passwordenv', 'BW_PASSWORD', '--raw'], {
       timeout: 15000,
+      env: { ...bwEnv(), BW_PASSWORD: masterPassword },
     });
     return stdout.trim();
   } catch (err) {
@@ -229,10 +260,9 @@ export async function getTotp(id: string, session: Session): Promise<string> {
 export async function createItem(payload: CreateItemPayload, session: Session): Promise<void> {
   const json = JSON.stringify(payload);
   try {
-    await exec('bw', ['create', 'item', json], {
-      timeout: 15000,
-      env: sessionEnv(session),
-    });
+    const env = sessionEnv(session);
+    const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
+    await execStdin('bw', ['create', 'item'], encoded, { env, timeout: 15000 });
   } catch (err) {
     throw toBwError(err);
   }
@@ -246,10 +276,9 @@ export async function createItem(payload: CreateItemPayload, session: Session): 
 export async function editItem(id: string, payload: object, session: Session): Promise<void> {
   const json = JSON.stringify(payload);
   try {
-    await exec('bw', ['edit', 'item', id, json], {
-      timeout: 15000,
-      env: sessionEnv(session),
-    });
+    const env = sessionEnv(session);
+    const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
+    await execStdin('bw', ['edit', 'item', id], encoded, { env, timeout: 15000 });
   } catch (err) {
     throw toBwError(err);
   }
@@ -262,10 +291,9 @@ export async function editItem(id: string, payload: object, session: Session): P
 export async function createFolder(name: string, session: Session): Promise<BwFolder> {
   const json = JSON.stringify({ name });
   try {
-    const { stdout } = await exec('bw', ['create', 'folder', json], {
-      timeout: 15000,
-      env: sessionEnv(session),
-    });
+    const env = sessionEnv(session);
+    const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
+    const stdout = await execStdin('bw', ['create', 'folder'], encoded, { env, timeout: 15000 });
     return parseJson<BwFolder>(stdout);
   } catch (err) {
     throw toBwError(err);
