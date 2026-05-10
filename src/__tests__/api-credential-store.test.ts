@@ -113,26 +113,6 @@ describe('getApiCredentials', () => {
   });
 });
 
-describe('deleteApiCredentials', () => {
-  it('calls secret-tool clear with correct args', async () => {
-    mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
-
-    await apiCredStore.deleteApiCredentials();
-
-    expect(mockExecFile).toHaveBeenCalledWith(
-      'secret-tool',
-      ['clear', 'service', 'vicinae-bitwarden', 'account', 'api-creds'],
-      expect.objectContaining({ timeout: 5000 }),
-    );
-  });
-
-  it('does not throw when clear fails', async () => {
-    mockExecError(mockExecFile, 'secret-tool: Cannot find item');
-
-    await expect(apiCredStore.deleteApiCredentials()).resolves.toBeUndefined();
-  });
-});
-
 describe('clearApiCredentialsFromDisk', () => {
   it('clears bitwardenApiClientId from settings.json', async () => {
     mockReadFileSync.mockReturnValue(

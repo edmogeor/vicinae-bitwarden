@@ -129,10 +129,9 @@ vi.mock('../item-utils', () => ({
     folderId: null,
     favorite: false,
   })),
-  buildItemDetailMarkdown: vi.fn(),
-  itemActions: vi.fn(),
   itemTypeLabel: vi.fn(() => 'Login'),
-  actionIcon: vi.fn(),
+  CARD_BRANDS: ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'],
+  uploadAttachments: vi.fn().mockResolvedValue(undefined),
 }));
 
 import EditItem from '../edit-item';

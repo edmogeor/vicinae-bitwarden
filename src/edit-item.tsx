@@ -15,7 +15,7 @@ import { getErrorMessage } from './bw-executor';
 import type { BwFolder, BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
-import { CARD_BRANDS, itemTypeLabel, toCreatePayload } from './item-utils';
+import { CARD_BRANDS, itemTypeLabel, toCreatePayload, uploadAttachments } from './item-utils';
 import CustomFieldsSection, { type CustomField } from './custom-fields-section';
 
 interface EditItemProps {
@@ -148,18 +148,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
         const payload = toCreatePayload(formValues, item.type, formValues.folder || null, fields);
         await bw.editItem(item.id, payload, session);
 
-        for (const filePath of attachmentPaths) {
-          try {
-            await bw.createAttachment(item.id, filePath, session);
-          } catch (err) {
-            const message = getErrorMessage(err);
-            await showToast({
-              style: Toast.Style.Failure,
-              title: 'Failed to attach file',
-              message,
-            });
-          }
-        }
+        await uploadAttachments(item.id, attachmentPaths, session);
 
         await showToast({
           style: Toast.Style.Success,

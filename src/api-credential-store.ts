@@ -60,7 +60,7 @@ export async function getApiCredentials(): Promise<{
   }
 }
 
-export async function deleteApiCredentials(): Promise<void> {
+async function deleteApiCredentials(): Promise<void> {
   try {
     await exec('secret-tool', ['clear', 'service', SERVICE, 'account', ACCOUNT], {
       timeout: 5000,
