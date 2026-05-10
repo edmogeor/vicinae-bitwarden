@@ -103,6 +103,8 @@ vi.mock('@vicinae/api', () => ({
       Description: ({ text }: { text: string }) =>
         React.createElement('span', { 'data-testid': 'description' }, text),
       Separator: () => React.createElement('hr', { 'data-testid': 'separator' }),
+      FilePicker: ({ id }: { id: string }) =>
+        React.createElement('input', { 'data-testid': id ?? 'file-picker', type: 'file' }),
     },
   ),
   Icon: {

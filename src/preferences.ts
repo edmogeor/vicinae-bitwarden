@@ -45,7 +45,7 @@ export function getServerUrl(prefs: Preferences): string {
 }
 
 export function getDownloadDir(prefs: Preferences): string {
-  const dir = prefs.downloadDir.trim();
+  const dir = (prefs.downloadDir ?? '').trim();
   if (dir) return dir.replace(/\/+$/, '');
   return `${process.env.HOME ?? '/tmp'}/Downloads`;
 }

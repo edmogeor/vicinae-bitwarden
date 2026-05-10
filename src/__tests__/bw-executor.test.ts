@@ -253,7 +253,9 @@ describe('createItem', () => {
   it('encodes payload and creates item via bw encode + bw create item', async () => {
     const encoded = Buffer.from(JSON.stringify({ name: 'Test' })).toString('base64');
     spawnMockChild(encoded);
-    spawnMockChild('');
+    spawnMockChild(
+      '{"id":"abc","name":"Test","type":1,"notes":null,"folderId":null,"favorite":false,"revisionDate":"","creationDate":"","deletedDate":null,"collectionIds":null}',
+    );
 
     const payload = {
       type: 1 as const,
@@ -263,7 +265,9 @@ describe('createItem', () => {
       favorite: false,
     };
 
-    await bw.createItem(payload, 'token');
+    const result = await bw.createItem(payload, 'token');
+    expect(result.id).toBe('abc');
+    expect(result.name).toBe('Test');
 
     expectEncodeAndExec(mockSpawn, 'token', 'create', ['item']);
   });

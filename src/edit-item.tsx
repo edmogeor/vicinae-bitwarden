@@ -94,6 +94,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [folders, setFolders] = useState<BwFolder[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const fieldIdRef = useRef(0);
 
@@ -146,6 +147,20 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
 
         const payload = toCreatePayload(formValues, item.type, formValues.folder || null, fields);
         await bw.editItem(item.id, payload, session);
+
+        for (const filePath of attachmentPaths) {
+          try {
+            await bw.createAttachment(item.id, filePath, session);
+          } catch (err) {
+            const message = getErrorMessage(err);
+            await showToast({
+              style: Toast.Style.Failure,
+              title: 'Failed to attach file',
+              message,
+            });
+          }
+        }
+
         await showToast({
           style: Toast.Style.Success,
           title: 'Item updated',

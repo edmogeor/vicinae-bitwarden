@@ -274,9 +274,10 @@ export async function getTotp(id: string, session: Session): Promise<string> {
  * Requires a valid Session. The `payload` is the full JSON object
  * matching Bitwarden's internal item schema.
  */
-export async function createItem(payload: CreateItemPayload, session: Session): Promise<void> {
+export async function createItem(payload: CreateItemPayload, session: Session): Promise<BwItem> {
   try {
-    await encodeAndExec(payload, 'create', ['item'], session);
+    const stdout = await encodeAndExec(payload, 'create', ['item'], session);
+    return parseJson<BwItem>(stdout);
   } catch (err) {
     throw toBwError(err);
   }
@@ -385,7 +386,12 @@ export async function downloadAttachment(
   fileName: string,
   session: Session,
 ): Promise<string> {
-  const prefs = getPreferences();
+  let prefs;
+  try {
+    prefs = getPreferences();
+  } catch {
+    prefs = { downloadDir: '' } as unknown as ReturnType<typeof getPreferences>;
+  }
   const downloadDir = getDownloadDir(prefs);
   const outPath = join(downloadDir, fileName);
   try {
@@ -394,6 +400,24 @@ export async function downloadAttachment(
       env: sessionEnv(session),
     });
     return outPath;
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * Attach a file from the local filesystem to an existing Item.
+ */
+export async function createAttachment(
+  itemId: string,
+  filePath: string,
+  session: Session,
+): Promise<void> {
+  try {
+    await exec('bw', ['create', 'attachment', '--itemid', itemId, '--file', filePath], {
+      timeout: 30000,
+      env: sessionEnv(session),
+    });
   } catch (err) {
     throw toBwError(err);
   }

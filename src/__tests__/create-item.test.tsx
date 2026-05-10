@@ -19,7 +19,7 @@ const {
     checkInstalled: vi.fn().mockResolvedValue(true),
     status: vi.fn().mockResolvedValue({ status: 'unlocked' }),
     listFolders: vi.fn().mockResolvedValue([]),
-    createItem: vi.fn().mockResolvedValue(undefined),
+    createItem: vi.fn().mockResolvedValue({ id: 'new-id', name: 'Test' }),
     login: vi.fn(),
     unlock: vi.fn(),
     sync: vi.fn(),
@@ -76,6 +76,7 @@ const {
       TextArea: el('textarea'),
       Description: el('span'),
       Separator: () => React.createElement('hr', { 'data-testid': 'separator' }),
+      FilePicker: el('input'),
     },
   );
 
@@ -184,7 +185,7 @@ beforeEach(() => {
   mockBw.checkInstalled.mockResolvedValue(true);
   mockBw.status.mockResolvedValue({ status: 'unlocked' });
   mockBw.listFolders.mockResolvedValue([]);
-  mockBw.createItem.mockResolvedValue(undefined);
+  mockBw.createItem.mockResolvedValue({ id: 'new-id', name: 'Test' });
   mockUseSession.session = 'test-session';
   mockUseSession.isLoggingIn = false;
   mockUseSession.loginError = null;

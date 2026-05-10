@@ -74,22 +74,23 @@ export async function clearApiCredentialsFromDisk(): Promise<void> {
   try {
     const settingsPath = join(getHome(), '.config', 'vicinae', 'settings.json');
     const content = readFileSync(settingsPath, 'utf-8');
-    const updated = content.replace(/"apiClientId"\s*:\s*"[^"]*"/, '"apiClientId": ""');
+    let updated = content.replace(/"apiClientId"\s*:\s*"[^"]*"/, '"apiClientId": ""');
+    updated = updated.replace(/"apiClientSecret"\s*:\s*"[^"]*"/, '"apiClientSecret": ""');
     if (updated !== content) {
       writeFileSync(settingsPath, updated, 'utf-8');
     }
   } catch (err) {
-    console.warn('Failed to clear apiClientId from settings.json:', err);
+    console.warn('Failed to clear API credentials from settings.json:', err);
   }
 
   try {
     const dbPath = join(getHome(), '.local', 'share', 'vicinae', 'vicinae.db');
     const db = new Database(dbPath);
     db.prepare(
-      "DELETE FROM storage_data_item WHERE namespace_id = 'bitwarden:preferences' AND key = 'apiClientSecret'",
+      "DELETE FROM storage_data_item WHERE key IN ('apiClientId', 'apiClientSecret')",
     ).run();
     db.close();
   } catch (err) {
-    console.warn('Failed to clear apiClientSecret from vicinae.db:', err);
+    console.warn('Failed to clear API credentials from vicinae.db:', err);
   }
 }
