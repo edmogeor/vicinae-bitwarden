@@ -1,6 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { BwError, BwFolder, BwItem, ItemType, ItemTypeValue } from './bitwarden-types';
+import { BwError, BwFolder, BwItem, ItemTypeValue } from './bitwarden-types';
 import { getPreferences } from './preferences';
 
 const exec = promisify(execFile);

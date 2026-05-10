@@ -47,31 +47,29 @@ export async function getSession(): Promise<string | null> {
     const raw = stdout.trim();
     if (!raw) return null;
 
-    let parsed: unknown;
+    let obj: unknown;
     try {
-      parsed = JSON.parse(raw);
+      obj = JSON.parse(raw);
     } catch {
       return raw;
     }
 
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'token' in parsed &&
-      'timestamp' in parsed &&
-      typeof (parsed as Record<string, unknown>).token === 'string' &&
-      typeof (parsed as Record<string, unknown>).timestamp === 'number'
-    ) {
-      const { token, timestamp } = parsed as SessionPayload;
-      const timeout = getAutoLockSeconds(getPreferences());
-      if (timeout > 0 && Date.now() - timestamp > timeout * 1000) {
-        await deleteSession();
-        return null;
-      }
-      return token;
+    if (typeof obj !== 'object' || obj === null || !('token' in obj) || !('timestamp' in obj)) {
+      return null;
+    }
+    const record = obj as Record<string, unknown>;
+    if (typeof record.token !== 'string' || typeof record.timestamp !== 'number') {
+      return null;
     }
 
-    return null;
+    const token = record.token;
+    const timestamp = record.timestamp;
+    const timeout = getAutoLockSeconds(getPreferences());
+    if (timeout > 0 && Date.now() - timestamp > timeout * 1000) {
+      await deleteSession();
+      return null;
+    }
+    return token;
   } catch {
     return null;
   }
