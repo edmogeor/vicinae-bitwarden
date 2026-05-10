@@ -101,9 +101,9 @@ function renderItemActionElements(
   });
 }
 
-function fieldDisplayText(field: BwField, showHidden: boolean): string {
+function fieldDisplayText(field: BwField, revealed: boolean): string {
   if (field.type === 1) {
-    return showHidden ? field.value : '••••••••';
+    return revealed ? field.value : '••••••••';
   }
   if (field.type === 2) {
     return field.value === 'true' ? 'Yes' : 'No';
@@ -115,7 +115,7 @@ function buildMetadata(
   item: BwItem,
   folderName: string | undefined,
   showPassword: boolean,
-  showHiddenFields: boolean,
+  revealedFields: Set<number>,
   totpCode?: string,
 ) {
   return (
@@ -131,7 +131,7 @@ function buildMetadata(
             <Detail.Metadata.Label
               key={i}
               title={field.name}
-              text={fieldDisplayText(field, showHiddenFields)}
+              text={fieldDisplayText(field, revealedFields.has(i))}
             />
           ))}
         </>
@@ -243,7 +243,7 @@ export default function ItemDetailView({
   const [isLoading, setIsLoading] = useState(true);
   const [totpCode, setTotpCode] = useState<string | undefined>();
   const [showPassword, setShowPassword] = useState(false);
-  const [showHiddenFields, setShowHiddenFields] = useState(false);
+  const [revealedFields, setRevealedFields] = useState<Set<number>>(new Set());
   const { pop, push } = useNavigation();
 
   useEffect(() => {
@@ -291,11 +291,9 @@ export default function ItemDetailView({
     resolved,
     resolvedFolderName,
     showPassword,
-    showHiddenFields,
+    revealedFields,
     totpCode,
   );
-
-  const hasHiddenFields = resolved.fields?.some((f) => f.type === 1) ?? false;
 
   return (
     <Detail
@@ -313,13 +311,36 @@ export default function ItemDetailView({
             />
           )}
           {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, session, true)}
-          {hasHiddenFields && (
-            <Action
-              title={showHiddenFields ? 'Hide Hidden Fields' : 'Show Hidden Fields'}
-              icon={Icon.Eye}
-              onAction={() => setShowHiddenFields((prev) => !prev)}
-            />
-          )}
+          {resolved.fields?.map((field, i) => {
+            const elements: React.ReactNode[] = [];
+            if (field.type === 1) {
+              const revealed = revealedFields.has(i);
+              elements.push(
+                <Action
+                  key={`show-${i}`}
+                  title={revealed ? `Hide ${field.name}` : `Show ${field.name}`}
+                  icon={Icon.Eye}
+                  onAction={() => {
+                    setRevealedFields((prev) => {
+                      const next = new Set(prev);
+                      if (revealed) next.delete(i);
+                      else next.add(i);
+                      return next;
+                    });
+                  }}
+                />,
+              );
+            }
+            elements.push(
+              <Action.CopyToClipboard
+                key={`copy-${i}`}
+                title={`Copy ${field.name}`}
+                icon={Icon.CopyClipboard}
+                content={field.value}
+              />,
+            );
+            return elements;
+          })}
           {session && (
             <Action
               title="Edit Item"
