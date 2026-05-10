@@ -1,26 +1,15 @@
+// fallow-ignore-file unused-file (entry point registered in package.json commands)
 import { Action, ActionPanel, Clipboard, Icon, List, showToast, Toast } from '@vicinae/api';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { filterItems, formatTotp, groupByFolder, itemIcon, itemSubtitle } from './item-utils';
-import { loadCachedVault } from './vault-cache';
 import { useSession } from './use-session';
-import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
+import { createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
 import { useVaultSync } from './use-vault-sync';
-import { extractHostname, loadFaviconCache, resolveFavicons } from './favicons';
+import { useVaultLifecycle, type UIState } from './vault-lifecycle';
 import type { BwFolder, BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
-
-type UIState =
-  | { kind: 'checking-bw' }
-  | { kind: 'bw-not-installed' }
-  | { kind: 'secret-tool-not-installed' }
-  | { kind: 'logging-in' }
-  | { kind: 'login-failed'; error: string }
-  | { kind: 'needs-unlock'; error?: string }
-  | { kind: 'unlocking' }
-  | { kind: 'loading' }
-  | { kind: 'vault'; items: BwItem[]; folders: BwFolder[] };
 
 function totpItems(items: BwItem[]): BwItem[] {
   return items.filter(
@@ -59,111 +48,16 @@ export default function SearchTotp() {
     return () => clearInterval(interval);
   }, []);
 
-  // Step 1: Load cached vault, favicons, run bw checks
-  useEffect(() => {
-    void (async () => {
-      const map = await loadFaviconCache();
-      setFaviconMap(map);
-
-      const cached = await loadCachedVault();
-      if (cached) {
-        setVault(cached.items, cached.folders);
-      }
-
-      const gate = await checkBwGate(session);
-      switch (gate.kind) {
-        case 'bw-not-installed':
-        case 'secret-tool-not-installed':
-        case 'logging-in':
-          setState({ kind: gate.kind });
-          return;
-        case 'needs-unlock':
-          if (!cached) setState({ kind: 'needs-unlock' });
-          return;
-        case 'ready':
-          break;
-      }
-
-      try {
-        await syncVault(session!);
-        await showToast({ style: Toast.Style.Success, title: 'Vault synced' });
-      } catch {
-        if (!cached) {
-          await clearSession();
-          setState({ kind: 'needs-unlock', error: 'Session expired' });
-        }
-      }
-    })();
-  }, []);
-
-  // When session resolves after mount while on needs-unlock
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind !== 'needs-unlock') return;
-    setState({ kind: 'loading' });
-  }, [session, state.kind]);
-
-  // When session appears while vault is already showing
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind !== 'vault') return;
-    void (async () => {
-      try {
-        await syncVault(session);
-        await showToast({ style: Toast.Style.Success, title: 'Vault synced' });
-      } catch {
-        // Cache already showing — silent fail
-      }
-    })();
-  }, [session]);
-
-  // Resolve favicons when vault appears
-  useEffect(() => {
-    if (state.kind !== 'vault') return;
-    const domains: string[] = [];
-    for (const item of state.items) {
-      if (item.type !== ItemType.Login) continue;
-      const hostname = extractHostname(item.login?.uris);
-      if (hostname) domains.push(hostname);
-    }
-    if (domains.length === 0) return;
-    let mounted = true;
-    void (async () => {
-      const map = await resolveFavicons(domains);
-      if (mounted) setFaviconMap(map);
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [state]);
-
-  // When state becomes "loading" and session is available
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind !== 'loading') return;
-    void (async () => {
-      const cached = await loadCachedVault();
-      if (cached) {
-        setVault(cached.items, cached.folders);
-      }
-      try {
-        await syncVault(session);
-      } catch (err) {
-        if (!cached) {
-          const message = getErrorMessage(err);
-          await showToast({ style: Toast.Style.Failure, title: 'Failed to load vault', message });
-          await clearSession();
-          setState({ kind: 'needs-unlock', error: message });
-        }
-      }
-    })();
-  }, [session, state.kind]);
-
-  // When login is needed
-  useEffect(() => {
-    if (state.kind !== 'logging-in') return;
-    void handleLogin();
-  }, [state.kind]);
+  useVaultLifecycle({
+    session,
+    state,
+    setState,
+    setVault,
+    syncVault,
+    handleLogin,
+    clearSession,
+    setFaviconMap,
+  });
 
   // Fetch TOTP codes when session is available and vault is loaded
   useEffect(() => {

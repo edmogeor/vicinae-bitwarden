@@ -1,8 +1,10 @@
-import { Icon } from '@vicinae/api';
+import { Icon, showToast, Toast } from '@vicinae/api';
 import type { Image } from '@vicinae/api';
 import { BwItem, BwFolder, ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
 import type { CreateItemPayload, ItemAction } from './bw-executor';
+import * as bw from './bw-executor';
+import { getErrorMessage } from './bw-executor';
 import { extractHostname } from './favicons';
 import type { FaviconMap } from './favicons';
 
@@ -238,9 +240,6 @@ export function buildItemDetailMarkdown(item: BwItem): string {
   return '';
 }
 
-/**
- * Map an ItemAction label to a Vicinae Icon.
- */
 export function actionIcon(action: { label: string }): Image.ImageLike | undefined {
   switch (action.label) {
     case 'Copy Password':
@@ -315,4 +314,19 @@ export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
     };
   }
   return { source: cached };
+}
+
+export async function uploadAttachments(
+  itemId: string,
+  filePaths: string[],
+  session: bw.Session,
+): Promise<void> {
+  for (const filePath of filePaths) {
+    try {
+      await bw.createAttachment(itemId, filePath, session);
+    } catch (err) {
+      const message = getErrorMessage(err);
+      await showToast({ style: Toast.Style.Failure, title: 'Failed to attach file', message });
+    }
+  }
 }

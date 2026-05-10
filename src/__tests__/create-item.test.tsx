@@ -128,6 +128,7 @@ vi.mock('../item-utils', () => ({
     favorite: false,
   })),
   CARD_BRANDS: ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'],
+  uploadAttachments: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../bw-not-installed', () => ({

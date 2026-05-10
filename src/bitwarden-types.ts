@@ -84,7 +84,7 @@ interface BwAttachment {
   sizeName: string;
 }
 
-export type { BwField, BwAttachment };
+export type { BwField };
 
 export interface BwFolder {
   id: string;

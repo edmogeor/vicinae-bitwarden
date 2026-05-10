@@ -14,7 +14,7 @@ import { getErrorMessage } from './bw-executor';
 import type { BwFolder } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
-import { CARD_BRANDS, toCreatePayload } from './item-utils';
+import { CARD_BRANDS, toCreatePayload, uploadAttachments } from './item-utils';
 import CustomFieldsSection from './custom-fields-section';
 import type { CustomField } from './custom-fields-section';
 import { useSession } from './use-session';
@@ -42,6 +42,34 @@ const ITEM_TYPE_OPTIONS = Object.keys(ITEM_TYPE_MAP).map((label) => ({
   value: label,
   label,
 }));
+
+function readFormValues(values: Form.Values): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, val] of Object.entries(values)) {
+    result[key] = String(val ?? '');
+  }
+  return result;
+}
+
+async function createFolderIfNeeded(
+  newFolderName: string | undefined,
+  session: bw.Session,
+): Promise<string | null> {
+  const name = (newFolderName ?? '').trim();
+  if (!name) {
+    await showToast({ style: Toast.Style.Failure, title: 'Folder name is required' });
+    return null;
+  }
+  try {
+    const created = await bw.createFolder(name, session);
+    await showToast({ style: Toast.Style.Success, title: 'Folder created', message: name });
+    return created.id;
+  } catch (err) {
+    const message = getErrorMessage(err);
+    await showToast({ style: Toast.Style.Failure, title: 'Failed to create folder', message });
+    return null;
+  }
+}
 
 export default function CreateItem() {
   const { session, unlock, loginIfNeeded, loginError } = useSession();
@@ -111,34 +139,14 @@ export default function CreateItem() {
     async (values: Form.Values) => {
       if (!session) return;
 
-      const itemValues: Record<string, string> = {};
-      for (const [key, val] of Object.entries(values)) {
-        itemValues[key] = String(val ?? '');
-      }
-
+      const itemValues = readFormValues(values);
       const typeNum = ITEM_TYPE_MAP[selectedType] ?? ItemType.SecureNote;
       let folderId = itemValues.folder || null;
 
-      // Create new folder if requested
       if (folderId === '__new__') {
-        const name = itemValues.newFolderName?.trim();
-        if (!name) {
-          await showToast({ style: Toast.Style.Failure, title: 'Folder name is required' });
-          return;
-        }
-        try {
-          const created = await bw.createFolder(name, session);
-          folderId = created.id;
-          await showToast({ style: Toast.Style.Success, title: 'Folder created', message: name });
-        } catch (err) {
-          const message = getErrorMessage(err);
-          await showToast({
-            style: Toast.Style.Failure,
-            title: 'Failed to create folder',
-            message,
-          });
-          return;
-        }
+        const createdFolderId = await createFolderIfNeeded(itemValues.newFolderName, session);
+        if (!createdFolderId) return;
+        folderId = createdFolderId;
       }
 
       setIsSubmitting(true);
@@ -153,18 +161,7 @@ export default function CreateItem() {
         );
         const created = await bw.createItem(payload, session);
 
-        for (const filePath of attachmentPaths) {
-          try {
-            await bw.createAttachment(created.id, filePath, session);
-          } catch (err) {
-            const message = getErrorMessage(err);
-            await showToast({
-              style: Toast.Style.Failure,
-              title: 'Failed to attach file',
-              message,
-            });
-          }
-        }
+        await uploadAttachments(created.id, attachmentPaths, session);
 
         await showToast({
           style: Toast.Style.Success,
