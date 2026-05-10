@@ -1,7 +1,9 @@
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import Database from 'better-sqlite3';
+import { spawnWait } from './spawn-stdin';
 
 const exec = promisify(execFile);
 
@@ -14,37 +16,36 @@ function getHome(): string {
   return home;
 }
 
-function writeStdin(proc: ReturnType<typeof spawn>, data: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!proc.stdin) {
-      reject(new Error('secret-tool stdin is not available'));
-      return;
-    }
-    proc.on('error', reject);
-    proc.stdin.on('error', reject);
-    proc.stdin.write(data);
-    proc.stdin.end();
-    proc.stdin.on('finish', resolve);
-  });
-}
-
 export async function storeApiCredentials(clientId: string, clientSecret: string): Promise<void> {
-  const proc = spawn(
+  const payload = JSON.stringify({ clientId, clientSecret });
+  await spawnWait(
     'secret-tool',
     ['store', '--label=Vicinae Bitwarden API Key', 'service', SERVICE, 'account', ACCOUNT],
-    { stdio: ['pipe', 'ignore', 'ignore'] },
+    payload,
   );
+}
 
-  const payload = JSON.stringify({ clientId, clientSecret });
-  await writeStdin(proc, payload);
-
-  await new Promise<void>((resolve, reject) => {
-    proc.on('error', reject);
-    proc.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`secret-tool exited with code ${code}`));
-    });
-  });
+function parseJsonRecord(raw: string): { clientId: string; clientSecret: string } | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    'clientId' in parsed &&
+    'clientSecret' in parsed &&
+    typeof (parsed as Record<string, unknown>).clientId === 'string' &&
+    typeof (parsed as Record<string, unknown>).clientSecret === 'string'
+  ) {
+    return {
+      clientId: (parsed as Record<string, string>).clientId,
+      clientSecret: (parsed as Record<string, string>).clientSecret,
+    };
+  }
+  return null;
 }
 
 export async function getApiCredentials(): Promise<{
@@ -59,7 +60,7 @@ export async function getApiCredentials(): Promise<{
     );
     const raw = stdout.trim();
     if (!raw) return null;
-    return JSON.parse(raw) as { clientId: string; clientSecret: string };
+    return parseJsonRecord(raw);
   } catch {
     return null;
   }
@@ -88,7 +89,6 @@ export async function clearApiCredentialsFromDisk(): Promise<void> {
   }
 
   try {
-    const Database = (await import('better-sqlite3')).default;
     const dbPath = join(getHome(), '.local', 'share', 'vicinae', 'vicinae.db');
     const db = new Database(dbPath);
     db.prepare(
