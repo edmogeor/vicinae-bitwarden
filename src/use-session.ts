@@ -44,8 +44,8 @@ export function useSession(): SessionState {
       const libsecretCreds = await getApiCredentials();
 
       if (libsecretCreds) {
-        const prefClientId = prefs.apiClientId;
-        const prefClientSecret = prefs.apiClientSecret;
+        const prefClientId = prefs.bitwardenApiClientId;
+        const prefClientSecret = prefs.bitwardenApiClientSecret;
         const isRotated =
           prefClientId &&
           prefClientSecret &&
@@ -67,8 +67,8 @@ export function useSession(): SessionState {
           });
         }
       } else {
-        const prefClientId = prefs.apiClientId;
-        const prefClientSecret = prefs.apiClientSecret;
+        const prefClientId = prefs.bitwardenApiClientId;
+        const prefClientSecret = prefs.bitwardenApiClientSecret;
 
         if (!prefClientId || !prefClientSecret) {
           throw new Error('No API credentials configured');

@@ -84,9 +84,41 @@ export function getErrorMessage(err: unknown): string {
       .filter((line) => !line.includes('[DEP0') && !line.includes('DeprecationWarning'))
       .join('\n')
       .trim();
-    return cleaned || err.message;
+    const raw = cleaned || err.message;
+    return friendlyMessage(raw);
   }
-  return String(err);
+  return friendlyMessage(String(err));
+}
+
+function friendlyMessage(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes('incorrect client_secret') || lower.includes('incorrect clientid')) {
+    return 'Invalid API credentials — check your Client ID and Client Secret in extension preferences.';
+  }
+  if (lower.includes('invalid master password')) {
+    return 'Incorrect master password.';
+  }
+  if (lower.includes('not logged in')) {
+    return 'Not logged in.';
+  }
+  if (
+    lower.includes('econnrefused') ||
+    lower.includes('enotfound') ||
+    lower.includes('getaddrinfo') ||
+    lower.includes('econnreset')
+  ) {
+    return 'Cannot reach Bitwarden server — check your connection and server URL.';
+  }
+  if (lower.includes('two-factor') || lower.includes('two step')) {
+    return 'Two-step login is required but the CLI does not support it for API key logins.';
+  }
+  if (lower.includes('timed out') || lower.includes('etimedout')) {
+    return 'Request timed out — the Bitwarden server did not respond in time.';
+  }
+  if (lower.includes('rate limit') || lower.includes('429')) {
+    return 'Too many requests — wait a moment and try again.';
+  }
+  return raw;
 }
 
 function toBwError(err: unknown): BwError {

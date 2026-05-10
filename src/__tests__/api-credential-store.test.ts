@@ -134,8 +134,10 @@ describe('deleteApiCredentials', () => {
 });
 
 describe('clearApiCredentialsFromDisk', () => {
-  it('clears apiClientId from settings.json', async () => {
-    mockReadFileSync.mockReturnValue('{"apiClientId": "old-id", "serverRegion": "bitwarden.com"}');
+  it('clears bitwardenApiClientId from settings.json', async () => {
+    mockReadFileSync.mockReturnValue(
+      '{"bitwardenApiClientId": "old-id", "serverRegion": "bitwarden.com"}',
+    );
 
     await apiCredStore.clearApiCredentialsFromDisk();
 
@@ -145,13 +147,13 @@ describe('clearApiCredentialsFromDisk', () => {
     );
     expect(mockWriteFileSync).toHaveBeenCalledWith(
       '/home/testuser/.config/vicinae/settings.json',
-      '{"apiClientId": "", "serverRegion": "bitwarden.com"}',
+      '{"bitwardenApiClientId": "", "serverRegion": "bitwarden.com"}',
       'utf-8',
     );
   });
 
-  it('does not write settings.json when apiClientId is already empty', async () => {
-    mockReadFileSync.mockReturnValue('{"apiClientId": "", "other": true}');
+  it('does not write settings.json when bitwardenApiClientId is already empty', async () => {
+    mockReadFileSync.mockReturnValue('{"bitwardenApiClientId": "", "other": true}');
 
     await apiCredStore.clearApiCredentialsFromDisk();
 
@@ -166,16 +168,16 @@ describe('clearApiCredentialsFromDisk', () => {
     await expect(apiCredStore.clearApiCredentialsFromDisk()).resolves.toBeUndefined();
   });
 
-  it('matches apiClientId surrounded by other JSON fields', async () => {
+  it('matches bitwardenApiClientId surrounded by other JSON fields', async () => {
     mockReadFileSync.mockReturnValue(
-      '{\n  "serverRegion": "bitwarden.com",\n  "apiClientId": "secret-id",\n  "passwordLength": "20"\n}',
+      '{\n  "serverRegion": "bitwarden.com",\n  "bitwardenApiClientId": "secret-id",\n  "passwordLength": "20"\n}',
     );
 
     await apiCredStore.clearApiCredentialsFromDisk();
 
     expect(mockWriteFileSync).toHaveBeenCalledWith(
       '/home/testuser/.config/vicinae/settings.json',
-      '{\n  "serverRegion": "bitwarden.com",\n  "apiClientId": "",\n  "passwordLength": "20"\n}',
+      '{\n  "serverRegion": "bitwarden.com",\n  "bitwardenApiClientId": "",\n  "passwordLength": "20"\n}',
       'utf-8',
     );
   });

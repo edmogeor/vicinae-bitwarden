@@ -74,8 +74,14 @@ export async function clearApiCredentialsFromDisk(): Promise<void> {
   try {
     const settingsPath = join(getHome(), '.config', 'vicinae', 'settings.json');
     const content = readFileSync(settingsPath, 'utf-8');
-    let updated = content.replace(/"apiClientId"\s*:\s*"[^"]*"/, '"apiClientId": ""');
-    updated = updated.replace(/"apiClientSecret"\s*:\s*"[^"]*"/, '"apiClientSecret": ""');
+    let updated = content.replace(
+      /"bitwardenApiClientId"\s*:\s*"[^"]*"/,
+      '"bitwardenApiClientId": ""',
+    );
+    updated = updated.replace(
+      /"bitwardenApiClientSecret"\s*:\s*"[^"]*"/,
+      '"bitwardenApiClientSecret": ""',
+    );
     if (updated !== content) {
       writeFileSync(settingsPath, updated, 'utf-8');
     }
@@ -87,7 +93,7 @@ export async function clearApiCredentialsFromDisk(): Promise<void> {
     const dbPath = join(getHome(), '.local', 'share', 'vicinae', 'vicinae.db');
     const db = new Database(dbPath);
     db.prepare(
-      "DELETE FROM storage_data_item WHERE key IN ('apiClientId', 'apiClientSecret')",
+      "DELETE FROM storage_data_item WHERE key IN ('bitwardenApiClientId', 'bitwardenApiClientSecret')",
     ).run();
     db.close();
   } catch (err) {
