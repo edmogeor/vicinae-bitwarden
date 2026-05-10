@@ -101,6 +101,7 @@ function stripSensitiveFields(item: BwItem): BwItem {
   }
 
   stripped.fields = [];
+  stripped.attachments = [];
 
   return stripped;
 }

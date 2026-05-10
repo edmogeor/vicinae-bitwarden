@@ -1,7 +1,8 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
+import { join } from 'node:path';
 import { BwError, BwFolder, BwItem, ItemTypeValue } from './bitwarden-types';
-import { getPreferences } from './preferences';
+import { getDownloadDir, getPreferences } from './preferences';
 
 const exec = promisify(execFile);
 
@@ -369,6 +370,30 @@ export async function generatePassword(options: {
       timeout: 10000,
     });
     return stdout.trim();
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * Download an attached file from an Item to the Downloads folder.
+ * Returns the path to the downloaded file.
+ */
+export async function downloadAttachment(
+  attachmentId: string,
+  itemId: string,
+  fileName: string,
+  session: Session,
+): Promise<string> {
+  const prefs = getPreferences();
+  const downloadDir = getDownloadDir(prefs);
+  const outPath = join(downloadDir, fileName);
+  try {
+    await exec('bw', ['get', 'attachment', attachmentId, '--itemid', itemId, '--output', outPath], {
+      timeout: 30000,
+      env: sessionEnv(session),
+    });
+    return outPath;
   } catch (err) {
     throw toBwError(err);
   }

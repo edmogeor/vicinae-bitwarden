@@ -8,6 +8,9 @@ import {
   Toast,
   useNavigation,
 } from '@vicinae/api';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { dirname } from 'node:path';
 import { useEffect, useState } from 'react';
 import * as bw from './bw-executor';
 import type { Session } from './bw-executor';
@@ -20,6 +23,8 @@ import {
 import type { BwField, BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import EditItem from './edit-item';
+
+const exec = promisify(execFile);
 
 function resolveFetchValue(fetchKind: string, item: BwItem): string | undefined {
   switch (fetchKind) {
@@ -134,6 +139,15 @@ function buildMetadata(
               title={field.name}
               text={fieldDisplayText(field, revealedFields.has(i))}
             />
+          ))}
+        </>
+      )}
+      {item.attachments && item.attachments.length > 0 && (
+        <>
+          <Detail.Metadata.Separator />
+          <Detail.Metadata.Label title="Attachments" text="" />
+          {item.attachments.map((att) => (
+            <Detail.Metadata.Label key={att.id} title={att.fileName} text={att.sizeName} />
           ))}
         </>
       )}
@@ -378,6 +392,36 @@ export default function ItemDetailView({
             return elements;
           })}
           {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, session, true)}
+          {session &&
+            resolved.attachments?.map((att) => (
+              <Action
+                key={`download-${att.id}`}
+                title={`Download ${att.fileName}`}
+                icon={Icon.SaveDocument}
+                onAction={async () => {
+                  try {
+                    const path = await bw.downloadAttachment(
+                      att.id,
+                      resolved.id,
+                      att.fileName,
+                      session,
+                    );
+                    await showToast({
+                      style: Toast.Style.Success,
+                      title: 'Downloaded',
+                      message: att.fileName,
+                    });
+                    exec('xdg-open', [dirname(path)]).catch(() => {});
+                  } catch (err) {
+                    await showToast({
+                      style: Toast.Style.Failure,
+                      title: 'Download failed',
+                      message: bw.getErrorMessage(err),
+                    });
+                  }
+                }}
+              />
+            ))}
           {session && (
             <Action
               title="Edit Item"

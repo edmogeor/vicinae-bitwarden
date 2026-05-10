@@ -43,6 +43,7 @@ vi.mock('../preferences', () => ({
     apiClientId: 'test-client-id',
     apiClientSecret: 'test-client-secret',
     autoLockTimeout: '21600',
+    downloadDir: '',
     passwordLength: '20',
     passwordUppercase: true,
     passwordLowercase: true,

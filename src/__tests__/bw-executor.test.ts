@@ -12,6 +12,7 @@ const { mockPrefs } = vi.hoisted(() => ({
     apiClientId: '',
     apiClientSecret: '',
     autoLockTimeout: '21600',
+    downloadDir: '',
     passwordLength: '20',
     passwordUppercase: true,
     passwordLowercase: true,

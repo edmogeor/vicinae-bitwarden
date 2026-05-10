@@ -7,6 +7,7 @@ interface Preferences {
   apiClientId: string;
   apiClientSecret: string;
   autoLockTimeout: string;
+  downloadDir: string;
   passwordLength: string;
   passwordUppercase: boolean;
   passwordLowercase: boolean;
@@ -41,6 +42,12 @@ export function getServerUrl(prefs: Preferences): string {
     return url.replace(/\/+$/, '');
   }
   return `https://${prefs.serverRegion}`;
+}
+
+export function getDownloadDir(prefs: Preferences): string {
+  const dir = prefs.downloadDir.trim();
+  if (dir) return dir.replace(/\/+$/, '');
+  return `${process.env.HOME ?? '/tmp'}/Downloads`;
 }
 
 export function getPasswordPrefs(prefs: Preferences): PasswordPrefs {
