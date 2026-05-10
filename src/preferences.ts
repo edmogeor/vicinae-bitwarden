@@ -4,8 +4,8 @@ interface Preferences {
   serverRegion: 'bitwarden.com' | 'bitwarden.eu' | 'self-hosted';
   customServerUrl: string;
   customCertPath: string;
-  apiClientId: string;
-  apiClientSecret: string;
+  bitwardenApiClientId: string;
+  bitwardenApiClientSecret: string;
   autoLockTimeout: string;
   downloadDir: string;
   passwordLength: string;

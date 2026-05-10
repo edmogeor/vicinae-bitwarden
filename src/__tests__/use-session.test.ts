@@ -40,8 +40,8 @@ vi.mock('../preferences', () => ({
   getPreferences: () => ({
     serverRegion: 'bitwarden.com' as const,
     customServerUrl: '',
-    apiClientId: 'test-client-id',
-    apiClientSecret: 'test-client-secret',
+    bitwardenApiClientId: 'test-client-id',
+    bitwardenApiClientSecret: 'test-client-secret',
     autoLockTimeout: '21600',
     downloadDir: '',
     passwordLength: '20',

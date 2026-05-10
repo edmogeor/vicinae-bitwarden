@@ -52,14 +52,14 @@
       "required": false
     },
     {
-      "name": "apiClientId",
+      "name": "bitwardenApiClientId",
       "title": "API Client ID",
       "description": "Your personal API key client_id from the Bitwarden web vault (Settings → Security → View API key)",
       "type": "textfield",
       "required": true
     },
     {
-      "name": "apiClientSecret",
+      "name": "bitwardenApiClientSecret",
       "title": "API Client Secret",
       "description": "Your personal API key client_secret from the Bitwarden web vault",
       "type": "textfield",

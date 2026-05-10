@@ -175,7 +175,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
         setIsSubmitting(false);
       }
     },
-    [item.id, item.type, session, onSaved, customFields],
+    [item.id, item.type, session, onSaved, customFields, attachmentPaths],
   );
 
   const handleDelete = useCallback(async () => {
@@ -272,6 +272,16 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
         customFields={customFields}
         setCustomFields={setCustomFields}
         notes={fullItem.notes ?? ''}
+      />
+
+      <Form.Separator />
+
+      <Form.FilePicker
+        id="attachments"
+        title="Attachments"
+        allowMultipleSelection
+        value={attachmentPaths}
+        onChange={(paths: string[]) => setAttachmentPaths(paths)}
       />
     </Form>
   );
