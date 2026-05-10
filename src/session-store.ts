@@ -1,6 +1,7 @@
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getAutoLockSeconds, getPreferences } from './preferences';
+import { spawnWait } from './spawn-stdin';
 
 const exec = promisify(execFile);
 
@@ -19,7 +20,7 @@ function isNodeError(err: unknown): err is { code: string } & Error {
 }
 
 export async function checkSecretToolInstalled(): Promise<boolean> {
-  if (installed) return true;
+  if (installed !== null) return installed;
   try {
     await exec('secret-tool', ['lookup', 'service', SERVICE, 'account', ACCOUNT], {
       timeout: 3000,
@@ -31,24 +32,9 @@ export async function checkSecretToolInstalled(): Promise<boolean> {
       installed = false;
       return false;
     }
-    // Key not found, permission denied, etc. — tool is installed
     installed = true;
     return true;
   }
-}
-
-function writeStdin(proc: ReturnType<typeof spawn>, data: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!proc.stdin) {
-      reject(new Error('secret-tool stdin is not available'));
-      return;
-    }
-    proc.on('error', reject);
-    proc.stdin.on('error', reject);
-    proc.stdin.write(data);
-    proc.stdin.end();
-    proc.stdin.on('finish', resolve);
-  });
 }
 
 export async function getSession(): Promise<string | null> {
@@ -61,19 +47,31 @@ export async function getSession(): Promise<string | null> {
     const raw = stdout.trim();
     if (!raw) return null;
 
-    // Backward compat: old format is a raw token string (no JSON wrapper)
+    let parsed: unknown;
     try {
-      const parsed: SessionPayload = JSON.parse(raw);
-      const timeout = getAutoLockSeconds(getPreferences());
-      if (timeout > 0 && Date.now() - parsed.timestamp > timeout * 1000) {
-        await deleteSession(); // Expired — clear it
-        return null;
-      }
-      return parsed.token;
+      parsed = JSON.parse(raw);
     } catch {
-      // Old format: raw token string — treat as valid
       return raw;
     }
+
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'token' in parsed &&
+      'timestamp' in parsed &&
+      typeof (parsed as Record<string, unknown>).token === 'string' &&
+      typeof (parsed as Record<string, unknown>).timestamp === 'number'
+    ) {
+      const { token, timestamp } = parsed as SessionPayload;
+      const timeout = getAutoLockSeconds(getPreferences());
+      if (timeout > 0 && Date.now() - timestamp > timeout * 1000) {
+        await deleteSession();
+        return null;
+      }
+      return token;
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -81,21 +79,11 @@ export async function getSession(): Promise<string | null> {
 
 export async function setSession(token: string): Promise<void> {
   const payload: SessionPayload = { token, timestamp: Date.now() };
-  const proc = spawn(
+  await spawnWait(
     'secret-tool',
     ['store', '--label=Vicinae Bitwarden', 'service', SERVICE, 'account', ACCOUNT],
-    { stdio: ['pipe', 'ignore', 'ignore'] },
+    JSON.stringify(payload),
   );
-
-  await writeStdin(proc, JSON.stringify(payload));
-
-  await new Promise<void>((resolve, reject) => {
-    proc.on('error', reject);
-    proc.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`secret-tool exited with code ${code}`));
-    });
-  });
 }
 
 export async function deleteSession(): Promise<void> {
