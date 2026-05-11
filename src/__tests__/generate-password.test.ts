@@ -24,6 +24,7 @@ const { mockBw, mockPrefs } = vi.hoisted(() => {
   return { mockBw, mockPrefs };
 });
 
+// fallow-ignore-next-line code-duplication
 const mockClipboardCopy = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockShowToast = vi.hoisted(() => vi.fn());
 
