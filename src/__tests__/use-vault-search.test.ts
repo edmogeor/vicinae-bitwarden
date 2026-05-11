@@ -69,11 +69,12 @@ vi.mock('../unlock-gate', () => ({
   }),
 }));
 
-vi.mock('@vicinae/api', () => ({
-  Clipboard: { copy: (...args: unknown[]) => mockClipboardCopy(...args) },
-  showToast: (...args: unknown[]) => mockShowToast(...args),
-  Toast: { Style: { Success: 'success', Failure: 'failure' } },
-}));
+vi.mock('@vicinae/api', async () => {
+  const { createVicinaeApiMock } = await vi.importActual<
+    typeof import('./__utils__/vicinae-mocks')
+  >('./__utils__/vicinae-mocks');
+  return createVicinaeApiMock(mockClipboardCopy, mockShowToast);
+});
 
 import { useVaultLifecycle as mockUseVaultLifecycle } from '../vault-lifecycle';
 import { makeItem, makeFolder } from './__utils__/test-data';

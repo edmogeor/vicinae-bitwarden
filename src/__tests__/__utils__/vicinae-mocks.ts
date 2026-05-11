@@ -19,3 +19,29 @@ export function makeFormMock(
     },
   );
 }
+
+/**
+ * Shared mock factory for `vi.mock('@vicinae/api', ...)`.
+ * Pass your hoisted mockClipboardCopy and mockShowToast.
+ */
+export function createVicinaeApiMock(
+  copyFn: (...args: unknown[]) => void,
+  toastFn: (...args: unknown[]) => void,
+) {
+  return {
+    Clipboard: { copy: copyFn },
+    showToast: toastFn,
+    Toast: { Style: { Success: 'success', Failure: 'failure' } },
+  };
+}
+
+function el(type: string, testId?: string) {
+  return (props: { children?: React.ReactNode; id?: string; [key: string]: unknown }) => {
+    const { children, ...rest } = props;
+    return React.createElement(type, { 'data-testid': testId ?? props.id, ...rest }, children);
+  };
+}
+
+export const DropdownItem = el('option');
+export const Dropdown = Object.assign(el('select'), { Item: DropdownItem });
+export { el };

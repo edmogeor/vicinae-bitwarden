@@ -167,52 +167,20 @@ describe('useVaultLifecycle', () => {
   // Initial mount: gate states
   // -------------------------------------------------------------------------
   describe('initial mount: gate states', () => {
-    it('sets bw-not-installed state', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'bw-not-installed' });
+    it.each([
+      'bw-not-installed' as const,
+      'secret-tool-not-installed' as const,
+      'logging-in' as const,
+      'needs-unlock' as const,
+    ])('sets %s state', async (kind) => {
+      mockCheckBwGate.mockResolvedValue({ kind });
       const setState = vi.fn<SetUIState>();
 
       const params = makeParams({ setState });
       renderHook(() => useVaultLifecycle(params));
 
       await waitFor(() => {
-        expect(setState).toHaveBeenCalledWith({ kind: 'bw-not-installed' });
-      });
-    });
-
-    it('sets secret-tool-not-installed state', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'secret-tool-not-installed' });
-      const setState = vi.fn<SetUIState>();
-
-      const params = makeParams({ setState });
-      renderHook(() => useVaultLifecycle(params));
-
-      await waitFor(() => {
-        expect(setState).toHaveBeenCalledWith({ kind: 'secret-tool-not-installed' });
-      });
-    });
-
-    it('sets logging-in state', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'logging-in' });
-      const setState = vi.fn<SetUIState>();
-
-      const params = makeParams({ setState });
-      renderHook(() => useVaultLifecycle(params));
-
-      await waitFor(() => {
-        expect(setState).toHaveBeenCalledWith({ kind: 'logging-in' });
-      });
-    });
-
-    it('sets needs-unlock when no session and no cache', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'needs-unlock' });
-      mockLoadCachedVault.mockResolvedValue(null);
-      const setState = vi.fn<SetUIState>();
-
-      const params = makeParams({ setState });
-      renderHook(() => useVaultLifecycle(params));
-
-      await waitFor(() => {
-        expect(setState).toHaveBeenCalledWith({ kind: 'needs-unlock' });
+        expect(setState).toHaveBeenCalledWith({ kind });
       });
     });
 

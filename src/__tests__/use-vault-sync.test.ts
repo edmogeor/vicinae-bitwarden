@@ -32,6 +32,15 @@ vi.mock('@vicinae/api', () => ({
   Toast: { Style: { Success: 'success', Failure: 'failure' } },
 }));
 
+function setupHandleSync() {
+  mockBw.sync.mockResolvedValue(undefined);
+  mockBw.listItems.mockResolvedValue(makeItems(1));
+  mockBw.listFolders.mockResolvedValue(makeFolders(1));
+  const setVault = vi.fn();
+  const { result } = renderHook(() => useVaultSync('token', setVault));
+  return { result, setVault };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -70,13 +79,8 @@ describe('useVaultSync', () => {
   });
 
   describe('handleSync', () => {
-    it('sets isSyncing and shows success toast', async () => {
-      mockBw.sync.mockResolvedValue(undefined);
-      mockBw.listItems.mockResolvedValue(makeItems(1));
-      mockBw.listFolders.mockResolvedValue(makeFolders(1));
-      const setVault = vi.fn();
-
-      const { result } = renderHook(() => useVaultSync('token', setVault));
+    it('shows success toast on successful sync', async () => {
+      const { result } = setupHandleSync();
 
       await act(async () => {
         await result.current.handleSync();
@@ -90,7 +94,6 @@ describe('useVaultSync', () => {
     it('shows failure toast on sync error', async () => {
       mockBw.sync.mockRejectedValue(new Error('network error'));
       const setVault = vi.fn();
-
       const { result } = renderHook(() => useVaultSync('token', setVault));
 
       await act(async () => {
@@ -103,12 +106,7 @@ describe('useVaultSync', () => {
     });
 
     it('resets isSyncing to false after completion', async () => {
-      mockBw.sync.mockResolvedValue(undefined);
-      mockBw.listItems.mockResolvedValue(makeItems(1));
-      mockBw.listFolders.mockResolvedValue(makeFolders(1));
-      const setVault = vi.fn();
-
-      const { result } = renderHook(() => useVaultSync('token', setVault));
+      const { result } = setupHandleSync();
 
       expect(result.current.isSyncing).toBe(false);
 

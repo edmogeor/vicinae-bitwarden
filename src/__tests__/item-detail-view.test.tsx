@@ -128,6 +128,18 @@ function loginItem(overrides: Partial<BwItem> = {}): BwItem {
   });
 }
 
+function renderDetail(session: string | null = 'token', notes?: string) {
+  const item = loginItem(notes ? { notes } : {});
+  mockBw.getItem.mockResolvedValue(item);
+  render(
+    React.createElement(ItemDetailView, {
+      item: loginItem(),
+      session,
+      onCopyTotp: vi.fn(),
+    }),
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockPop.mockReset();
@@ -205,16 +217,7 @@ describe('ItemDetailView', () => {
   });
 
   it('fetches item and shows content after loading', async () => {
-    const fullItem = loginItem({ notes: 'My notes' });
-    mockBw.getItem.mockResolvedValue(fullItem);
-
-    render(
-      React.createElement(ItemDetailView, {
-        item: loginItem(),
-        session: 'token',
-        onCopyTotp: vi.fn(),
-      }),
-    );
+    renderDetail('token', 'My notes');
 
     await waitFor(() => {
       expect(mockBw.getItem).toHaveBeenCalledWith('item-1', 'token');
@@ -227,7 +230,6 @@ describe('ItemDetailView', () => {
 
   it('falls back to partial item when getItem fails', async () => {
     mockBw.getItem.mockRejectedValue(new Error('not found'));
-
     render(
       React.createElement(ItemDetailView, {
         item: loginItem(),
@@ -243,15 +245,7 @@ describe('ItemDetailView', () => {
   });
 
   it('shows full action panel after loading', async () => {
-    mockBw.getItem.mockResolvedValue(loginItem());
-
-    render(
-      React.createElement(ItemDetailView, {
-        item: loginItem(),
-        session: 'token',
-        onCopyTotp: vi.fn(),
-      }),
-    );
+    renderDetail();
 
     await waitFor(() => {
       expect(screen.getByTestId('action-edit-item')).toBeTruthy();
@@ -259,16 +253,8 @@ describe('ItemDetailView', () => {
   });
 
   it('fetches TOTP codes when item has totp', async () => {
-    mockBw.getItem.mockResolvedValue(loginItem());
     mockBw.getTotp.mockResolvedValue('123456');
-
-    render(
-      React.createElement(ItemDetailView, {
-        item: loginItem(),
-        session: 'token',
-        onCopyTotp: vi.fn(),
-      }),
-    );
+    renderDetail();
 
     await waitFor(() => {
       expect(mockBw.getTotp).toHaveBeenCalledWith('item-1', 'token');
@@ -276,15 +262,7 @@ describe('ItemDetailView', () => {
   });
 
   it('navigates to edit view', async () => {
-    mockBw.getItem.mockResolvedValue(loginItem());
-
-    render(
-      React.createElement(ItemDetailView, {
-        item: loginItem(),
-        session: 'token',
-        onCopyTotp: vi.fn(),
-      }),
-    );
+    renderDetail();
 
     await waitFor(() => {
       expect(screen.getByTestId('action-edit-item')).toBeTruthy();
