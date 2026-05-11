@@ -488,25 +488,6 @@ export async function getSend(id: string, session: Session): Promise<BwSend> {
 }
 
 /**
- * Get a template JSON for a Send type.
- * Requires a valid Session.
- */
-export async function getSendTemplate(
-  type: 'send.text' | 'send.file',
-  session: Session,
-): Promise<Record<string, unknown>> {
-  try {
-    const { stdout } = await exec('bw', ['get', 'template', type], {
-      timeout: 15000,
-      env: sessionEnv(session),
-    });
-    return parseJson<Record<string, unknown>>(stdout);
-  } catch (err) {
-    throw toBwError(err);
-  }
-}
-
-/**
  * Create a new Send.
  * Requires a valid Session. The payload is the full JSON object
  * matching Bitwarden's internal send schema.

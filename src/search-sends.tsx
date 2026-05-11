@@ -211,7 +211,7 @@ function renderSendActions(
         title="View Details"
         icon={Icon.Eye}
         onAction={() => {
-          push(<SendDetailView send={send} session={session} />);
+          push(<SendDetailView send={send} />);
         }}
       />
       {session && (
@@ -222,7 +222,7 @@ function renderSendActions(
   );
 }
 
-function SendDetailView({ send, session }: { send: BwSend; session: bw.Session | null }) {
+function SendDetailView({ send }: { send: BwSend }) {
   const url = sendAccessUrl(send);
   const markdown = [
     `# ${send.name}`,

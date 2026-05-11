@@ -39,5 +39,4 @@ export interface CreateSendPayload {
 export interface SendAction {
   label: string;
   value: string;
-  icon?: string;
 }

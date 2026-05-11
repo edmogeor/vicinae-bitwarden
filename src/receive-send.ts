@@ -8,8 +8,7 @@ export default async function ReceiveSend() {
   try {
     url = (await Clipboard.readText()).trim();
   } catch {
-    await showHUD('No Send URL in clipboard');
-    return;
+    // clipboard read failed
   }
 
   if (!url) {
