@@ -541,6 +541,12 @@ describe('buildItemDetailMarkdown', () => {
 // ---------------------------------------------------------------------------
 // itemIcon
 // ---------------------------------------------------------------------------
+
+function expectSvgBase64Icon(icon: { source: { light: string; dark: string } }) {
+  expect(icon.source.light).toMatch(/^data:image\/svg\+xml;base64,/);
+  expect(icon.source.dark).toMatch(/^data:image\/svg\+xml;base64,/);
+}
+
 describe('itemIcon', () => {
   it('returns favicon Image object when real URL cached in map', () => {
     const item = makeItem({
@@ -567,22 +573,21 @@ describe('itemIcon', () => {
       login: { username: null, password: null, totp: null },
     });
     const icon = itemIcon(item) as { source: { light: string; dark: string } };
-    expect(icon.source.light).toMatch(/^data:image\/svg\+xml;base64,/);
-    expect(icon.source.dark).toMatch(/^data:image\/svg\+xml;base64,/);
+    expectSvgBase64Icon(icon);
   });
 
   it('returns themed SVG placeholder for Card items', () => {
-    const item = makeItem({ type: ItemType.Card });
-    const icon = itemIcon(item) as { source: { light: string; dark: string } };
-    expect(icon.source.light).toMatch(/^data:image\/svg\+xml;base64,/);
-    expect(icon.source.dark).toMatch(/^data:image\/svg\+xml;base64,/);
+    const icon = itemIcon(makeItem({ type: ItemType.Card })) as {
+      source: { light: string; dark: string };
+    };
+    expectSvgBase64Icon(icon);
   });
 
   it('returns themed SVG placeholder for Identity items', () => {
-    const item = makeItem({ type: ItemType.Identity });
-    const icon = itemIcon(item) as { source: { light: string; dark: string } };
-    expect(icon.source.light).toMatch(/^data:image\/svg\+xml;base64,/);
-    expect(icon.source.dark).toMatch(/^data:image\/svg\+xml;base64,/);
+    const icon = itemIcon(makeItem({ type: ItemType.Identity })) as {
+      source: { light: string; dark: string };
+    };
+    expectSvgBase64Icon(icon);
   });
 });
 
@@ -831,11 +836,7 @@ describe('loadFaviconCache', () => {
 // ---------------------------------------------------------------------------
 describe('clearFaviconCache', () => {
   it('clears the in-memory favicon cache', async () => {
-    const fetchMock = stubFaviconFetch();
-
-    const r1 = await resolveFavicons(['github.com']);
-    expect(r1['github.com']).toBe(TEST_DATA_URI);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const { fetchMock, r1 } = await resolveAndExpectFetched();
 
     clearFaviconCache();
 
@@ -866,16 +867,20 @@ function stubFaviconFetch() {
   return fetchMock;
 }
 
+async function resolveAndExpectFetched() {
+  const fetchMock = stubFaviconFetch();
+  const r1 = await resolveFavicons(['github.com']);
+  expect(r1['github.com']).toBe(TEST_DATA_URI);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  return { fetchMock, r1 };
+}
+
 // ---------------------------------------------------------------------------
 // resolveFavicons
 // ---------------------------------------------------------------------------
 describe('resolveFavicons', () => {
   it('downloads and caches favicons as local files', async () => {
-    const fetchMock = stubFaviconFetch();
-
-    const r1 = await resolveFavicons(['github.com']);
-    expect(r1['github.com']).toBe(TEST_DATA_URI);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const { fetchMock, r1 } = await resolveAndExpectFetched();
 
     // Simulate file now existing on disk
     mockExistsSync.mockReturnValue(true);
