@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-11
+
+### Added
+
+- Search TOTP Codes command — browse accounts with TOTP 2FA enabled, view live verification codes with 30-second countdown timers, and copy codes with a keystroke
+- TOTP countdown progress bar on the item detail view showing remaining code validity
+- File attachment support — upload files when creating or editing items; download attachments to a configurable directory (new Download Directory preference)
+- Per-field copy and show/hide actions for custom fields in the item detail view
+- Auto-Lock Timeout preference — automatically lock the vault after a configurable period of inactivity (15 min to 24 h, or Never)
+
+### Fixed
+
+- Detail view actions now disabled during loading, preventing a stuck-loader bug when no session is active; shows a Loading indicator with only the Back action available
+- Security hardening — master password passed via environment variable instead of command-line arguments; sensitive payloads written through stdin; API credentials stored in system keyring
+- API credentials cleared from disk after every login, while the libsecret-stored session is preserved on logout
+- FilePicker control added to the edit form for selecting file attachments
+- Custom fields no longer duplicated in the markdown body — rendered only in the metadata sidebar
+
+### Changed
+
+- Custom field actions now appear before Open URL in the action panel
+
 ## [0.1.3] - 2026-05-06
 
 ### Added
