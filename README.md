@@ -17,19 +17,19 @@
   </p>
 </div>
 
-Keyboard-driven access to your Bitwarden vault. Search and copy passwords, usernames, and TOTP codes directly from the Vicinae launcher. Unlock once with your master password, then everything is a keystroke away.
+Keyboard-driven access to your Bitwarden vault — right from the Vicinae launcher. Unlock once with your master password, then search for any item, copy credentials, grab a TOTP code, or create new entries, all without leaving the keyboard.
 
 ## Prerequisites
 
-- The `bw` (Bitwarden CLI) binary must be installed and on your PATH. Download it from [bitwarden.com/download](https://bitwarden.com/download/).
-- `secret-tool` from `libsecret-tools` is required for secure session storage in the system keyring:
-  - Debian/Ubuntu: `sudo apt install libsecret-tools`
-  - Fedora: `sudo dnf install libsecret`
-  - Arch: `sudo pacman -S libsecret`
+- **[Bitwarden CLI](https://bitwarden.com/download/)** (`bw`) must be installed and on your PATH.
+- **`libsecret-tools`** is needed for secure session storage in your system keyring:
+  - **Debian / Ubuntu**: `sudo apt install libsecret-tools`
+  - **Fedora**: `sudo dnf install libsecret`
+  - **Arch**: `sudo pacman -S libsecret`
 
 ## Installation
 
-Install from the Vicinae Extensions Store (Pending), or clone and build manually:
+Install from the Vicinae Extensions Store (Pending), or build from source:
 
 ```bash
 git clone https://github.com/edmogeor/vicinae-bitwarden.git
@@ -40,50 +40,87 @@ npm run build
 
 ## Configuration
 
-Set these preferences in the extension settings before first use:
+Set these preferences in the extension settings before you start. Generate your API key from the Bitwarden web vault under **Settings → Security → View API key**.
 
-| Preference        | Type      | Description                                                                         |
-| ----------------- | --------- | ----------------------------------------------------------------------------------- |
-| Server Region     | dropdown  | `bitwarden.com` (US), `bitwarden.eu` (EU), or `Self-hosted`                         |
-| Custom Server URL | textfield | Required only when Server Region is `Self-hosted`. e.g. `https://vault.example.com` |
-| API Client ID     | textfield | Your personal API key `client_id` from the Bitwarden web vault                      |
-| API Client Secret | password  | Your personal API key `client_secret` from the Bitwarden web vault                  |
-| Password Length   | textfield | Number of characters for generated passwords (default: `20`)                        |
-| Include Uppercase | checkbox  | Add uppercase letters to generated passwords (default: enabled)                     |
-| Include Lowercase | checkbox  | Add lowercase letters to generated passwords (default: enabled)                     |
-| Include Numbers   | checkbox  | Add digits to generated passwords (default: enabled)                                |
-| Include Symbols   | checkbox  | Add special characters to generated passwords (default: enabled)                    |
+### Connection
 
-Generate your API key from the Bitwarden web vault under **Settings → Security → View API key**.
+| Preference            | Type      | Description                                                                    |
+| --------------------- | --------- | ------------------------------------------------------------------------------ |
+| Server Region         | dropdown  | `bitwarden.com` (US), `bitwarden.eu` (EU), or `Self-hosted`                    |
+| Custom Server URL     | textfield | Required when Server Region is `Self-hosted`. e.g. `https://vault.example.com` |
+| Custom CA Certificate | file      | Path to a custom CA cert bundle for self-hosted servers with a private CA      |
+| API Client ID         | textfield | Your personal API key `client_id`                                              |
+| API Client Secret     | textfield | Your personal API key `client_secret`                                          |
+
+### Security
+
+| Preference        | Type     | Description                                                                                               |
+| ----------------- | -------- | --------------------------------------------------------------------------------------------------------- |
+| Auto-Lock Timeout | dropdown | Lock the vault after inactivity. Options: Never, 15 min, 30 min, 1 h, 2 h, 6 h, 12 h, 24 h (default: 6 h) |
+
+### File Attachments
+
+| Preference         | Type      | Description                                                               |
+| ------------------ | --------- | ------------------------------------------------------------------------- |
+| Download Directory | textfield | Where attached files are saved. Defaults to `~/Downloads` when left empty |
+
+### Password Generation
+
+| Preference        | Type      | Description                                              |
+| ----------------- | --------- | -------------------------------------------------------- |
+| Password Length   | textfield | Characters per generated password (default: `20`)        |
+| Include Uppercase | checkbox  | Include A–Z (default: on)                                |
+| Include Lowercase | checkbox  | Include a–z (default: on)                                |
+| Include Numbers   | checkbox  | Include 0–9 (default: on)                                |
+| Include Symbols   | checkbox  | Include special characters like `!@#$%^&*` (default: on) |
 
 ## Commands
 
 ### Search Vault
 
-Search all vault items by name (case-insensitive substring match). Items are grouped by Folder. Each item type exposes relevant actions:
+Filter your vault by name (case-insensitive). Items are grouped by Folder so you can browse at a glance.
 
-- **Login items** — copy password, copy username, copy TOTP code, open URL, view detail
-- **Card items** — copy number, copy security code, view detail
-- **Identity items** — copy name, copy email, copy phone, view detail
-- **Secure Note items** — view note text
+**Item actions** available from the list:
 
-A **Sync Now** action is always available to pull the latest vault state.
+| Item type   | Quick actions                                             |
+| ----------- | --------------------------------------------------------- |
+| Login       | Copy password, username, TOTP code; open URL; view detail |
+| Card        | Copy number, security code; view detail                   |
+| Identity    | Copy name, email, phone; view detail                      |
+| Secure Note | View note text                                            |
+
+**Detail view** shows every field for the item, plus:
+
+- A TOTP countdown timer with a live verification code that refreshes every 30 seconds.
+- Per-field copy and show/hide toggles for each custom field.
+- File attachments — download them directly from the detail view.
+
+A **Sync Now** action pulls the latest vault state from the server.
+
+### Search TOTP Codes
+
+Browse every account that has TOTP two-factor authentication set up. Live verification codes are displayed next to each item with a 30-second countdown timer. Press a key to copy the code — no need to open the item first.
 
 ### Create Item
 
-Add a new Login, Card, Identity, or Secure Note to your vault. The form adapts fields based on the selected type. `bw create` is called with the correct payload format for each type.
+Add a new Login, Card, Identity, or Secure Note to your vault. The form adapts its fields to the item type you pick. You can also:
+
+- Attach files to any item you create or edit.
+- Add custom fields of type Text, Hidden, or Boolean.
 
 ### Log Out
 
-Clears the stored API key Session and removes the cached session from the system keyring. The next command invocation will require re-entering your master password.
+Clears your API key session and removes the cached token from the system keyring. The next command invocation will prompt you for your master password.
 
 ### Generate Password
 
-Generates a random password using your configured settings (length, uppercase, lowercase, numbers, symbols) and copies it directly to the clipboard. No vault access required.
+Creates a random password using your configured settings (length, character sets) and copies it straight to your clipboard. No vault access needed.
 
 ## Session Caching
 
-After unlocking, the Session token is stored securely in your system keyring (`secret-tool`). On subsequent command invocations the vault list appears immediately — no need to re-enter your master password until the Session expires (governed by your Bitwarden vault timeout settings).
+Once unlocked, your session token is stored securely in the system keyring via `secret-tool`. Future command invocations show your vault immediately — no need to re-enter your master password until the token expires.
+
+If you enabled **Auto-Lock Timeout**, the vault locks itself after the chosen period of inactivity so your data is never left exposed.
 
 ## License
 
