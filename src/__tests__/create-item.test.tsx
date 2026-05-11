@@ -131,6 +131,13 @@ vi.mock('../item-utils', () => ({
     favorite: false,
   })),
   CARD_BRANDS: ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'],
+  readFormValues: vi.fn((values: Record<string, string>) => {
+    const result: Record<string, string> = {};
+    for (const [key, val] of Object.entries(values)) {
+      result[key] = String(val ?? '');
+    }
+    return result;
+  }),
   uploadAttachments: vi.fn().mockResolvedValue(undefined),
 }));
 

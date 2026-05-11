@@ -1,3 +1,5 @@
+// fallow-ignore-file unused-file
+// fallow-ignore-file code-duplication
 import {
   Action,
   ActionPanel,
@@ -8,24 +10,18 @@ import {
   showToast,
   Toast,
 } from '@vicinae/api';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { SendType } from './send-types';
 import type { SendTypeValue } from './send-types';
 import { sendAccessUrl, toSendPayload } from './send-utils';
+import { readFormValues } from './item-utils';
 import { useSession } from './use-session';
-import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
+import { renderGate, useGateEffects } from './unlock-gate';
+import type { GateUIState } from './unlock-gate';
 
-type UIState =
-  | { kind: 'checking-bw' }
-  | { kind: 'bw-not-installed' }
-  | { kind: 'secret-tool-not-installed' }
-  | { kind: 'logging-in' }
-  | { kind: 'login-failed'; error: string }
-  | { kind: 'needs-unlock'; error?: string }
-  | { kind: 'unlocking' }
-  | { kind: 'form' };
+type UIState = GateUIState | { kind: 'form' };
 
 const SEND_TYPE_MAP: Record<string, SendTypeValue> = {
   Text: SendType.Text,
@@ -37,54 +33,21 @@ const SEND_TYPE_OPTIONS = Object.keys(SEND_TYPE_MAP).map((label) => ({
   label,
 }));
 
-function readFormValues(values: Form.Values): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (const [key, val] of Object.entries(values)) {
-    result[key] = String(val ?? '');
-  }
-  return result;
-}
-
 export default function CreateSend() {
   const { session, unlock, loginIfNeeded, loginError } = useSession();
   const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
   const [selectedType, setSelectedType] = useState<string>('Text');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { handleLogin, handleUnlock } = useUnlockGate({
+  const { handleLogin, handleUnlock } = useGateEffects({
+    session,
+    state,
     loginIfNeeded,
     loginError,
     unlock,
-    ...createUnlockCallbacks(setState, () => setState({ kind: 'form' })),
+    setState: (next) => setState(next as UIState),
+    readyKind: 'form',
   });
-
-  useEffect(() => {
-    void (async () => {
-      const gate = await checkBwGate(session);
-      switch (gate.kind) {
-        case 'bw-not-installed':
-        case 'secret-tool-not-installed':
-        case 'logging-in':
-        case 'needs-unlock':
-          setState({ kind: gate.kind });
-          return;
-        case 'ready':
-          setState({ kind: 'form' });
-          return;
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind !== 'needs-unlock') return;
-    setState({ kind: 'form' });
-  }, [session, state.kind]);
-
-  useEffect(() => {
-    if (state.kind !== 'logging-in') return;
-    void handleLogin();
-  }, [state.kind]);
 
   const handleSubmit = useCallback(
     async (values: Form.Values) => {

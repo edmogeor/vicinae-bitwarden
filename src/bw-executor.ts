@@ -528,7 +528,7 @@ export async function deleteSend(id: string, session: Session): Promise<void> {
   }
 }
 
-export interface ReceiveSendResult {
+interface ReceiveSendResult {
   kind: 'text' | 'file';
   text?: string;
   path?: string;
