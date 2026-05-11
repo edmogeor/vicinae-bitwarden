@@ -4,17 +4,12 @@ import { getErrorMessage } from './bw-executor';
 import { loadCachedVault } from './vault-cache';
 import { extractHostname, loadFaviconCache, resolveFavicons } from './favicons';
 import { checkBwGate } from './unlock-gate';
+import type { GateUIState } from './unlock-gate';
 import { ItemType } from './bitwarden-types';
 import type { BwFolder, BwItem } from './bitwarden-types';
 
 export type UIState =
-  | { kind: 'checking-bw' }
-  | { kind: 'bw-not-installed' }
-  | { kind: 'secret-tool-not-installed' }
-  | { kind: 'logging-in' }
-  | { kind: 'login-failed'; error: string }
-  | { kind: 'needs-unlock'; error?: string }
-  | { kind: 'unlocking' }
+  | GateUIState
   | { kind: 'loading' }
   | { kind: 'vault'; items: BwItem[]; folders: BwFolder[] };
 

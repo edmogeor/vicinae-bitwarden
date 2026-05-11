@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication
 import {
   Action,
   ActionPanel,
@@ -14,22 +15,15 @@ import { getErrorMessage } from './bw-executor';
 import type { BwFolder } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
-import { CARD_BRANDS, toCreatePayload, uploadAttachments } from './item-utils';
+import { CARD_BRANDS, readFormValues, toCreatePayload, uploadAttachments } from './item-utils';
 import CustomFieldsSection from './custom-fields-section';
 import type { CustomField } from './custom-fields-section';
 import { useSession } from './use-session';
 import { getPasswordPrefs, getPreferences } from './preferences';
-import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
+import { renderGate, useGateEffects } from './unlock-gate';
+import type { GateUIState } from './unlock-gate';
 
-type UIState =
-  | { kind: 'checking-bw' }
-  | { kind: 'bw-not-installed' }
-  | { kind: 'secret-tool-not-installed' }
-  | { kind: 'logging-in' }
-  | { kind: 'login-failed'; error: string }
-  | { kind: 'needs-unlock'; error?: string }
-  | { kind: 'unlocking' }
-  | { kind: 'form' };
+type UIState = GateUIState | { kind: 'form' };
 
 const ITEM_TYPE_MAP: Record<string, ItemTypeValue> = {
   Login: ItemType.Login,
@@ -42,14 +36,6 @@ const ITEM_TYPE_OPTIONS = Object.keys(ITEM_TYPE_MAP).map((label) => ({
   value: label,
   label,
 }));
-
-function readFormValues(values: Form.Values): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (const [key, val] of Object.entries(values)) {
-    result[key] = String(val ?? '');
-  }
-  return result;
-}
 
 async function createFolderIfNeeded(
   newFolderName: string | undefined,
@@ -85,42 +71,15 @@ export default function CreateItem() {
   const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
   const fieldIdRef = useRef(0);
 
-  const { handleLogin, handleUnlock } = useUnlockGate({
+  const { handleLogin, handleUnlock } = useGateEffects({
+    session,
+    state,
     loginIfNeeded,
     loginError,
     unlock,
-    ...createUnlockCallbacks(setState, () => setState({ kind: 'form' })),
+    setState: (next) => setState(next as UIState),
+    readyKind: 'form',
   });
-
-  useEffect(() => {
-    void (async () => {
-      const gate = await checkBwGate(session);
-      switch (gate.kind) {
-        case 'bw-not-installed':
-        case 'secret-tool-not-installed':
-        case 'logging-in':
-        case 'needs-unlock':
-          setState({ kind: gate.kind });
-          return;
-        case 'ready':
-          setState({ kind: 'form' });
-          return;
-      }
-    })();
-  }, []);
-
-  // When session becomes available after mount, transition to form
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind !== 'needs-unlock') return;
-    setState({ kind: 'form' });
-  }, [session, state.kind]);
-
-  // Login effect
-  useEffect(() => {
-    if (state.kind !== 'logging-in') return;
-    void handleLogin();
-  }, [state.kind]);
 
   // Fetch folders — starts as soon as session is available, before form renders
   useEffect(() => {

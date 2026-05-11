@@ -1,9 +1,18 @@
 import { Action, ActionPanel, Form, showToast, Toast } from '@vicinae/api';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { BwNotInstalled, SecretToolNotInstalled } from './bw-not-installed';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { checkSecretToolInstalled } from './session-store';
+
+export type GateUIState =
+  | { kind: 'checking-bw' }
+  | { kind: 'bw-not-installed' }
+  | { kind: 'secret-tool-not-installed' }
+  | { kind: 'logging-in' }
+  | { kind: 'login-failed'; error: string }
+  | { kind: 'needs-unlock'; error?: string }
+  | { kind: 'unlocking' };
 
 export async function checkBwGate(
   session: string | null,
@@ -166,4 +175,55 @@ export function renderUnlockGate(
   }
 
   return null;
+}
+
+interface UseGateEffectsParams {
+  session: string | null;
+  state: { kind: string };
+  loginIfNeeded: () => Promise<void>;
+  loginError: string | null;
+  unlock: (password: string) => Promise<string>;
+  setState: (value: { kind: string; error?: string }) => void;
+  readyKind: string;
+}
+
+export function useGateEffects(params: UseGateEffectsParams) {
+  const { session, state, loginIfNeeded, loginError, unlock, setState, readyKind } = params;
+
+  const { handleLogin, handleUnlock } = useUnlockGate({
+    loginIfNeeded,
+    loginError,
+    unlock,
+    ...createUnlockCallbacks(setState, () => setState({ kind: readyKind })),
+  });
+
+  useEffect(() => {
+    void (async () => {
+      const gate = await checkBwGate(session);
+      switch (gate.kind) {
+        case 'bw-not-installed':
+        case 'secret-tool-not-installed':
+        case 'logging-in':
+        case 'needs-unlock':
+          setState({ kind: gate.kind });
+          return;
+        case 'ready':
+          setState({ kind: readyKind });
+          return;
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    if (state.kind !== 'needs-unlock') return;
+    setState({ kind: readyKind });
+  }, [session, state.kind]);
+
+  useEffect(() => {
+    if (state.kind !== 'logging-in') return;
+    void handleLogin();
+  }, [state.kind]);
+
+  return { handleLogin, handleUnlock };
 }

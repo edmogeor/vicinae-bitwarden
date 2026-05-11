@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file
 import {
   Action,
   ActionPanel,
@@ -24,18 +25,10 @@ import {
   sendTypeLabel,
 } from './send-utils';
 import { useSession } from './use-session';
-import { checkBwGate, createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
+import { renderGate, useGateEffects } from './unlock-gate';
+import type { GateUIState } from './unlock-gate';
 
-type UIState =
-  | { kind: 'checking-bw' }
-  | { kind: 'bw-not-installed' }
-  | { kind: 'secret-tool-not-installed' }
-  | { kind: 'logging-in' }
-  | { kind: 'login-failed'; error: string }
-  | { kind: 'needs-unlock'; error?: string }
-  | { kind: 'unlocking' }
-  | { kind: 'loading' }
-  | { kind: 'list' };
+type UIState = GateUIState | { kind: 'loading' } | { kind: 'list' };
 
 export default function SearchSends() {
   const { session, unlock, loginIfNeeded, loginError } = useSession();
@@ -45,40 +38,15 @@ export default function SearchSends() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const { push } = useNavigation();
 
-  const { handleLogin, handleUnlock } = useUnlockGate({
+  const { handleLogin, handleUnlock } = useGateEffects({
+    session,
+    state,
     loginIfNeeded,
     loginError,
     unlock,
-    ...createUnlockCallbacks(setState, () => setState({ kind: 'loading' })),
+    setState: (next) => setState(next as UIState),
+    readyKind: 'loading',
   });
-
-  useEffect(() => {
-    void (async () => {
-      const gate = await checkBwGate(session);
-      switch (gate.kind) {
-        case 'bw-not-installed':
-        case 'secret-tool-not-installed':
-        case 'logging-in':
-        case 'needs-unlock':
-          setState({ kind: gate.kind });
-          return;
-        case 'ready':
-          setState({ kind: 'loading' });
-          return;
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    if (state.kind !== 'needs-unlock') return;
-    setState({ kind: 'loading' });
-  }, [session, state.kind]);
-
-  useEffect(() => {
-    if (state.kind !== 'logging-in') return;
-    void handleLogin();
-  }, [state.kind]);
 
   const loadSends = useCallback(async () => {
     if (!session) return;

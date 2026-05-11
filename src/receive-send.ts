@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file
 import { Clipboard, closeMainWindow, showHUD, showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
