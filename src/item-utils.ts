@@ -163,7 +163,7 @@ export function itemActions(item: BwItem): ItemAction[] {
   }
 }
 
-function trimToNull(v: unknown): string | null {
+export function trimToNull(v: unknown): string | null {
   return String(v ?? '').trim() || null;
 }
 

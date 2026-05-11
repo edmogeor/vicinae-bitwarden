@@ -191,6 +191,24 @@
       "title": "Generate Password",
       "description": "Generate a random password using your configured settings and copy it to clipboard",
       "mode": "no-view"
+    },
+    {
+      "name": "search-sends",
+      "title": "Search Sends",
+      "description": "Search your Bitwarden Sends and copy links or text",
+      "mode": "view"
+    },
+    {
+      "name": "create-send",
+      "title": "Create Send",
+      "description": "Create a new Send to share text or files securely",
+      "mode": "view"
+    },
+    {
+      "name": "receive-send",
+      "title": "Receive Send",
+      "description": "Receive a Send from a URL in your clipboard — copies text or downloads files",
+      "mode": "no-view"
     }
   ],
   "scripts": {

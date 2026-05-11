@@ -538,3 +538,170 @@ describe('custom CA cert', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// listSends
+// ---------------------------------------------------------------------------
+describe('listSends', () => {
+  it('calls bw send list with BW_SESSION and parses JSON', async () => {
+    const sends = [{ id: 's1', name: 'My Send', type: 0, accessId: 'abc' }];
+    mockExec(mockExecFile, JSON.stringify(sends));
+
+    const result = await bw.listSends('token-abc');
+    expect(result).toEqual(sends);
+    expect(mockExecFile).toHaveBeenCalledWith('bw', ['send', 'list'], hasSession('token-abc'));
+  });
+
+  it('throws BwError on failure', async () => {
+    mockExecError(mockExecFile, 'CLI error');
+
+    await expect(bw.listSends('token')).rejects.toThrow('CLI error');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getSend
+// ---------------------------------------------------------------------------
+describe('getSend', () => {
+  it('calls bw send get with BW_SESSION and returns parsed send', async () => {
+    const sendObj = { id: 's1', name: 'My Send', type: 0, accessId: 'abc' };
+    mockExec(mockExecFile, JSON.stringify(sendObj));
+
+    const result = await bw.getSend('s1', 'token');
+    expect(result).toEqual(sendObj);
+    expect(mockExecFile).toHaveBeenCalledWith('bw', ['send', 'get', 's1'], hasSession('token'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getSendTemplate
+// ---------------------------------------------------------------------------
+describe('getSendTemplate', () => {
+  it('calls bw get template send.text with BW_SESSION', async () => {
+    const template = { name: '', notes: null, type: 0 };
+    mockExec(mockExecFile, JSON.stringify(template));
+
+    const result = await bw.getSendTemplate('send.text', 'token');
+    expect(result).toEqual(template);
+    expect(mockExecFile).toHaveBeenCalledWith(
+      'bw',
+      ['get', 'template', 'send.text'],
+      hasSession('token'),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createSend
+// ---------------------------------------------------------------------------
+describe('createSend', () => {
+  it('encodes payload and creates send via bw encode + bw send create', async () => {
+    const encoded = Buffer.from(JSON.stringify({ name: 'Test Send' })).toString('base64');
+    spawnMockChild(encoded);
+    spawnMockChild(
+      '{"id":"s1","name":"Test Send","type":0,"accessId":"abc","notes":null,"deletionDate":"","creationDate":"","revisionDate":"","disabled":false,"hideEmail":false,"password":null,"maxAccessCount":null,"accessCount":0,"text":null,"file":null,"expirationDate":null}',
+    );
+
+    const payload = {
+      name: 'Test Send',
+      notes: null,
+      type: 0 as const,
+      text: null,
+      file: null,
+      password: null,
+      maxAccessCount: null,
+      deletionDate: null,
+      expirationDate: null,
+    };
+
+    const result = await bw.createSend(payload, 'token');
+    expect(result.id).toBe('s1');
+    expect(result.name).toBe('Test Send');
+
+    expectEncodeAndExec(mockSpawn, 'token', 'send', ['create']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// editSend
+// ---------------------------------------------------------------------------
+describe('editSend', () => {
+  it('encodes payload and edits send via bw encode + bw send edit', async () => {
+    const encoded = Buffer.from(JSON.stringify({ name: 'Updated' })).toString('base64');
+    spawnMockChild(encoded);
+    spawnMockChild('');
+
+    await bw.editSend('send-123', { name: 'Updated' }, 'token');
+
+    expectEncodeAndExec(mockSpawn, 'token', 'send', ['edit', 'send-123']);
+  });
+
+  it('throws BwError on failure', async () => {
+    spawnMockChild('Edit failed', 1);
+
+    await expect(bw.editSend('send-123', { name: 'X' }, 'token')).rejects.toThrow('Edit failed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deleteSend
+// ---------------------------------------------------------------------------
+describe('deleteSend', () => {
+  it('calls bw send delete with BW_SESSION', async () => {
+    mockExec(mockExecFile, '');
+
+    await bw.deleteSend('send-1', 'token');
+    expect(mockExecFile).toHaveBeenCalledWith(
+      'bw',
+      ['send', 'delete', 'send-1'],
+      hasSession('token'),
+    );
+  });
+
+  it('throws BwError on delete failure', async () => {
+    mockExecError(mockExecFile, 'Send not found');
+
+    await expect(bw.deleteSend('missing', 'token')).rejects.toThrow('Send not found');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// receiveSend
+// ---------------------------------------------------------------------------
+describe('receiveSend', () => {
+  it('calls bw send receive and returns text for text sends', async () => {
+    mockExec(mockExecFile, 'This is the send content\n');
+
+    const result = await bw.receiveSend('https://vault.bitwarden.com/#/send/abc');
+    expect(result.kind).toBe('text');
+    expect(result.text).toBe('This is the send content');
+    expect(mockExecFile).toHaveBeenCalledWith(
+      'bw',
+      ['send', 'receive', 'https://vault.bitwarden.com/#/send/abc'],
+      expect.objectContaining({ env: expect.any(Object) }),
+    );
+  });
+
+  it('returns file result when output directory is provided', async () => {
+    mockExec(mockExecFile, '/home/user/Downloads/file.pdf\n');
+
+    const result = await bw.receiveSend(
+      'https://vault.bitwarden.com/#/send/abc',
+      undefined,
+      '/tmp/Downloads',
+    );
+    expect(result.kind).toBe('file');
+    expect(result.path).toBe('/home/user/Downloads/file.pdf');
+    expect(mockExecFile).toHaveBeenCalledWith(
+      'bw',
+      ['send', 'receive', 'https://vault.bitwarden.com/#/send/abc', '--output', '/tmp/Downloads'],
+      expect.objectContaining({ env: expect.any(Object) }),
+    );
+  });
+
+  it('throws BwError on failure', async () => {
+    mockExecError(mockExecFile, 'Send not found');
+
+    await expect(bw.receiveSend('https://example.com/bad')).rejects.toThrow('Send not found');
+  });
+});
