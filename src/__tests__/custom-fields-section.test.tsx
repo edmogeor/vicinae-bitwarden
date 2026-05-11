@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import CustomFieldsSection from '../custom-fields-section';
 import type { CustomField } from '../custom-fields-section';
 
+// fallow-ignore-next-line code-duplication
 const MockForm = vi.hoisted(() => {
   const el = (type: string, testId?: string) => {
     return (props: {
