@@ -86,7 +86,6 @@ describe('useVaultLifecycle', () => {
   // -------------------------------------------------------------------------
   describe('initial mount: ready path', () => {
     it('loads favicon cache on mount', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
       const setFaviconMap = vi.fn<SetFaviconMap>();
       mockLoadFaviconCache.mockResolvedValue({ 'test.com': 'data:...' });
 
@@ -100,7 +99,6 @@ describe('useVaultLifecycle', () => {
     });
 
     it('caches vault data when cached in storage', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
       const cached = { items, folders };
       mockLoadCachedVault.mockResolvedValue(cached);
       const setVault = vi.fn<(items: BwItem[], folders: BwFolder[]) => void>();
@@ -114,7 +112,6 @@ describe('useVaultLifecycle', () => {
     });
 
     it('syncs vault after gate ready', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
       const syncVault = vi.fn<(token: string) => Promise<void>>().mockResolvedValue(undefined);
 
       const params = makeParams({ session: 'token', syncVault });
@@ -129,7 +126,6 @@ describe('useVaultLifecycle', () => {
     });
 
     it('falls back to cached vault on sync failure', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
       const cached = { items, folders };
       mockLoadCachedVault.mockResolvedValue(cached);
       const syncVault = vi
@@ -148,7 +144,6 @@ describe('useVaultLifecycle', () => {
     });
 
     it('clears session and sets needs-unlock on sync failure with no cache', async () => {
-      mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
       mockLoadCachedVault.mockResolvedValue(null);
       const syncVault = vi
         .fn<(token: string) => Promise<void>>()
@@ -257,7 +252,6 @@ describe('useVaultLifecycle', () => {
   });
 
   it('does not transition non-needs-unlock states on session arrival', () => {
-    mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
     mockLoadCachedVault.mockResolvedValue({ items, folders });
     const setState = vi.fn<SetUIState>();
 
@@ -275,7 +269,6 @@ describe('useVaultLifecycle', () => {
   // loading state → sync vault
   // -------------------------------------------------------------------------
   it('syncs vault when state transitions to loading with session', async () => {
-    mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
     mockLoadCachedVault.mockResolvedValue(null);
     const syncVault = vi.fn<(token: string) => Promise<void>>().mockResolvedValue(undefined);
     const setVault = vi.fn<(items: BwItem[], folders: BwFolder[]) => void>();
@@ -296,7 +289,6 @@ describe('useVaultLifecycle', () => {
   });
 
   it('shows failure toast and clears session on loading sync failure without cache', async () => {
-    mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
     mockLoadCachedVault.mockResolvedValue(null);
     const syncVault = vi
       .fn<(token: string) => Promise<void>>()
@@ -327,7 +319,6 @@ describe('useVaultLifecycle', () => {
   // logging-in state triggers handleLogin
   // -------------------------------------------------------------------------
   it('calls handleLogin when state transitions to logging-in', async () => {
-    mockCheckBwGate.mockResolvedValue({ kind: 'ready' });
     const handleLogin = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
     const { rerender } = renderHook(
