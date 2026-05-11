@@ -11,7 +11,7 @@ export function mockExecError(mf: ReturnType<typeof vi.fn>, message: string): vo
   mf.mockRejectedValueOnce(err);
 }
 
-function makeSpawnChild(ms: ReturnType<typeof vi.fn>, exitCode: number) {
+function createBaseChild(ms: ReturnType<typeof vi.fn>) {
   const child = {
     stdin: { write: vi.fn(), end: vi.fn(), on: vi.fn() },
     on: vi.fn(),
@@ -20,11 +20,16 @@ function makeSpawnChild(ms: ReturnType<typeof vi.fn>, exitCode: number) {
     if (event === 'finish') cb();
     return child;
   });
+  ms.mockReturnValueOnce(child);
+  return child;
+}
+
+function makeSpawnChild(ms: ReturnType<typeof vi.fn>, exitCode: number) {
+  const child = createBaseChild(ms);
   child.on.mockImplementation((event: string, cb: (code?: number) => void) => {
     if (event === 'close') cb(exitCode);
     return child;
   });
-  ms.mockReturnValueOnce(child);
   return child;
 }
 
@@ -34,6 +39,15 @@ export function mockSpawnSuccess(ms: ReturnType<typeof vi.fn>) {
 
 export function mockSpawnError(ms: ReturnType<typeof vi.fn>, code: number): void {
   makeSpawnChild(ms, code);
+}
+
+export function createSpawnChild(ms: ReturnType<typeof vi.fn>) {
+  const child = createBaseChild(ms);
+  child.on.mockImplementation((event: string, cb: (...args: unknown[]) => void) => {
+    if (event === 'error') cb(new Error('spawn failed'));
+    return child;
+  });
+  return child;
 }
 
 export function expectEncodeAndExec(

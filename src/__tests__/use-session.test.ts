@@ -257,18 +257,15 @@ describe('useSession', () => {
   });
 
   describe('loginIfNeeded', () => {
-    it('uses libsecret credentials when available and prefs unchanged', async () => {
-      execRejects('Cannot find item');
-      execResolves(apiCredsPayload('test-client-id', 'test-client-secret'));
-      execResolves({ stdout: '', stderr: '' });
-      execResolves({ stdout: '', stderr: '' });
-
+    async function renderAndLogin() {
       const { result } = renderHook(() => useSession());
-
       await act(async () => {
         await result.current.loginIfNeeded();
       });
+      return result;
+    }
 
+    function expectBwLoginCalled() {
       expect(execFileMock).toHaveBeenCalledWith(
         'bw',
         bwLoginArgs,
@@ -279,6 +276,24 @@ describe('useSession', () => {
           }),
         }),
       );
+    }
+
+    function expectSpawnStoreCalled() {
+      expect(spawnMock).toHaveBeenCalledWith(
+        'secret-tool',
+        apiCredsStoreArgs,
+        expect.objectContaining({ stdio: ['pipe', 'ignore', 'ignore'] }),
+      );
+    }
+
+    it('uses libsecret credentials when available and prefs unchanged', async () => {
+      execRejects('Cannot find item');
+      execResolves(apiCredsPayload('test-client-id', 'test-client-secret'));
+      execResolves({ stdout: '', stderr: '' });
+      execResolves({ stdout: '', stderr: '' });
+
+      await renderAndLogin();
+      expectBwLoginCalled();
     });
 
     it('uses preferences and migrates to libsecret when no libsecret creds exist', async () => {
@@ -288,17 +303,8 @@ describe('useSession', () => {
       execResolves({ stdout: '', stderr: '' });
       spawnSucceeds();
 
-      const { result } = renderHook(() => useSession());
-
-      await act(async () => {
-        await result.current.loginIfNeeded();
-      });
-
-      expect(spawnMock).toHaveBeenCalledWith(
-        'secret-tool',
-        apiCredsStoreArgs,
-        expect.objectContaining({ stdio: ['pipe', 'ignore', 'ignore'] }),
-      );
+      await renderAndLogin();
+      expectSpawnStoreCalled();
     });
 
     it('detects credential rotation and re-migrates', async () => {
@@ -308,27 +314,9 @@ describe('useSession', () => {
       execResolves({ stdout: '', stderr: '' });
       spawnSucceeds();
 
-      const { result } = renderHook(() => useSession());
-
-      await act(async () => {
-        await result.current.loginIfNeeded();
-      });
-
-      expect(execFileMock).toHaveBeenCalledWith(
-        'bw',
-        bwLoginArgs,
-        expect.objectContaining({
-          env: expect.objectContaining({
-            BW_CLIENTID: 'test-client-id',
-            BW_CLIENTSECRET: 'test-client-secret',
-          }),
-        }),
-      );
-      expect(spawnMock).toHaveBeenCalledWith(
-        'secret-tool',
-        apiCredsStoreArgs,
-        expect.objectContaining({ stdio: ['pipe', 'ignore', 'ignore'] }),
-      );
+      await renderAndLogin();
+      expectBwLoginCalled();
+      expectSpawnStoreCalled();
     });
 
     it('isLoggingIn is false after login completes', async () => {
@@ -338,12 +326,7 @@ describe('useSession', () => {
       execResolves({ stdout: '', stderr: '' });
       spawnSucceeds();
 
-      const { result } = renderHook(() => useSession());
-
-      await act(async () => {
-        await result.current.loginIfNeeded();
-      });
-
+      const result = await renderAndLogin();
       expect(result.current.isLoggingIn).toBe(false);
     });
   });

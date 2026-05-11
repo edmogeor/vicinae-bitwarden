@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { mockExec, mockExecError, mockSpawnSuccess, mockSpawnError } from './__utils__/exec-mocks';
+import {
+  mockExec,
+  mockExecError,
+  mockSpawnSuccess,
+  mockSpawnError,
+  createSpawnChild,
+} from './__utils__/exec-mocks';
 
 const mockExecFile = vi.hoisted(() => vi.fn());
 const mockSpawn = vi.hoisted(() => vi.fn());
@@ -8,20 +14,18 @@ const { mockGetPreferences, mockGetAutoLockSeconds } = vi.hoisted(() => ({
   mockGetAutoLockSeconds: vi.fn(),
 }));
 
-vi.mock('node:child_process', () => {
-  return {
-    default: { execFile: mockExecFile, spawn: mockSpawn },
-    execFile: mockExecFile,
-    spawn: mockSpawn,
-  };
-});
+// fallow-ignore-next-line code-duplication
+vi.mock('node:child_process', () => ({
+  default: { execFile: mockExecFile, spawn: mockSpawn },
+  execFile: mockExecFile,
+  spawn: mockSpawn,
+}));
 
-vi.mock('node:util', () => {
-  return {
-    default: { promisify: (fn: unknown) => fn },
-    promisify: (fn: unknown) => fn,
-  };
-});
+// fallow-ignore-next-line code-duplication
+vi.mock('node:util', () => ({
+  default: { promisify: (fn: unknown) => fn },
+  promisify: (fn: unknown) => fn,
+}));
 
 vi.mock('../preferences', () => ({
   getPreferences: mockGetPreferences,
@@ -172,19 +176,7 @@ describe('setSession', () => {
   });
 
   it('rejects when spawn emits error', async () => {
-    const child = {
-      stdin: { write: vi.fn(), end: vi.fn(), on: vi.fn() },
-      on: vi.fn(),
-    };
-    child.stdin.on.mockImplementation((event: string, cb: () => void) => {
-      if (event === 'finish') cb();
-      return child;
-    });
-    child.on.mockImplementation((event: string, cb: (...args: unknown[]) => void) => {
-      if (event === 'error') cb(new Error('spawn failed'));
-      return child;
-    });
-    mockSpawn.mockReturnValueOnce(child);
+    createSpawnChild(mockSpawn);
 
     await expect(sessionStore.setSession('token')).rejects.toThrow('spawn failed');
   });

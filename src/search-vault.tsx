@@ -1,106 +1,29 @@
-import {
-  Action,
-  ActionPanel,
-  Clipboard,
-  Icon,
-  List,
-  showToast,
-  Toast,
-  useNavigation,
-} from '@vicinae/api';
-import { useCallback, useMemo, useState } from 'react';
+import { Action, ActionPanel, Icon, List, useNavigation } from '@vicinae/api';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
-import {
-  filterItems,
-  itemActions as getItemActions,
-  groupByFolder,
-  itemIcon,
-  itemSubtitle,
-  itemTypeLabel,
-} from './item-utils';
-import { useSession } from './use-session';
-import { createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
-import { useVaultSync } from './use-vault-sync';
-import { useVaultLifecycle, type UIState } from './vault-lifecycle';
+import { itemActions as getItemActions, itemIcon, itemSubtitle, itemTypeLabel } from './item-utils';
+import { useVaultSearch } from './use-vault-search';
 import ItemDetailView, { renderItemActionElements } from './item-detail-view';
 import EditItem from './edit-item';
 import type { BwFolder, BwItem } from './bitwarden-types';
-import { ItemType } from './bitwarden-types';
 
 export default function SearchVault() {
-  const { session, unlock, clearSession, loginIfNeeded, loginError } = useSession();
-  const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
+  const {
+    state,
+    session,
+    searchText,
+    setSearchText,
+    faviconMap,
+    vaultFolders,
+    handleSync,
+    handleCopyTotp,
+    gateRender,
+    isLoading,
+    sortedSections,
+  } = useVaultSearch();
 
-  const setVault = (items: BwItem[], folders: BwFolder[]) => {
-    setState({ kind: 'vault', items, folders });
-  };
-
-  const [searchText, setSearchText] = useState('');
-  const [faviconMap, setFaviconMap] = useState<Record<string, string>>({});
   const { push } = useNavigation();
 
-  const { handleLogin, handleUnlock } = useUnlockGate({
-    loginIfNeeded,
-    loginError,
-    unlock,
-    ...createUnlockCallbacks(setState, () => setState({ kind: 'loading' })),
-  });
-
-  const { syncVault, handleSync, isSyncing } = useVaultSync(session, setVault);
-
-  useVaultLifecycle({
-    session,
-    state,
-    setState,
-    setVault,
-    syncVault,
-    handleLogin,
-    clearSession,
-    setFaviconMap,
-  });
-
-  // --- Derived data (must be unconditional — hooks rules) ---
-  const vaultItems = state.kind === 'vault' ? state.items : [];
-  const vaultFolders = state.kind === 'vault' ? state.folders : [];
-
-  const filtered = useMemo(() => filterItems(vaultItems, searchText), [vaultItems, searchText]);
-  const grouped = useMemo(() => groupByFolder(filtered, vaultFolders), [filtered, vaultFolders]);
-
-  const handleCopyTotp = useCallback(
-    async (id: string) => {
-      if (!session) return;
-      try {
-        const totp = await bw.getTotp(id, session);
-        await Clipboard.copy(totp);
-        await showToast({ style: Toast.Style.Success, title: 'Copied TOTP' });
-      } catch (err) {
-        const message = getErrorMessage(err);
-        await showToast({
-          style: Toast.Style.Failure,
-          title: 'Failed to get TOTP',
-          message,
-        });
-      }
-    },
-    [session],
-  );
-
-  // --- Render based on state ---
-
-  const gateRender = renderGate(state, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
-
-  // All vault states share a single persistent List to keep handler IDs stable
-  const isLoading =
-    state.kind === 'checking-bw' ||
-    state.kind === 'logging-in' ||
-    state.kind === 'loading' ||
-    isSyncing;
-
-  const sortedSections = [...grouped.entries()].sort(([, a], [, b]) =>
-    a.folderName.localeCompare(b.folderName),
-  );
 
   function renderVaultContent() {
     if (sortedSections.length === 0) {

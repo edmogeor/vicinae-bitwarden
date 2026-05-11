@@ -21,20 +21,18 @@ const { mockPrefs } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('node:child_process', () => {
-  return {
-    default: { execFile: mockExecFile, spawn: mockSpawn },
-    execFile: mockExecFile,
-    spawn: mockSpawn,
-  };
-});
+// fallow-ignore-next-line code-duplication
+vi.mock('node:child_process', () => ({
+  default: { execFile: mockExecFile, spawn: mockSpawn },
+  execFile: mockExecFile,
+  spawn: mockSpawn,
+}));
 
-vi.mock('node:util', () => {
-  return {
-    default: { promisify: (fn: unknown) => fn },
-    promisify: (fn: unknown) => fn,
-  };
-});
+// fallow-ignore-next-line code-duplication
+vi.mock('node:util', () => ({
+  default: { promisify: (fn: unknown) => fn },
+  promisify: (fn: unknown) => fn,
+}));
 
 vi.mock('@vicinae/api', () => ({
   getPreferenceValues: () => mockPrefs,
@@ -496,16 +494,20 @@ describe('custom CA cert', () => {
     mockPrefs.customCertPath = '';
   });
 
-  it('does not set NODE_EXTRA_CA_CERTS when customCertPath is empty', async () => {
+  async function loginAndCheckFirstCall(expectedEnv: ReturnType<typeof expect.objectContaining>) {
     mockExec(mockExecFile, '');
     mockExec(mockExecFile, '');
-
     await bw.login(params);
-
     expect(mockExecFile).toHaveBeenNthCalledWith(
       1,
       'bw',
       ['config', 'server', 'https://bitwarden.com'],
+      expectedEnv,
+    );
+  }
+
+  it('does not set NODE_EXTRA_CA_CERTS when customCertPath is empty', async () => {
+    await loginAndCheckFirstCall(
       expect.objectContaining({
         env: expect.not.objectContaining({ NODE_EXTRA_CA_CERTS: expect.anything() }),
       }),
@@ -514,15 +516,7 @@ describe('custom CA cert', () => {
 
   it('sets NODE_EXTRA_CA_CERTS when customCertPath is configured', async () => {
     mockPrefs.customCertPath = '/etc/ssl/certs/custom-ca.pem';
-    mockExec(mockExecFile, '');
-    mockExec(mockExecFile, '');
-
-    await bw.login(params);
-
-    expect(mockExecFile).toHaveBeenNthCalledWith(
-      1,
-      'bw',
-      ['config', 'server', 'https://bitwarden.com'],
+    await loginAndCheckFirstCall(
       expect.objectContaining({
         env: expect.objectContaining({ NODE_EXTRA_CA_CERTS: '/etc/ssl/certs/custom-ca.pem' }),
       }),

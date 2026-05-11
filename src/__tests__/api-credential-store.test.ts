@@ -7,20 +7,18 @@ const mockReadFileSync = vi.hoisted(() => vi.fn());
 const mockWriteFileSync = vi.hoisted(() => vi.fn());
 const mockJoin = vi.hoisted(() => vi.fn());
 
-vi.mock('node:child_process', () => {
-  return {
-    default: { execFile: mockExecFile, spawn: mockSpawn },
-    execFile: mockExecFile,
-    spawn: mockSpawn,
-  };
-});
+// fallow-ignore-next-line code-duplication
+vi.mock('node:child_process', () => ({
+  default: { execFile: mockExecFile, spawn: mockSpawn },
+  execFile: mockExecFile,
+  spawn: mockSpawn,
+}));
 
-vi.mock('node:util', () => {
-  return {
-    default: { promisify: (fn: unknown) => fn },
-    promisify: (fn: unknown) => fn,
-  };
-});
+// fallow-ignore-next-line code-duplication
+vi.mock('node:util', () => ({
+  default: { promisify: (fn: unknown) => fn },
+  promisify: (fn: unknown) => fn,
+}));
 
 vi.mock('node:fs', () => ({
   default: { readFileSync: mockReadFileSync, writeFileSync: mockWriteFileSync },
