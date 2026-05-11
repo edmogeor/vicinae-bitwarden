@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { BwError, BwFolder, BwItem, ItemTypeValue } from './bitwarden-types';
+import type { BwSend, CreateSendPayload } from './send-types';
 import { getDownloadDir, getPreferences } from './preferences';
 
 const exec = promisify(execFile);
@@ -449,6 +450,131 @@ export async function createAttachment(
       timeout: 30000,
       env: sessionEnv(session),
     });
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * List all Sends.
+ * Requires a valid Session.
+ */
+export async function listSends(session: Session): Promise<BwSend[]> {
+  try {
+    const { stdout } = await exec('bw', ['send', 'list'], {
+      timeout: 30000,
+      env: sessionEnv(session),
+    });
+    return parseJson<BwSend[]>(stdout);
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * Get a single Send by ID with full details.
+ * Requires a valid Session.
+ */
+export async function getSend(id: string, session: Session): Promise<BwSend> {
+  try {
+    const { stdout } = await exec('bw', ['send', 'get', id], {
+      timeout: 15000,
+      env: sessionEnv(session),
+    });
+    return parseJson<BwSend>(stdout);
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * Get a template JSON for a Send type.
+ * Requires a valid Session.
+ */
+export async function getSendTemplate(
+  type: 'send.text' | 'send.file',
+  session: Session,
+): Promise<Record<string, unknown>> {
+  try {
+    const { stdout } = await exec('bw', ['get', 'template', type], {
+      timeout: 15000,
+      env: sessionEnv(session),
+    });
+    return parseJson<Record<string, unknown>>(stdout);
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * Create a new Send.
+ * Requires a valid Session. The payload is the full JSON object
+ * matching Bitwarden's internal send schema.
+ */
+export async function createSend(payload: CreateSendPayload, session: Session): Promise<BwSend> {
+  try {
+    const stdout = await encodeAndExec(payload, 'send', ['create'], session);
+    return parseJson<BwSend>(stdout);
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * Edit an existing Send.
+ * Requires a valid Session.
+ */
+export async function editSend(id: string, payload: object, session: Session): Promise<void> {
+  try {
+    await encodeAndExec(payload, 'send', ['edit', id], session);
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+/**
+ * Delete a Send by ID.
+ * Requires a valid Session.
+ */
+export async function deleteSend(id: string, session: Session): Promise<void> {
+  try {
+    await exec('bw', ['send', 'delete', id], {
+      timeout: 15000,
+      env: sessionEnv(session),
+    });
+  } catch (err) {
+    throw toBwError(err);
+  }
+}
+
+export interface ReceiveSendResult {
+  kind: 'text' | 'file';
+  text?: string;
+  path?: string;
+}
+
+/**
+ * Receive a Send by URL.
+ * No session required — `bw send receive` works without authentication.
+ * For file sends, provide `output` directory; the function returns the saved file path.
+ * For text sends, the function returns the decrypted text content.
+ */
+export async function receiveSend(
+  url: string,
+  password?: string,
+  output?: string,
+): Promise<ReceiveSendResult> {
+  const args = ['send', 'receive', url];
+  if (password) args.push('--password', password);
+  if (output) args.push('--output', output);
+  try {
+    const { stdout } = await exec('bw', args, {
+      timeout: 30000,
+      env: bwEnv(),
+    });
+    const trimmed = stdout.trim();
+    if (output) return { kind: 'file', path: trimmed };
+    return { kind: 'text', text: trimmed };
   } catch (err) {
     throw toBwError(err);
   }
