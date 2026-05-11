@@ -1,9 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import ItemDetailView, { renderItemActionElements } from '../item-detail-view';
 import type { BwItem } from '../bitwarden-types';
-import { ItemType } from '../bitwarden-types';
+import type { ItemAction } from '../bw-executor';
+import { makeItem } from './__utils__/test-data';
 
 const { mockBw, mockPop } = vi.hoisted(() => {
   const mockBw = {
@@ -30,11 +31,12 @@ vi.mock('../bw-executor', () => ({
 vi.mock('../item-utils', () => ({
   buildItemDetailMarkdown: (item: BwItem) => (item.notes ? item.notes : ''),
   formatTotp: (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`,
-  itemActions: (item: BwItem) => {
-    const actions: { label: string; value?: string; fetchKind?: string; icon?: string }[] = [];
+  itemActions: (item: BwItem): ItemAction[] => {
+    const actions: ItemAction[] = [];
     if (item.login?.username) actions.push({ label: 'Copy Username', value: item.login.username });
     if (item.login?.password) actions.push({ label: 'Copy Password', value: item.login.password });
-    if (item.login?.totp) actions.push({ label: 'Copy Verification Code', fetchKind: 'totp' });
+    if (item.login?.totp)
+      actions.push({ label: 'Copy Verification Code', value: '', fetchKind: 'totp' });
     return actions;
   },
   itemTypeLabel: () => 'Login',
@@ -119,29 +121,11 @@ vi.mock('@vicinae/api', () => ({
   useNavigation: () => ({ pop: mockPop, push: mockPush }),
 }));
 
-vi.stubGlobal('setInterval', (cb: () => void, _ms: number) => {
-  // Don't actually run intervals — just once for initial setup
-  cb();
-  return 123 as unknown as ReturnType<typeof setInterval>;
-});
-vi.stubGlobal('clearInterval', vi.fn());
-
-function makeItem(overrides: Partial<BwItem> = {}): BwItem {
-  return {
-    id: 'item-1',
-    organizationId: null,
-    folderId: null,
-    type: ItemType.Login,
-    name: 'Test Login',
-    notes: null,
-    favorite: false,
-    revisionDate: '',
-    creationDate: '',
-    deletedDate: null,
-    collectionIds: null,
+function loginItem(overrides: Partial<BwItem> = {}): BwItem {
+  return makeItem({
     login: { username: 'user', password: 'pass', totp: 'JBSWY3DPEHPK3PXP' },
     ...overrides,
-  };
+  });
 }
 
 beforeEach(() => {
@@ -154,36 +138,32 @@ beforeEach(() => {
 // renderItemActionElements
 // ---------------------------------------------------------------------------
 describe('renderItemActionElements', () => {
-  it('renders CopyToClipboard actions for simple values', () => {
-    const actions = [
-      { label: 'Copy Username', value: 'alice' },
-      { label: 'Copy Password', value: 'secret' },
-    ];
-    const elements = renderItemActionElements(actions, vi.fn(), 'item-1', null);
+  const simpleItems: ItemAction[] = [
+    { label: 'Copy Username', value: 'alice' },
+    { label: 'Copy Password', value: 'secret' },
+  ];
 
+  it('renders CopyToClipboard actions for simple values', () => {
+    const elements = renderItemActionElements(simpleItems, vi.fn(), 'item-1', null);
     expect(elements).toHaveLength(2);
   });
 
   it('renders TOTP action that calls onCopyTotp', () => {
     const onCopyTotp = vi.fn();
-    const actions = [
-      { label: 'Copy Verification Code', fetchKind: 'totp' as const, value: '' as const },
-    ];
-    const elements = renderItemActionElements(actions, onCopyTotp, 'item-1', 'session');
+    const totpItem: ItemAction = { label: 'Copy Verification Code', value: '', fetchKind: 'totp' };
+    const elements = renderItemActionElements([totpItem], onCopyTotp, 'item-1', 'session');
     expect(elements).toHaveLength(1);
   });
 
   it('renders OpenInBrowser action', () => {
-    const actions = [{ label: 'Open URL', value: 'https://example.com' as const }];
-    const elements = renderItemActionElements(actions, vi.fn(), 'item-1', null);
+    const urlItem: ItemAction = { label: 'Open URL', value: 'https://example.com' };
+    const elements = renderItemActionElements([urlItem], vi.fn(), 'item-1', null);
     expect(elements).toHaveLength(1);
   });
 
   it('renders fetch-based actions that resolve with getItem', () => {
-    const actions = [
-      { label: 'Copy Card Number', fetchKind: 'cardNumber' as const, value: '' as const },
-    ];
-    const elements = renderItemActionElements(actions, vi.fn(), 'item-1', 'token');
+    const fetchItem: ItemAction = { label: 'Copy Card Number', value: '', fetchKind: 'cardNumber' };
+    const elements = renderItemActionElements([fetchItem], vi.fn(), 'item-1', 'token');
     expect(elements).toHaveLength(1);
   });
 });
@@ -193,11 +173,11 @@ describe('renderItemActionElements', () => {
 // ---------------------------------------------------------------------------
 describe('ItemDetailView', () => {
   it('shows loading state with only Back action', async () => {
-    mockBw.getItem.mockReturnValue(new Promise(() => {})); // never resolves
+    mockBw.getItem.mockReturnValue(new Promise(() => {}));
 
     render(
       React.createElement(ItemDetailView, {
-        item: makeItem() as BwItem,
+        item: loginItem(),
         session: 'token',
         onCopyTotp: vi.fn(),
       }),
@@ -209,7 +189,7 @@ describe('ItemDetailView', () => {
   });
 
   it('shows content immediately when session is null', async () => {
-    const item = makeItem({ notes: 'some note' });
+    const item = loginItem({ notes: 'some note' });
 
     render(
       React.createElement(ItemDetailView, {
@@ -219,19 +199,18 @@ describe('ItemDetailView', () => {
       }),
     );
 
-    // When session is null, setIsLoading(false) fires synchronously
     await waitFor(() => {
       expect(screen.getByTestId('markdown').textContent).toBe('some note');
     });
   });
 
   it('fetches item and shows content after loading', async () => {
-    const fullItem = makeItem({ notes: 'My notes' });
+    const fullItem = loginItem({ notes: 'My notes' });
     mockBw.getItem.mockResolvedValue(fullItem);
 
     render(
       React.createElement(ItemDetailView, {
-        item: makeItem(),
+        item: loginItem(),
         session: 'token',
         onCopyTotp: vi.fn(),
       }),
@@ -251,7 +230,7 @@ describe('ItemDetailView', () => {
 
     render(
       React.createElement(ItemDetailView, {
-        item: makeItem(),
+        item: loginItem(),
         session: 'token',
         onCopyTotp: vi.fn(),
       }),
@@ -260,16 +239,15 @@ describe('ItemDetailView', () => {
     await waitFor(() => {
       expect(screen.getByTestId('detail-view')).toBeTruthy();
     });
-    // Should not be loading
     expect(screen.getByTestId('markdown').textContent).not.toBe('Loading...');
   });
 
   it('shows full action panel after loading', async () => {
-    mockBw.getItem.mockResolvedValue(makeItem());
+    mockBw.getItem.mockResolvedValue(loginItem());
 
     render(
       React.createElement(ItemDetailView, {
-        item: makeItem(),
+        item: loginItem(),
         session: 'token',
         onCopyTotp: vi.fn(),
       }),
@@ -281,12 +259,12 @@ describe('ItemDetailView', () => {
   });
 
   it('fetches TOTP codes when item has totp', async () => {
-    mockBw.getItem.mockResolvedValue(makeItem());
+    mockBw.getItem.mockResolvedValue(loginItem());
     mockBw.getTotp.mockResolvedValue('123456');
 
     render(
       React.createElement(ItemDetailView, {
-        item: makeItem(),
+        item: loginItem(),
         session: 'token',
         onCopyTotp: vi.fn(),
       }),
@@ -298,11 +276,11 @@ describe('ItemDetailView', () => {
   });
 
   it('navigates to edit view', async () => {
-    mockBw.getItem.mockResolvedValue(makeItem());
+    mockBw.getItem.mockResolvedValue(loginItem());
 
     render(
       React.createElement(ItemDetailView, {
-        item: makeItem(),
+        item: loginItem(),
         session: 'token',
         onCopyTotp: vi.fn(),
       }),
