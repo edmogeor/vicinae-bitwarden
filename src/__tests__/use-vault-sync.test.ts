@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useVaultSync } from '../use-vault-sync';
+import { makeItems, makeFolders } from './__utils__/test-data';
 
 const { mockBw, mockSaveCachedVault } = vi.hoisted(() => {
   const mockBw = {
@@ -31,9 +32,6 @@ vi.mock('@vicinae/api', () => ({
   Toast: { Style: { Success: 'success', Failure: 'failure' } },
 }));
 
-const makeItems = () => [{ id: '1', name: 'GitHub', type: 1 }] as any[];
-const makeFolders = () => [{ id: 'f1', name: 'Work' }] as any[];
-
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -41,8 +39,8 @@ beforeEach(() => {
 describe('useVaultSync', () => {
   describe('syncVault', () => {
     it('syncs, lists items/folders, caches, and sets vault', async () => {
-      const items = makeItems();
-      const folders = makeFolders();
+      const items = makeItems(1);
+      const folders = makeFolders(1);
       mockBw.sync.mockResolvedValue(undefined);
       mockBw.listItems.mockResolvedValue(items);
       mockBw.listFolders.mockResolvedValue(folders);
@@ -74,8 +72,8 @@ describe('useVaultSync', () => {
   describe('handleSync', () => {
     it('sets isSyncing and shows success toast', async () => {
       mockBw.sync.mockResolvedValue(undefined);
-      mockBw.listItems.mockResolvedValue(makeItems());
-      mockBw.listFolders.mockResolvedValue(makeFolders());
+      mockBw.listItems.mockResolvedValue(makeItems(1));
+      mockBw.listFolders.mockResolvedValue(makeFolders(1));
       const setVault = vi.fn();
 
       const { result } = renderHook(() => useVaultSync('token', setVault));
@@ -106,8 +104,8 @@ describe('useVaultSync', () => {
 
     it('resets isSyncing to false after completion', async () => {
       mockBw.sync.mockResolvedValue(undefined);
-      mockBw.listItems.mockResolvedValue(makeItems());
-      mockBw.listFolders.mockResolvedValue(makeFolders());
+      mockBw.listItems.mockResolvedValue(makeItems(1));
+      mockBw.listFolders.mockResolvedValue(makeFolders(1));
       const setVault = vi.fn();
 
       const { result } = renderHook(() => useVaultSync('token', setVault));
