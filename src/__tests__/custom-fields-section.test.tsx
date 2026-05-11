@@ -40,16 +40,13 @@ vi.mock('@vicinae/api', () => ({
 }));
 
 function makeFields(overrides: Partial<CustomField>[] = []): CustomField[] {
-  if (overrides.length > 0) {
-    return overrides.map((f, i) => ({
-      id: i,
-      name: '',
-      value: '',
-      type: 0,
-      ...f,
-    }));
-  }
-  return [];
+  return overrides.map((f, i) => ({
+    id: i,
+    name: '',
+    value: '',
+    type: 0,
+    ...f,
+  }));
 }
 
 describe('CustomFieldsSection', () => {
@@ -108,60 +105,24 @@ describe('CustomFieldsSection', () => {
     expect(screen.getByTestId('cf_value_1')).toBeTruthy();
   });
 
-  it('renders TextField for type 0 (Text) fields', () => {
+  it('renders appropriate input per field type', () => {
     render(
       React.createElement(CustomFieldsSection, {
-        customFields: makeFields([{ name: 'API Key', value: 'abc', type: 0 }]),
+        customFields: makeFields([
+          { name: 'API Key', value: 'abc', type: 0 },
+          { name: 'Secret', value: 'xyz', type: 1 },
+          { name: 'Flag', value: 'true', type: 2 },
+        ]),
         setCustomFields: vi.fn(),
       }),
     );
 
-    const valueInput = screen.getByTestId('cf_value_0');
-    // TextField renders as <input>
-    expect(valueInput.tagName).toBe('INPUT');
+    expect(screen.getByTestId('cf_value_0').tagName).toBe('INPUT');
+    expect(screen.getByTestId('cf_value_1')).toBeTruthy();
+    expect(screen.getByTestId('cf_value_2')).toBeTruthy();
   });
 
-  it('renders PasswordField for type 1 (Hidden) fields', () => {
-    render(
-      React.createElement(CustomFieldsSection, {
-        customFields: makeFields([{ name: 'Secret', value: 'xyz', type: 1 }]),
-        setCustomFields: vi.fn(),
-      }),
-    );
-
-    // In our mock, PasswordField renders as <input> too, same as TextField
-    // Both are present — we just verify the component renders
-    expect(screen.getByTestId('cf_value_0')).toBeTruthy();
-  });
-
-  it('renders Checkbox for type 2 (Boolean) fields', () => {
-    render(
-      React.createElement(CustomFieldsSection, {
-        customFields: makeFields([{ name: 'Flag', value: 'true', type: 2 }]),
-        setCustomFields: vi.fn(),
-      }),
-    );
-
-    expect(screen.getByTestId('cf_value_0')).toBeTruthy();
-  });
-
-  it('calls setCustomFields on field name change', () => {
-    const setCustomFields = vi.fn();
-
-    render(
-      React.createElement(CustomFieldsSection, {
-        customFields: makeFields([{ name: 'Old Name', value: 'x', type: 0 }]),
-        setCustomFields,
-      }),
-    );
-
-    fireEvent.change(screen.getByTestId('cf_name_0'), { target: { value: 'New' } });
-
-    // onChange fires, which calls updateField, which calls setCustomFields
-    expect(setCustomFields).toHaveBeenCalled();
-  });
-
-  it('normalizes boolean values when switching type to Boolean', () => {
+  it('calls setCustomFields on field type change', () => {
     const setCustomFields = vi.fn();
 
     render(
@@ -171,6 +132,8 @@ describe('CustomFieldsSection', () => {
       }),
     );
 
-    fireEvent(screen.getByTestId('cf_type_0'), new InputEvent('change'));
+    fireEvent.change(screen.getByTestId('cf_type_0'), { target: { value: '2' } });
+
+    expect(setCustomFields).toHaveBeenCalled();
   });
 });

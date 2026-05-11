@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import SearchTotp from '../search-totp';
 import type { BwItem } from '../bitwarden-types';
 import { ItemType } from '../bitwarden-types';
+import { makeItem } from './__utils__/test-data';
 
 const mockBw = vi.hoisted(() => ({
   getTotp: vi.fn(),
@@ -37,77 +38,41 @@ let mockEmptyVault = false;
 vi.mock('../use-vault-search', () => ({
   useVaultSearch: (preFilter?: (items: BwItem[]) => BwItem[]) => {
     const allItems: BwItem[] = [
-      {
+      makeItem({
         id: '1',
-        organizationId: null,
         folderId: 'f1',
-        type: ItemType.Login,
         name: 'GitHub',
-        notes: null,
-        favorite: false,
-        revisionDate: '',
-        creationDate: '',
-        deletedDate: null,
-        collectionIds: null,
         login: { username: 'gh-user', password: '', totp: 'JBSWY3DPEHPK3PXP' },
-      },
-      {
+      }),
+      makeItem({
         id: '2',
-        organizationId: null,
         folderId: 'f1',
-        type: ItemType.Login,
         name: 'Email',
-        notes: null,
-        favorite: false,
-        revisionDate: '',
-        creationDate: '',
-        deletedDate: null,
-        collectionIds: null,
         login: { username: null, password: '', totp: null },
-      },
-      {
-        id: '3',
-        organizationId: null,
-        folderId: null,
-        type: ItemType.SecureNote,
-        name: 'My Note',
-        notes: null,
-        favorite: false,
-        revisionDate: '',
-        creationDate: '',
-        deletedDate: null,
-        collectionIds: null,
-      },
+      }),
+      makeItem({ id: '3', type: ItemType.SecureNote, name: 'My Note' }),
     ];
     const filtered = preFilter ? preFilter(allItems) : allItems;
 
-    if (mockEmptyVault) {
-      return {
-        state: { kind: 'vault' as const, items: allItems, folders: [{ id: 'f1', name: 'Work' }] },
-        session: 'token',
-        searchText: '',
-        setSearchText: vi.fn(),
-        faviconMap: {},
-        handleSync: vi.fn(),
-        handleCopyTotp: vi.fn(),
-        gateRender: mockGateRender,
-        isLoading: false,
-        sortedSections: [],
-      };
-    }
-
-    return {
+    const base = {
       state: { kind: 'vault' as const, items: allItems, folders: [{ id: 'f1', name: 'Work' }] },
       session: 'token',
       searchText: '',
-      setSearchText: vi.fn(),
-      faviconMap: {},
+      setSearchText: vi.fn() as (text: string) => void,
+      faviconMap: {} as Record<string, string>,
       handleSync: vi.fn(),
       handleCopyTotp: vi.fn(),
       gateRender: mockGateRender,
       isLoading: false,
-      sortedSections:
-        filtered.length > 0 ? [['f1', { folderName: 'Work', items: filtered }] as const] : [],
+    };
+
+    return {
+      ...base,
+      sortedSections: mockEmptyVault
+        ? []
+        : filtered.length > 0
+          ? [['f1', { folderName: 'Work', items: filtered }] as const]
+          : [],
     };
   },
 }));
