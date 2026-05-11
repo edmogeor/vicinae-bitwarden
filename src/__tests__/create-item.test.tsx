@@ -45,6 +45,7 @@ const {
 
   let _handler: ((values: Record<string, unknown>) => void) | null = null;
 
+  // fallow-ignore-next-line code-duplication
   const el = (type: string, testId?: string) => {
     return (props: { children?: React.ReactNode; [key: string]: unknown }) => {
       const { children, ...rest } = props;
@@ -52,7 +53,9 @@ const {
     };
   };
 
+  // fallow-ignore-next-line code-duplication
   const DropdownItem = el('option');
+  // fallow-ignore-next-line code-duplication
   const Dropdown = Object.assign(el('select'), { Item: DropdownItem });
 
   const FormInner = el('div');

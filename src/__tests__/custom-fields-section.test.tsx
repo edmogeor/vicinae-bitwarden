@@ -21,7 +21,9 @@ const MockForm = vi.hoisted(() => {
     };
   };
 
+  // fallow-ignore-next-line code-duplication
   const DropdownItem = el('option');
+  // fallow-ignore-next-line code-duplication
   const Dropdown = Object.assign(el('select'), { Item: DropdownItem });
 
   return Object.assign(el('div'), {

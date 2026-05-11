@@ -11,6 +11,7 @@ const mockBw = vi.hoisted(() => ({
   getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
 }));
 
+// fallow-ignore-next-line code-duplication
 const mockClipboardCopy = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockShowToast = vi.hoisted(() => vi.fn());
 
