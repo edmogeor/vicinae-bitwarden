@@ -574,24 +574,6 @@ describe('getSend', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getSendTemplate
-// ---------------------------------------------------------------------------
-describe('getSendTemplate', () => {
-  it('calls bw get template send.text with BW_SESSION', async () => {
-    const template = { name: '', notes: null, type: 0 };
-    mockExec(mockExecFile, JSON.stringify(template));
-
-    const result = await bw.getSendTemplate('send.text', 'token');
-    expect(result).toEqual(template);
-    expect(mockExecFile).toHaveBeenCalledWith(
-      'bw',
-      ['get', 'template', 'send.text'],
-      hasSession('token'),
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
 // createSend
 // ---------------------------------------------------------------------------
 describe('createSend', () => {

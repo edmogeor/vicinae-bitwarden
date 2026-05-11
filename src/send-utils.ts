@@ -80,9 +80,9 @@ export function toSendPayload(
   const deletionDays = Number(formValues.deletionDays) || 7;
   const deletionDate = new Date(Date.now() + deletionDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const maxAccessCount = formValues.maxAccessCount?.trim()
-    ? Number(formValues.maxAccessCount)
-    : null;
+  const rawMaxAccess = Number(formValues.maxAccessCount);
+  const maxAccessCount =
+    !isNaN(rawMaxAccess) && formValues.maxAccessCount?.trim() ? rawMaxAccess : null;
 
   const password = trimToNull(formValues.password);
 
@@ -91,7 +91,7 @@ export function toSendPayload(
     notes: trimToNull(formValues.notes),
     type,
     password,
-    maxAccessCount: maxAccessCount && !isNaN(maxAccessCount) ? maxAccessCount : null,
+    maxAccessCount,
     deletionDate,
     expirationDate: null,
     text: null,
