@@ -281,7 +281,10 @@ export default function ItemDetailView({
   const { pop, push } = useNavigation();
 
   useEffect(() => {
-    if (!session) return;
+    if (!session) {
+      setIsLoading(false);
+      return;
+    }
     void (async () => {
       try {
         const fetched = await bw.getItem(item.id, session);
@@ -346,97 +349,104 @@ export default function ItemDetailView({
     <Detail
       markdown={isLoading ? 'Loading...' : markdown}
       navigationTitle={resolved.name}
-      metadata={metadata}
+      metadata={isLoading ? null : metadata}
       actions={
-        <ActionPanel>
-          {renderItemActionElements(actions.slice(0, 2), onCopyTotp, item.id, session, true)}
-          {resolved.type === ItemType.Login && resolved.login?.password && (
-            <Action
-              title={showPassword ? 'Hide Password' : 'Show Password'}
-              icon={Icon.Eye}
-              onAction={() => setShowPassword((prev) => !prev)}
-            />
-          )}
-          {resolved.fields?.map((field, i) => {
-            const elements: React.ReactNode[] = [];
-            if (field.type === 1) {
-              const revealed = revealedFields.has(i);
-              elements.push(
-                <Action
-                  key={`show-${i}`}
-                  title={revealed ? `Hide ${field.name}` : `Show ${field.name}`}
-                  icon={Icon.Eye}
-                  onAction={() => {
-                    setRevealedFields((prev) => {
-                      const next = new Set(prev);
-                      if (revealed) next.delete(i);
-                      else next.add(i);
-                      return next;
-                    });
-                  }}
-                />,
-              );
-            }
-            elements.push(
-              <Action.CopyToClipboard
-                key={`copy-${i}`}
-                title={`Copy ${field.name}`}
-                icon={Icon.CopyClipboard}
-                content={field.value}
-              />,
-            );
-            return elements;
-          })}
-          {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, session, true)}
-          {session &&
-            resolved.attachments?.map((att) => (
+        isLoading ? (
+          <ActionPanel>
+            <Action title="Back" icon={Icon.ArrowLeft} onAction={pop} />
+          </ActionPanel>
+        ) : (
+          <ActionPanel>
+            <Action title="Back" icon={Icon.ArrowLeft} onAction={pop} />
+            {renderItemActionElements(actions.slice(0, 2), onCopyTotp, item.id, session, true)}
+            {resolved.type === ItemType.Login && resolved.login?.password && (
               <Action
-                key={`download-${att.id}`}
-                title={`Download ${att.fileName}`}
-                icon={Icon.SaveDocument}
-                onAction={async () => {
-                  try {
-                    const path = await bw.downloadAttachment(
-                      att.id,
-                      resolved.id,
-                      att.fileName,
-                      session,
-                    );
-                    await showToast({
-                      style: Toast.Style.Success,
-                      title: 'Downloaded',
-                      message: att.fileName,
-                    });
-                    exec('xdg-open', [dirname(path)]).catch(() => {});
-                  } catch (err) {
-                    await showToast({
-                      style: Toast.Style.Failure,
-                      title: 'Download failed',
-                      message: bw.getErrorMessage(err),
-                    });
-                  }
-                }}
+                title={showPassword ? 'Hide Password' : 'Show Password'}
+                icon={Icon.Eye}
+                onAction={() => setShowPassword((prev) => !prev)}
               />
-            ))}
-          {session && (
-            <Action
-              title="Edit Item"
-              icon={Icon.Pencil}
-              onAction={() => {
-                push(
-                  <EditItem
-                    item={item}
-                    session={session}
-                    onSaved={() => {
-                      setFullItem(null);
-                      setIsLoading(true);
+            )}
+            {resolved.fields?.map((field, i) => {
+              const elements: React.ReactNode[] = [];
+              if (field.type === 1) {
+                const revealed = revealedFields.has(i);
+                elements.push(
+                  <Action
+                    key={`show-${i}`}
+                    title={revealed ? `Hide ${field.name}` : `Show ${field.name}`}
+                    icon={Icon.Eye}
+                    onAction={() => {
+                      setRevealedFields((prev) => {
+                        const next = new Set(prev);
+                        if (revealed) next.delete(i);
+                        else next.add(i);
+                        return next;
+                      });
                     }}
                   />,
                 );
-              }}
-            />
-          )}
-        </ActionPanel>
+              }
+              elements.push(
+                <Action.CopyToClipboard
+                  key={`copy-${i}`}
+                  title={`Copy ${field.name}`}
+                  icon={Icon.CopyClipboard}
+                  content={field.value}
+                />,
+              );
+              return elements;
+            })}
+            {renderItemActionElements(actions.slice(2), onCopyTotp, item.id, session, true)}
+            {session &&
+              resolved.attachments?.map((att) => (
+                <Action
+                  key={`download-${att.id}`}
+                  title={`Download ${att.fileName}`}
+                  icon={Icon.SaveDocument}
+                  onAction={async () => {
+                    try {
+                      const path = await bw.downloadAttachment(
+                        att.id,
+                        resolved.id,
+                        att.fileName,
+                        session,
+                      );
+                      await showToast({
+                        style: Toast.Style.Success,
+                        title: 'Downloaded',
+                        message: att.fileName,
+                      });
+                      exec('xdg-open', [dirname(path)]).catch(() => {});
+                    } catch (err) {
+                      await showToast({
+                        style: Toast.Style.Failure,
+                        title: 'Download failed',
+                        message: bw.getErrorMessage(err),
+                      });
+                    }
+                  }}
+                />
+              ))}
+            {session && (
+              <Action
+                title="Edit Item"
+                icon={Icon.Pencil}
+                onAction={() => {
+                  push(
+                    <EditItem
+                      item={fullItem ?? item}
+                      session={session}
+                      onSaved={() => {
+                        setFullItem(null);
+                        setIsLoading(true);
+                      }}
+                    />,
+                  );
+                }}
+              />
+            )}
+          </ActionPanel>
+        )
       }
     />
   );
