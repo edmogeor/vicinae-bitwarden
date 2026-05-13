@@ -18,7 +18,7 @@ interface EditSendProps {
   onSaved: () => void;
 }
 
-function EditSend({ send, session, onSaved }: EditSendProps) {
+export default function EditSend({ send, session, onSaved }: EditSendProps) {
   const [fullSend, setFullSend] = useState<BwSend | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
