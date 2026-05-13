@@ -1,18 +1,20 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const { mockBw, mockDeleteSession, mockShowToast, mockClearCachedVault } = vi.hoisted(() => ({
-  mockBw: {
-    logout: vi.fn().mockResolvedValue(undefined),
-    lock: vi.fn(),
-    sync: vi.fn(),
-    unlock: vi.fn(),
-    login: vi.fn(),
-    getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
-  },
-  mockDeleteSession: vi.fn().mockResolvedValue(undefined),
-  mockShowToast: vi.fn(),
-  mockClearCachedVault: vi.fn().mockResolvedValue(undefined),
-}));
+const { mockBw, mockDeleteSession, mockShowToast, mockClearCachedVault, mockClearCachedSends } =
+  vi.hoisted(() => ({
+    mockBw: {
+      logout: vi.fn().mockResolvedValue(undefined),
+      lock: vi.fn(),
+      sync: vi.fn(),
+      unlock: vi.fn(),
+      login: vi.fn(),
+      getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
+    },
+    mockDeleteSession: vi.fn().mockResolvedValue(undefined),
+    mockShowToast: vi.fn(),
+    mockClearCachedVault: vi.fn().mockResolvedValue(undefined),
+    mockClearCachedSends: vi.fn().mockResolvedValue(undefined),
+  }));
 
 vi.mock('../bw-executor', () => mockBw);
 
@@ -27,6 +29,7 @@ vi.mock('@vicinae/api', () => ({
 
 vi.mock('../vault-cache', () => ({
   clearCachedVault: mockClearCachedVault,
+  clearCachedSends: mockClearCachedSends,
 }));
 
 import Logout from '../logout';
@@ -36,12 +39,13 @@ beforeEach(() => {
 });
 
 describe('Logout', () => {
-  it('calls bw.logout, clears session, clears cached vault, and shows success toast', async () => {
+  it('calls bw.logout, clears session, clears cached vault and sends, and shows success toast', async () => {
     await Logout();
 
     expect(mockBw.logout).toHaveBeenCalledOnce();
     expect(mockDeleteSession).toHaveBeenCalledOnce();
     expect(mockClearCachedVault).toHaveBeenCalledOnce();
+    expect(mockClearCachedSends).toHaveBeenCalledOnce();
     expect(mockShowToast).toHaveBeenCalledWith({
       style: 'success',
       title: 'Logged out',

@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { BwError, BwFolder, BwItem, ItemTypeValue } from './bitwarden-types';
+import { logError } from './error-log';
 import type { BwSend, CreateSendPayload } from './send-types';
 import { getDownloadDir, getPreferences } from './preferences';
 
@@ -78,6 +79,7 @@ function hasStderr(err: unknown): err is { stderr: unknown } {
 }
 
 export function getErrorMessage(err: unknown): string {
+  logError(err);
   if (err instanceof Error) {
     const stderrRaw = hasStderr(err) ? String(err.stderr ?? '').trim() : '';
     const cleaned = stderrRaw
@@ -139,8 +141,14 @@ async function encodeAndExec(
 ): Promise<string> {
   const json = JSON.stringify(payload);
   const env = sessionEnv(session);
-  const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 });
-  return execStdin('bw', [cmd, ...args], encoded, { env, timeout: 15000 });
+  const encoded = await execStdin('bw', ['encode'], json, { env, timeout: 15000 }).catch((err) => {
+    logError(new Error(`Payload for bw encode: ${json}`));
+    throw err;
+  });
+  return execStdin('bw', [cmd, ...args], encoded, { env, timeout: 15000 }).catch((err) => {
+    logError(new Error(`Payload for bw ${cmd} ${args.join(' ')}: ${json}`));
+    throw err;
+  });
 }
 
 /**
@@ -546,12 +554,16 @@ export async function receiveSend(
   output?: string,
 ): Promise<ReceiveSendResult> {
   const args = ['send', 'receive', url];
-  if (password) args.push('--password', password);
+  const env: NodeJS.ProcessEnv = { ...bwEnv() };
+  if (password) {
+    args.push('--passwordenv', 'BW_SEND_PASSWORD');
+    env.BW_SEND_PASSWORD = password;
+  }
   if (output) args.push('--output', output);
   try {
     const { stdout } = await exec('bw', args, {
       timeout: 30000,
-      env: bwEnv(),
+      env,
     });
     const trimmed = stdout.trim();
     if (output) return { kind: 'file', path: trimmed };

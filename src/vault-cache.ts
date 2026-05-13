@@ -1,5 +1,6 @@
 import { LocalStorage } from '@vicinae/api';
 import { BwItem, BwFolder } from './bitwarden-types';
+import type { BwSend } from './send-types';
 
 const CACHE_KEY = 'vicinae-bitwarden-cache';
 
@@ -103,4 +104,45 @@ export async function saveCachedVault(items: BwItem[], folders: BwFolder[]): Pro
 
 export async function clearCachedVault(): Promise<void> {
   await LocalStorage.removeItem(CACHE_KEY);
+}
+
+const SENDS_CACHE_KEY = 'vicinae-bitwarden-sends-cache';
+
+interface CachedSends {
+  sends: BwSend[];
+  timestamp: number;
+}
+
+const SENDS_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function stripSensitiveSendFields(send: BwSend): BwSend {
+  return {
+    ...send,
+    notes: null,
+    text: send.text ? { text: '', hidden: send.text.hidden } : null,
+  };
+}
+
+export async function loadCachedSends(): Promise<BwSend[] | null> {
+  try {
+    const raw = await LocalStorage.getItem<string>(SENDS_CACHE_KEY);
+    if (!raw) return null;
+    const cached: CachedSends = JSON.parse(raw);
+    if (Date.now() - cached.timestamp > SENDS_CACHE_TTL) return null;
+    return cached.sends;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCachedSends(sends: BwSend[]): Promise<void> {
+  const cache: CachedSends = {
+    sends: sends.map(stripSensitiveSendFields),
+    timestamp: Date.now(),
+  };
+  await LocalStorage.setItem(SENDS_CACHE_KEY, JSON.stringify(cache));
+}
+
+export async function clearCachedSends(): Promise<void> {
+  await LocalStorage.removeItem(SENDS_CACHE_KEY);
 }

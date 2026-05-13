@@ -39,7 +39,15 @@ function renderLoginFields(login: NonNullable<BwItem['login']>, showPassword: bo
   );
 }
 
-function renderCardFields(card: NonNullable<BwItem['card']>) {
+function renderCardFields(
+  card: NonNullable<BwItem['card']>,
+  expMonth: string,
+  expYear: string,
+  cardCode: string,
+  onExpMonthChange: (v: string) => void,
+  onExpYearChange: (v: string) => void,
+  onCardCodeChange: (v: string) => void,
+) {
   return (
     <>
       <Form.TextField
@@ -53,9 +61,24 @@ function renderCardFields(card: NonNullable<BwItem['card']>) {
         ))}
       </Form.Dropdown>
       <Form.TextField id="number" title="Card Number" defaultValue={card.number ?? ''} />
-      <Form.TextField id="expMonth" title="Expiration Month" defaultValue={card.expMonth ?? ''} />
-      <Form.TextField id="expYear" title="Expiration Year" defaultValue={card.expYear ?? ''} />
-      <Form.TextField id="code" title="Security Code" defaultValue={card.code ?? ''} />
+      <Form.TextField
+        id="expMonth"
+        title="Expiration Month"
+        value={expMonth}
+        onChange={(v) => onExpMonthChange(v)}
+      />
+      <Form.TextField
+        id="expYear"
+        title="Expiration Year"
+        value={expYear}
+        onChange={(v) => onExpYearChange(v)}
+      />
+      <Form.TextField
+        id="code"
+        title="Security Code"
+        value={cardCode}
+        onChange={(v) => onCardCodeChange(v)}
+      />
     </>
   );
 }
@@ -96,7 +119,14 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [expMonth, setExpMonth] = useState('');
+  const [expYear, setExpYear] = useState('');
+  const [cardCode, setCardCode] = useState('');
   const fieldIdRef = useRef(0);
+
+  function digitsOnly(value: string): string {
+    return value.replace(/\D/g, '');
+  }
 
   useEffect(() => {
     void (async () => {
@@ -108,6 +138,12 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
       }
 
       setFullItem(resolved);
+
+      if (resolved.card) {
+        setExpMonth(resolved.card.expMonth ?? '');
+        setExpYear(resolved.card.expYear ?? '');
+        setCardCode(resolved.card.code ?? '');
+      }
 
       if (resolved.fields && resolved.fields.length > 0) {
         setCustomFields(
@@ -245,7 +281,17 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
         fullItem.login &&
         renderLoginFields(fullItem.login, showPassword)}
 
-      {item.type === ItemType.Card && fullItem.card && renderCardFields(fullItem.card)}
+      {item.type === ItemType.Card &&
+        fullItem.card &&
+        renderCardFields(
+          fullItem.card,
+          expMonth,
+          expYear,
+          cardCode,
+          (v) => setExpMonth(digitsOnly(v)),
+          (v) => setExpYear(digitsOnly(v)),
+          (v) => setCardCode(digitsOnly(v)),
+        )}
 
       {item.type === ItemType.Identity &&
         fullItem.identity &&

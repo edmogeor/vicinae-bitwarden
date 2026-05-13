@@ -242,7 +242,7 @@ export function toCreatePayload(
  */
 export function buildItemDetailMarkdown(item: BwItem): string {
   if (item.notes) {
-    return `**Notes:**\n\n${item.notes}`;
+    return `## Notes\n\n${item.notes}`;
   }
   return '';
 }

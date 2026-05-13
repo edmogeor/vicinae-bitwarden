@@ -87,7 +87,7 @@ export default function SearchTotp() {
               subtitle={itemSubtitle(item)}
               accessories={
                 code
-                  ? [{ text: formatTotp(code) }, { text: `(${countdown}s)` }]
+                  ? [{ text: formatTotp(code) }, { icon: Icon.Clock, text: `${countdown}s` }]
                   : [{ text: 'Loading...' }]
               }
               actions={

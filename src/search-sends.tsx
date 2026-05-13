@@ -2,7 +2,9 @@
 import {
   Action,
   ActionPanel,
+  Alert,
   Clipboard,
+  confirmAlert,
   Detail,
   Icon,
   List,
@@ -14,19 +16,22 @@ import { useCallback, useEffect, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import type { BwSend } from './send-types';
-import { SendType } from './send-types';
 import {
   buildDeletionCountdown,
+  buildExpirationCountdown,
   filterSends,
   sendAccessUrl,
   sendActions as getSendActions,
   sendActionIcon,
+  sendIcon,
   sendSubtitle,
   sendTypeLabel,
 } from './send-utils';
 import { useSession } from './use-session';
+import { loadCachedSends, saveCachedSends } from './vault-cache';
 import { renderGate, useGateEffects } from './unlock-gate';
 import type { GateUIState } from './unlock-gate';
+import EditSend from './edit-send';
 
 type UIState = GateUIState | { kind: 'loading' } | { kind: 'list' };
 
@@ -35,7 +40,6 @@ export default function SearchSends() {
   const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
   const [sends, setSends] = useState<BwSend[]>([]);
   const [searchText, setSearchText] = useState('');
-  const [deleting, setDeleting] = useState<string | null>(null);
   const { push } = useNavigation();
 
   const { handleLogin, handleUnlock } = useGateEffects({
@@ -51,8 +55,10 @@ export default function SearchSends() {
   const loadSends = useCallback(async () => {
     if (!session) return;
     try {
+      await bw.sync(session);
       const result = await bw.listSends(session);
       setSends(result);
+      await saveCachedSends(result);
     } catch (err) {
       const message = getErrorMessage(err);
       await showToast({ style: Toast.Style.Failure, title: 'Failed to load sends', message });
@@ -62,6 +68,8 @@ export default function SearchSends() {
   useEffect(() => {
     if (state.kind !== 'loading') return;
     void (async () => {
+      const cached = await loadCachedSends();
+      if (cached) setSends(cached);
       await loadSends();
       setState({ kind: 'list' });
     })();
@@ -70,24 +78,6 @@ export default function SearchSends() {
   const handleSync = useCallback(async () => {
     setState({ kind: 'loading' });
   }, []);
-
-  const handleDelete = useCallback(
-    async (sendId: string) => {
-      if (!session) return;
-      setDeleting(sendId);
-      try {
-        await bw.deleteSend(sendId, session);
-        setSends((prev) => prev.filter((s) => s.id !== sendId));
-        await showToast({ style: Toast.Style.Success, title: 'Send deleted' });
-      } catch (err) {
-        const message = getErrorMessage(err);
-        await showToast({ style: Toast.Style.Failure, title: 'Failed to delete send', message });
-      } finally {
-        setDeleting(null);
-      }
-    },
-    [session],
-  );
 
   const gateRender = renderGate(state, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
@@ -104,7 +94,6 @@ export default function SearchSends() {
 
   return (
     <List
-      isLoading={deleting !== null}
       onSearchTextChange={setSearchText}
       searchBarPlaceholder="Search sends by name..."
       throttle
@@ -126,19 +115,33 @@ export default function SearchSends() {
       ) : (
         filtered.map((send) => {
           const daysLabel = buildDeletionCountdown(send);
+          const expirationLabel = buildExpirationCountdown(send);
           const accessories: List.Item.Accessory[] = [{ text: sendTypeLabel(send) }];
-          if (daysLabel) accessories.push({ text: daysLabel });
+          if (daysLabel) accessories.push({ icon: Icon.Clock, text: daysLabel });
+          if (expirationLabel) accessories.push({ icon: Icon.Hourglass, text: expirationLabel });
 
           return (
             <List.Item
               key={send.id}
-              icon={send.type === SendType.File ? Icon.BlankDocument : Icon.Text}
+              icon={sendIcon(send.type)}
               title={send.name}
               subtitle={sendSubtitle(send)}
               accessories={accessories}
               actions={
                 <ActionPanel>
-                  {renderSendActions(send, session, push, handleDelete, handleSync)}
+                  {renderSendActions(
+                    send,
+                    session,
+                    push,
+                    (id) => {
+                      setSends((prev) => {
+                        const next = prev.filter((s) => s.id !== id);
+                        void saveCachedSends(next);
+                        return next;
+                      });
+                    },
+                    handleSync,
+                  )}
                 </ActionPanel>
               }
             />
@@ -153,7 +156,7 @@ function renderSendActions(
   send: BwSend,
   session: bw.Session | null,
   push: ReturnType<typeof useNavigation>['push'],
-  onDelete: (id: string) => Promise<void>,
+  onRemoved: (id: string) => void,
   onSync: () => Promise<void>,
 ) {
   const actions = getSendActions(send);
@@ -179,50 +182,112 @@ function renderSendActions(
         title="View Details"
         icon={Icon.Eye}
         onAction={() => {
-          push(<SendDetailView send={send} />);
+          push(
+            <SendDetailView send={send} session={session} onDeleted={() => onRemoved(send.id)} />,
+          );
         }}
       />
-      {session && (
-        <Action title="Delete Send" icon={Icon.Trash} onAction={() => void onDelete(send.id)} />
-      )}
       <Action title="Sync Sends" icon={Icon.ArrowClockwise} onAction={onSync} />
     </>
   );
 }
 
-function SendDetailView({ send }: { send: BwSend }) {
+function SendDetailView({
+  send,
+  session,
+  onDeleted,
+}: {
+  send: BwSend;
+  session: bw.Session | null;
+  onDeleted: () => void;
+}) {
+  const { pop, push } = useNavigation();
   const url = sendAccessUrl(send);
+  const hasText = !!send.text?.text;
   const markdown = [
-    `# ${send.name}`,
-    '',
-    `**Type:** ${sendTypeLabel(send)}`,
-    send.text?.text
-      ? `**Text:** ${send.text.text.slice(0, 200)}${send.text.text.length > 200 ? '…' : ''}`
-      : '',
-    send.file?.fileName ? `**File:** ${send.file.fileName} (${send.file.sizeName})` : '',
-    `**Access Count:** ${send.accessCount}${send.maxAccessCount ? ` / ${send.maxAccessCount}` : ''}`,
-    `**Deletion Date:** ${new Date(send.deletionDate).toLocaleString()}`,
-    send.password ? '**Password:** Yes' : '',
-    send.notes ? `\n**Notes:**\n${send.notes}` : '',
-    '',
-    `**URL:** ${url}`,
+    hasText ? send.text!.text : '',
+    send.notes ? `${hasText ? '\n---\n' : ''}## Notes\n${send.notes}` : '',
   ]
     .filter(Boolean)
     .join('\n');
 
+  const handleDelete = async () => {
+    if (!session) return;
+    const confirmed = await confirmAlert({
+      title: 'Delete Send',
+      message: `Are you sure you want to delete "${send.name}"?`,
+      primaryAction: { title: 'Delete', style: Alert.ActionStyle.Destructive },
+    });
+    if (!confirmed) return;
+    try {
+      await bw.deleteSend(send.id, session);
+      await showToast({ style: Toast.Style.Success, title: 'Send deleted', message: send.name });
+      onDeleted();
+      pop();
+    } catch (err) {
+      const message = getErrorMessage(err);
+      await showToast({ style: Toast.Style.Failure, title: 'Delete failed', message });
+    }
+  };
+
+  const sendActions = getSendActions(send);
+
   return (
     <Detail
       markdown={markdown}
+      navigationTitle={send.name}
+      metadata={
+        <Detail.Metadata>
+          <Detail.Metadata.Label title="Type" text={sendTypeLabel(send)} />
+          {send.file?.fileName && (
+            <Detail.Metadata.Label
+              title="File"
+              text={`${send.file.fileName} (${send.file.sizeName})`}
+            />
+          )}
+          <Detail.Metadata.Separator />
+          <Detail.Metadata.Label
+            title="Access Count"
+            text={`${send.accessCount}${send.maxAccessCount ? ` / ${send.maxAccessCount}` : ''}`}
+          />
+          <Detail.Metadata.Label
+            title="Deletion Date"
+            text={new Date(send.deletionDate).toLocaleString()}
+          />
+          {send.password ? <Detail.Metadata.Label title="Password" text="Yes" /> : null}
+          <Detail.Metadata.Separator />
+          <Detail.Metadata.Label title="URL" text={url} />
+        </Detail.Metadata>
+      }
       actions={
         <ActionPanel>
-          <Action
-            title="Copy Send Link"
-            icon={Icon.Link}
-            onAction={async () => {
-              await Clipboard.copy(url);
-              await showToast({ style: Toast.Style.Success, title: 'Link copied' });
-            }}
-          />
+          {sendActions.map((action) => (
+            <Action
+              key={action.label}
+              title={action.label}
+              icon={sendActionIcon(action)}
+              onAction={async () => {
+                await Clipboard.copy(action.value);
+                await showToast({
+                  style: Toast.Style.Success,
+                  title: 'Copied',
+                  message: action.label,
+                });
+              }}
+            />
+          ))}
+          {session && (
+            <>
+              <Action
+                title="Edit Send"
+                icon={Icon.Pencil}
+                onAction={() => {
+                  push(<EditSend send={send} session={session} onSaved={() => pop()} />);
+                }}
+              />
+              <Action title="Delete Send" icon={Icon.Trash} onAction={() => void handleDelete()} />
+            </>
+          )}
         </ActionPanel>
       }
     />

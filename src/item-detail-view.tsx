@@ -205,7 +205,7 @@ function LoginMetadata({
       {login.totp && (
         <Detail.Metadata.Label
           title="TOTP"
-          text={totpCode ? `${formatTotp(totpCode)} (${totpCountdown}s)` : 'Loading...'}
+          text={totpCode ? `${formatTotp(totpCode)}  ⏱ ${totpCountdown}s` : 'Loading...'}
         />
       )}
       {login.uris && login.uris.length > 0 && (

@@ -69,7 +69,14 @@ export default function CreateItem() {
   const [newFolderName, setNewFolderName] = useState('');
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
+  const [expMonth, setExpMonth] = useState('');
+  const [expYear, setExpYear] = useState('');
+  const [cardCode, setCardCode] = useState('');
   const fieldIdRef = useRef(0);
+
+  function digitsOnly(value: string): string {
+    return value.replace(/\D/g, '');
+  }
 
   const { handleLogin, handleUnlock } = useGateEffects({
     session,
@@ -272,9 +279,24 @@ export default function CreateItem() {
             ))}
           </Form.Dropdown>
           <Form.TextField id="number" title="Card Number" />
-          <Form.TextField id="expMonth" title="Expiration Month" />
-          <Form.TextField id="expYear" title="Expiration Year" />
-          <Form.TextField id="code" title="Security Code" />
+          <Form.TextField
+            id="expMonth"
+            title="Expiration Month"
+            value={expMonth}
+            onChange={(v) => setExpMonth(digitsOnly(v))}
+          />
+          <Form.TextField
+            id="expYear"
+            title="Expiration Year"
+            value={expYear}
+            onChange={(v) => setExpYear(digitsOnly(v))}
+          />
+          <Form.TextField
+            id="code"
+            title="Security Code"
+            value={cardCode}
+            onChange={(v) => setCardCode(digitsOnly(v))}
+          />
         </>
       )}
 
