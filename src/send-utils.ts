@@ -74,9 +74,9 @@ export function sendAccessUrl(send: BwSend): string {
     const prefs = getPreferences();
     const serverUrl = getServerUrl(prefs);
     const base = serverUrl.replace(/\/+$/, '');
-    return `${base}/#/send/${send.accessId}`;
+    return `${base}/#/send/${send.accessId}/${send.key}`;
   } catch {
-    return `https://vault.bitwarden.com/#/send/${send.accessId}`;
+    return `https://vault.bitwarden.com/#/send/${send.accessId}/${send.key}`;
   }
 }
 

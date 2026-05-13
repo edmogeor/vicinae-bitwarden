@@ -106,7 +106,12 @@ export function getErrorMessage(err: unknown): string {
     const stderrRaw = hasStderr(err) ? String(err.stderr ?? '').trim() : '';
     const cleaned = stderrRaw
       .split('\n')
-      .filter((line) => !line.includes('[DEP0') && !line.includes('DeprecationWarning'))
+      .filter(
+        (line) =>
+          !line.includes('[DEP0') &&
+          !line.includes('DeprecationWarning') &&
+          !line.includes('trace-deprecation'),
+      )
       .join('\n')
       .trim();
     const raw = cleaned || err.message;
@@ -553,8 +558,9 @@ interface ReceiveSendResult {
 /**
  * Receive a Send by URL.
  * No session required — `bw send receive` works without authentication.
- * For file sends, provide `output` directory; the function returns the saved file path.
- * For text sends, the function returns the decrypted text content.
+ * Pass `output` to specify a download directory for file sends; text sends ignore it.
+ * Returns `{ kind: 'file', path }` when stdout starts with "Saved",
+ * otherwise `{ kind: 'text', text }`.
  */
 export async function receiveSend(
   url: string,
@@ -571,7 +577,11 @@ export async function receiveSend(
   try {
     const stdout = await execBw(args, { timeout: 30000, env });
     const trimmed = stdout.trim();
-    if (output) return { kind: 'file', path: trimmed };
+    const savedPrefix = 'Saved ';
+    if (trimmed.toLowerCase().startsWith(savedPrefix.toLowerCase())) {
+      const filePath = trimmed.slice(savedPrefix.length).trim();
+      return { kind: 'file', path: filePath };
+    }
     return { kind: 'text', text: trimmed };
   } catch (err) {
     throw toBwError(err);

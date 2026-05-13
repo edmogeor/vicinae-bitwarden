@@ -206,7 +206,7 @@
     },
     {
       "name": "receive-send",
-      "title": "Receive Send",
+      "title": "Receive Send from Clipboard",
       "description": "Receive a Send from a URL in your clipboard — copies text or downloads files",
       "mode": "no-view"
     }

@@ -117,19 +117,19 @@ interface CachedSends {
 
 const SENDS_CACHE_TTL = 24 * 60 * 60 * 1000;
 
-function stripAccessId(send: BwSend): BwSend {
-  return { ...send, accessId: '' };
+function stripSendSecrets(send: BwSend): BwSend {
+  return { ...send, key: '' };
 }
 
 function stripSensitiveSendFields(send: BwSend): BwSend {
   return {
-    ...stripAccessId(send),
+    ...stripSendSecrets(send),
     notes: null,
     text: send.text ? { text: '', hidden: send.text.hidden } : null,
   };
 }
 
-async function loadAccessIds(): Promise<Record<string, string>> {
+async function loadSendKeys(): Promise<Record<string, string>> {
   try {
     const raw = await secretLookup(SENDS_SECRET_KEY);
     if (!raw) return {};
@@ -139,7 +139,7 @@ async function loadAccessIds(): Promise<Record<string, string>> {
   }
 }
 
-async function saveAccessIds(map: Record<string, string>): Promise<void> {
+async function saveSendKeys(map: Record<string, string>): Promise<void> {
   await secretStore(SENDS_SECRET_KEY, JSON.stringify(map), 'Vicinae Bitwarden Sends');
 }
 
@@ -150,8 +150,8 @@ export async function loadCachedSends(): Promise<BwSend[] | null> {
     const cached: CachedSends = JSON.parse(raw);
     if (Date.now() - cached.timestamp > SENDS_CACHE_TTL) return null;
 
-    const accessIds = await loadAccessIds();
-    return cached.sends.map((s) => ({ ...s, accessId: accessIds[s.id] ?? '' }));
+    const keys = await loadSendKeys();
+    return cached.sends.map((s) => ({ ...s, key: keys[s.id] ?? '' }));
   } catch {
     return null;
   }
@@ -164,11 +164,11 @@ export async function saveCachedSends(sends: BwSend[]): Promise<void> {
   };
   await LocalStorage.setItem(SENDS_CACHE_KEY, JSON.stringify(cache));
 
-  const accessIds: Record<string, string> = {};
+  const keys: Record<string, string> = {};
   for (const s of sends) {
-    accessIds[s.id] = s.accessId;
+    keys[s.id] = s.key;
   }
-  await saveAccessIds(accessIds);
+  await saveSendKeys(keys);
 }
 
 export async function clearCachedSends(): Promise<void> {
