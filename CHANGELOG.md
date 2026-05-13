@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-05-13
+
+### Fixed
+
+- Edit Send view not loading due to missing default export — `search-sends.tsx` expected a default export from `edit-send.tsx` that wasn't declared
+
+### Changed
+
+- Removed unused exports and stale fallow suppressions across test and utility files
+
 ## [0.3.1] - 2026-05-13
 
 ### Fixed
