@@ -9,7 +9,7 @@ import {
   storeApiCredentials,
   clearApiCredentialsFromDisk,
 } from './api-credential-store';
-import { clearCachedSends } from './vault-cache';
+import { clearCachedSends, clearCachedVault, clearSendKeys, clearTotpSecrets } from './vault-cache';
 
 interface SessionState {
   session: Session | null;
@@ -54,6 +54,14 @@ export function useSession(): SessionState {
             prefClientSecret !== libsecretCreds.clientSecret);
 
         if (isRotated) {
+          // Account/credential switch — wipe the previous account's cached
+          // material before swapping in the new session, so a different
+          // user's TOTP secrets, send keys, or cached vault never persist
+          // beyond the credential rotation.
+          await clearTotpSecrets();
+          await clearSendKeys();
+          await clearCachedVault();
+          await clearCachedSends();
           await bw.login({
             clientId: prefClientId,
             clientSecret: prefClientSecret,

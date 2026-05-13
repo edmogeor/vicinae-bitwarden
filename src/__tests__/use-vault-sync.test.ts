@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useVaultSync } from '../use-vault-sync';
-import { makeItems, makeFolders } from './__utils__/test-data';
+import { makeItem, makeItems, makeFolders } from './__utils__/test-data';
+import { ItemType } from '../bitwarden-types';
 
 const { mockBw, mockSaveCachedVault, mockSaveTotpSecrets } = vi.hoisted(() => {
   const mockBw = {
@@ -68,6 +69,32 @@ describe('useVaultSync', () => {
       expect(mockBw.listFolders).toHaveBeenCalledWith('token');
       expect(mockSaveCachedVault).toHaveBeenCalledWith(items, folders);
       expect(setVault).toHaveBeenCalledWith(items, folders);
+    });
+
+    it('persists TOTP secrets only for Login items that have a totp', async () => {
+      const items = [
+        makeItem({
+          id: 'a',
+          type: ItemType.Login,
+          login: { username: 'u', password: null, totp: 'JBSWY3DPEHPK3PXP' },
+        }),
+        makeItem({
+          id: 'b',
+          type: ItemType.Login,
+          login: { username: 'u', password: null, totp: null },
+        }),
+        makeItem({ id: 'c', type: ItemType.SecureNote }),
+      ];
+      mockBw.sync.mockResolvedValue(undefined);
+      mockBw.listItems.mockResolvedValue(items);
+      mockBw.listFolders.mockResolvedValue(makeFolders(1));
+
+      const { result } = renderHook(() => useVaultSync('token', vi.fn()));
+      await act(async () => {
+        await result.current.syncVault('token');
+      });
+
+      expect(mockSaveTotpSecrets).toHaveBeenCalledWith({ a: 'JBSWY3DPEHPK3PXP' });
     });
 
     it('throws when sync fails', async () => {

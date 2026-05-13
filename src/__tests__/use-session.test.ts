@@ -60,6 +60,8 @@ vi.mock('@vicinae/api', () => ({
 vi.mock('../vault-cache', () => ({
   clearCachedSends: vi.fn().mockResolvedValue(undefined),
   clearCachedVault: vi.fn().mockResolvedValue(undefined),
+  clearTotpSecrets: vi.fn().mockResolvedValue(undefined),
+  clearSendKeys: vi.fn().mockResolvedValue(undefined),
   loadCachedVault: vi.fn().mockResolvedValue(null),
   saveCachedVault: vi.fn().mockResolvedValue(undefined),
   loadCachedSends: vi.fn().mockResolvedValue(null),
@@ -326,6 +328,22 @@ describe('useSession', () => {
       await renderAndLogin();
       expectBwLoginCalled();
       expectSpawnStoreCalled();
+    });
+
+    it('wipes cached vault + sends + totp-secrets + sends-keys on credential rotation', async () => {
+      const vc = await import('../vault-cache');
+      execRejects('Cannot find item');
+      execResolves(apiCredsPayload('old-rotated-id', 'old-rotated-secret'));
+      execResolves({ stdout: '', stderr: '' });
+      execResolves({ stdout: '', stderr: '' });
+      spawnSucceeds();
+
+      await renderAndLogin();
+
+      expect(vi.mocked(vc.clearTotpSecrets)).toHaveBeenCalled();
+      expect(vi.mocked(vc.clearSendKeys)).toHaveBeenCalled();
+      expect(vi.mocked(vc.clearCachedVault)).toHaveBeenCalled();
+      expect(vi.mocked(vc.clearCachedSends)).toHaveBeenCalled();
     });
 
     it('isLoggingIn is false after login completes', async () => {

@@ -213,7 +213,7 @@ function renderSendActions(
   );
 }
 
-function SendDetailView({
+export function SendDetailView({
   send,
   session,
   onDeleted,

@@ -110,7 +110,9 @@ Add a new Login, Card, Identity, or Secure Note to your vault. The form adapts i
 
 ### Log Out
 
-Clears your API key session and removes the cached token from the system keyring. The next command invocation will prompt you for your master password.
+Clears your API key session and removes the cached token, TOTP secrets, and Send encryption keys from the system keyring. The next command invocation will prompt you for your master password.
+
+> **Before uninstalling, run Log Out.** Uninstalling the extension does not by itself wipe the libsecret entries this extension creates (session, TOTP secrets, Send keys). Running Log Out first clears them; otherwise they remain in your keyring until manually removed via `secret-tool clear service vicinae-bitwarden ...`.
 
 ### Generate Password
 

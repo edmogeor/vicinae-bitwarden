@@ -17,6 +17,22 @@ vi.mock('../bw-executor', () => ({
   getErrorMessage: mockGetErrorMessage,
 }));
 
+const mockComputeLocalTotp = vi.hoisted(() => vi.fn());
+const mockIsSteamSecret = vi.hoisted(() =>
+  vi.fn((s: string | null | undefined) => !!s && s.startsWith('steam://')),
+);
+
+vi.mock('../totp-compute', () => ({
+  computeLocalTotp: mockComputeLocalTotp,
+  isSteamSecret: mockIsSteamSecret,
+}));
+
+const mockUseTotpSecretsImpl = vi.hoisted(() => vi.fn(() => ({}) as Record<string, string>));
+
+vi.mock('../use-totp-secrets', () => ({
+  useTotpSecrets: () => mockUseTotpSecretsImpl(),
+}));
+
 vi.mock('../item-utils', () => ({
   filterItems: (items: BwItem[]) => items,
   groupByFolder: (items: BwItem[]) => {
@@ -107,6 +123,8 @@ beforeEach(() => {
   mockSession = 'token';
   mockIsSyncing = false;
   mockGateRender = null;
+  mockComputeLocalTotp.mockReturnValue(null);
+  mockUseTotpSecretsImpl.mockReturnValue({});
   defaultLifecycle();
 });
 
@@ -126,6 +144,48 @@ describe('useVaultSearch', () => {
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({ style: 'success', title: 'Copied TOTP' }),
       );
+    });
+
+    it('uses the provided cached code without calling bw.getTotp', async () => {
+      const { result } = renderHook(() => useVaultSearch());
+
+      await act(async () => {
+        await result.current.handleCopyTotp('item-1', '654321');
+      });
+
+      expect(mockGetTotp).not.toHaveBeenCalled();
+      expect(mockClipboardCopy).toHaveBeenCalledWith('654321');
+    });
+
+    it('computes locally from a keyring secret when the vault item has no totp', async () => {
+      // Lifecycle sets state.items to one item without totp; provide the secret via the keyring map.
+      mockUseTotpSecretsImpl.mockReturnValue({ 'item-1': 'JBSWY3DPEHPK3PXP' });
+      mockComputeLocalTotp.mockReturnValue({ code: '424242', remainingMs: 12_000, periodSec: 30 });
+
+      const { result } = renderHook(() => useVaultSearch());
+
+      await act(async () => {
+        await result.current.handleCopyTotp('item-1');
+      });
+
+      expect(mockComputeLocalTotp).toHaveBeenCalledWith('JBSWY3DPEHPK3PXP', expect.any(Number));
+      expect(mockGetTotp).not.toHaveBeenCalled();
+      expect(mockClipboardCopy).toHaveBeenCalledWith('424242');
+    });
+
+    it('falls back to bw.getTotp for steam secrets', async () => {
+      mockUseTotpSecretsImpl.mockReturnValue({ 'item-1': 'steam://ABC' });
+      mockGetTotp.mockResolvedValue('STEAM5');
+
+      const { result } = renderHook(() => useVaultSearch());
+
+      await act(async () => {
+        await result.current.handleCopyTotp('item-1');
+      });
+
+      expect(mockComputeLocalTotp).not.toHaveBeenCalled();
+      expect(mockGetTotp).toHaveBeenCalledWith('item-1', 'token');
+      expect(mockClipboardCopy).toHaveBeenCalledWith('STEAM5');
     });
 
     it('shows failure toast when getTotp fails', async () => {
