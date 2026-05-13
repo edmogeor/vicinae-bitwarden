@@ -36,6 +36,10 @@ export default function CreateSend() {
   const [selectedType, setSelectedType] = useState<string>('Text');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [maxAccessCount, setMaxAccessCount] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [nameError, setNameError] = useState<string | undefined>();
+  const [textError, setTextError] = useState<string | undefined>();
+  const [fileError, setFileError] = useState<string | undefined>();
 
   const { handleLogin, handleUnlock } = useGateEffects({
     session,
@@ -56,10 +60,20 @@ export default function CreateSend() {
       const rawFile = Array.isArray(values.file) ? values.file[0] : undefined;
       const filePath = typeNum === SendType.File && rawFile != null ? String(rawFile) : undefined;
 
-      if (typeNum === SendType.File && !filePath) {
-        await showToast({ style: Toast.Style.Failure, title: 'Select a file' });
-        return;
+      let hasError = false;
+      if (!sendValues.name?.trim()) {
+        setNameError('Name is required');
+        hasError = true;
       }
+      if (typeNum === SendType.Text && !sendValues.textContent?.trim()) {
+        setTextError('Text content is required');
+        hasError = true;
+      }
+      if (typeNum === SendType.File && !filePath) {
+        setFileError('File is required');
+        hasError = true;
+      }
+      if (hasError) return;
 
       setIsSubmitting(true);
       try {
@@ -91,6 +105,11 @@ export default function CreateSend() {
       actions={
         <ActionPanel>
           <Action.SubmitForm title="Create Send" icon={Icon.Plus} onSubmit={handleSubmit} />
+          <Action
+            title={showPassword ? 'Hide Password' : 'Show Password'}
+            icon={showPassword ? Icon.EyeDisabled : Icon.Eye}
+            onAction={() => setShowPassword((prev) => !prev)}
+          />
         </ActionPanel>
       }
     >
@@ -107,22 +126,42 @@ export default function CreateSend() {
 
       <Form.Separator />
 
-      <Form.TextField id="name" title="Name" />
+      <Form.TextField
+        id="name"
+        title="Name *"
+        error={nameError}
+        onChange={() => nameError && setNameError(undefined)}
+      />
 
       {selectedType === 'Text' && (
         <>
-          <Form.TextArea id="textContent" title="Text Content" />
+          <Form.TextArea
+            id="textContent"
+            title="Text Content *"
+            error={textError}
+            onChange={() => textError && setTextError(undefined)}
+          />
           <Form.Checkbox id="hideText" title="Hide Text" label="Require access to view text" />
         </>
       )}
 
       {selectedType === 'File' && (
-        <Form.FilePicker id="file" title="File" allowMultipleSelection={false} />
+        <Form.FilePicker
+          id="file"
+          title="File *"
+          allowMultipleSelection={false}
+          error={fileError}
+          onChange={() => fileError && setFileError(undefined)}
+        />
       )}
 
       <Form.Separator />
 
-      <Form.PasswordField id="password" title="Password (optional)" />
+      {showPassword ? (
+        <Form.TextField id="password" title="Password (optional)" />
+      ) : (
+        <Form.PasswordField id="password" title="Password (optional)" />
+      )}
 
       <Form.Dropdown id="deletionHours" title="Deletion Date" defaultValue="168">
         {HOURS_OPTIONS.map((opt) => (

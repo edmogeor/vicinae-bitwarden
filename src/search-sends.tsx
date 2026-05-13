@@ -224,6 +224,7 @@ function SendDetailView({
 }) {
   const { pop, push } = useNavigation();
   const [url, setUrl] = useState(sendAccessUrl(send));
+  const [showPassword, setShowPassword] = useState(false);
   const textContent = send.text?.text ?? '';
   const notesSection = send.notes ? `## Notes\n${send.notes}` : '';
   const separator = textContent && notesSection ? '\n---\n' : '';
@@ -268,7 +269,12 @@ function SendDetailView({
             title="Deletion Date"
             text={new Date(send.deletionDate).toLocaleString()}
           />
-          {send.password ? <Detail.Metadata.Label title="Password" text="Yes" /> : null}
+          {send.password ? (
+            <Detail.Metadata.Label
+              title="Password"
+              text={showPassword ? send.password : '•'.repeat(send.password.length)}
+            />
+          ) : null}
           <Detail.Metadata.Separator />
           <Detail.Metadata.Label title="URL" text={url} />
         </Detail.Metadata>
@@ -276,6 +282,13 @@ function SendDetailView({
       actions={
         <ActionPanel>
           <SendCopyActions actions={sendActions} send={send} />
+          {send.password && (
+            <Action
+              title={showPassword ? 'Hide Password' : 'Show Password'}
+              icon={showPassword ? Icon.EyeDisabled : Icon.Eye}
+              onAction={() => setShowPassword((prev) => !prev)}
+            />
+          )}
           {session && (
             <>
               <Action

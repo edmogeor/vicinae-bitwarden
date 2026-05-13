@@ -23,6 +23,9 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
   const [fullSend, setFullSend] = useState<BwSend | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [nameError, setNameError] = useState<string | undefined>();
+  const [textError, setTextError] = useState<string | undefined>();
 
   const type = send.type;
 
@@ -46,9 +49,19 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
 
   const handleSubmit = useCallback(
     async (values: Form.Values) => {
+      const sendValues = readFormValues(values);
+      let hasError = false;
+      if (!sendValues.name?.trim()) {
+        setNameError('Name is required');
+        hasError = true;
+      }
+      if (type === SendType.Text && !sendValues.textContent?.trim()) {
+        setTextError('Text content is required');
+        hasError = true;
+      }
+      if (hasError) return;
       setIsSubmitting(true);
       try {
-        const sendValues = readFormValues(values);
         const payload = toSendPayload(sendValues, type);
         await bw.editSend(send.id, payload, session);
         await showToast({
@@ -89,6 +102,11 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
       actions={
         <ActionPanel>
           <Action.SubmitForm title="Save Changes" icon={Icon.CheckCircle} onSubmit={handleSubmit} />
+          <Action
+            title={showPassword ? 'Hide Password' : 'Show Password'}
+            icon={showPassword ? Icon.EyeDisabled : Icon.Eye}
+            onAction={() => setShowPassword((prev) => !prev)}
+          />
           <Action title="Delete Send" icon={Icon.Trash} onAction={handleDelete} />
         </ActionPanel>
       }
@@ -97,14 +115,22 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
 
       <Form.Separator />
 
-      <Form.TextField id="name" title="Name" defaultValue={fullSend.name} />
+      <Form.TextField
+        id="name"
+        title="Name *"
+        defaultValue={fullSend.name}
+        error={nameError}
+        onChange={() => nameError && setNameError(undefined)}
+      />
 
       {type === SendType.Text && (
         <>
           <Form.TextArea
             id="textContent"
-            title="Text Content"
+            title="Text Content *"
             defaultValue={fullSend.text?.text ?? ''}
+            error={textError}
+            onChange={() => textError && setTextError(undefined)}
           />
           <Form.Checkbox
             id="hideText"
@@ -125,7 +151,19 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
 
       <Form.Separator />
 
-      <Form.PasswordField id="password" title="Password" defaultValue={fullSend.password ?? ''} />
+      {showPassword ? (
+        <Form.TextField
+          id="password"
+          title="Password"
+          defaultValue={fullSend.password ?? send.password ?? ''}
+        />
+      ) : (
+        <Form.PasswordField
+          id="password"
+          title="Password"
+          defaultValue={fullSend.password ?? send.password ?? ''}
+        />
+      )}
 
       <Form.Dropdown id="deletionHours" title="Deletion Date" defaultValue="-1">
         {EDIT_HOURS_OPTIONS.map((opt) => (

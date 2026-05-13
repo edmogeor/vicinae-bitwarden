@@ -48,7 +48,7 @@ export function sendSubtitle(send: BwSend): string {
   if (send.type === SendType.File && send.file?.fileName) {
     return `File: ${send.file.fileName}`;
   }
-  if (send.type === SendType.Text && send.text?.text && !send.text.hidden) {
+  if (send.type === SendType.Text && send.text?.text) {
     const preview = send.text.text.slice(0, 50);
     return send.text.text.length > 50 ? `${preview}…` : preview;
   }

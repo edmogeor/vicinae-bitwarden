@@ -5,7 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.3] - 2026-05-13
+## [0.3.4] - 2026-05-13
+
+### Added
+
+- Send detail view shows the password (masked by default, with a Show/Hide Password action); masked length matches the actual password length
+- Show/Hide Password action and TextField/PasswordField swap on Create Send and Edit Send, matching the items pattern
+- Receive Send now prompts for a password in-app when the Send is password-protected, instead of failing with an instruction to use the CLI
+- Required-field indicators: `*` suffix on required form titles and required preference titles, plus inline `error` validation on submit for item/send name and send text/file
+
+### Changed
+
+- Send list now shows a text preview even for "hidden text" Sends (they're the user's own Sends)
+- Edit Send password field pre-fills from the list payload when `bw send get` returns null
 
 ### Changed
 

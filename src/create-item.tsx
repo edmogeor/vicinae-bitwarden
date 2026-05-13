@@ -76,6 +76,7 @@ export default function CreateItem() {
   const [expMonth, setExpMonth] = useState('');
   const [expYear, setExpYear] = useState('');
   const [cardCode, setCardCode] = useState('');
+  const [nameError, setNameError] = useState<string | undefined>();
   const fieldIdRef = useRef(0);
 
   const { handleLogin, handleUnlock } = useGateEffects({
@@ -106,6 +107,10 @@ export default function CreateItem() {
       if (!session) return;
 
       const itemValues = readFormValues(values);
+      if (!itemValues.name?.trim()) {
+        setNameError('Name is required');
+        return;
+      }
       const typeNum = ITEM_TYPE_MAP[selectedType] ?? ItemType.SecureNote;
       let folderId = itemValues.folder || null;
 
@@ -231,7 +236,12 @@ export default function CreateItem() {
 
       <Form.Separator />
 
-      <Form.TextField id="name" title="Name" />
+      <Form.TextField
+        id="name"
+        title="Name *"
+        error={nameError}
+        onChange={() => nameError && setNameError(undefined)}
+      />
 
       {selectedType === 'Login' && (
         <>

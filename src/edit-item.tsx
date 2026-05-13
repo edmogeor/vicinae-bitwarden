@@ -128,6 +128,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
   const [expMonth, setExpMonth] = useState('');
   const [expYear, setExpYear] = useState('');
   const [cardCode, setCardCode] = useState('');
+  const [nameError, setNameError] = useState<string | undefined>();
   const fieldIdRef = useRef(0);
 
   useEffect(() => {
@@ -171,13 +172,16 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
 
   const handleSubmit = useCallback(
     async (values: Form.Values) => {
+      const formValues: Record<string, string> = {};
+      for (const [key, val] of Object.entries(values)) {
+        formValues[key] = String(val ?? '');
+      }
+      if (!formValues.name?.trim()) {
+        setNameError('Name is required');
+        return;
+      }
       setIsSubmitting(true);
       try {
-        const formValues: Record<string, string> = {};
-        for (const [key, val] of Object.entries(values)) {
-          formValues[key] = String(val ?? '');
-        }
-
         const fields =
           customFields.length > 0
             ? customFields.map((f) => ({ name: f.name, value: f.value, type: f.type }))
@@ -275,7 +279,13 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
 
       <Form.Separator />
 
-      <Form.TextField id="name" title="Name" defaultValue={fullItem.name} />
+      <Form.TextField
+        id="name"
+        title="Name *"
+        defaultValue={fullItem.name}
+        error={nameError}
+        onChange={() => nameError && setNameError(undefined)}
+      />
 
       {item.type === ItemType.Login &&
         fullItem.login &&

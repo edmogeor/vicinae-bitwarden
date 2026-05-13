@@ -11,12 +11,12 @@
   "categories": [
     "Security"
   ],
-  "version": "0.3.3",
+  "version": "0.3.4",
   "license": "MIT",
   "preferences": [
     {
       "name": "serverRegion",
-      "title": "Server Region",
+      "title": "Server Region *",
       "description": "The Bitwarden instance your vault lives on",
       "type": "dropdown",
       "required": true,
@@ -53,14 +53,14 @@
     },
     {
       "name": "bitwardenApiClientId",
-      "title": "API Client ID",
+      "title": "API Client ID *",
       "description": "Your personal API key client_id from the Bitwarden web vault (Settings → Security → View API key)",
       "type": "textfield",
       "required": true
     },
     {
       "name": "bitwardenApiClientSecret",
-      "title": "API Client Secret",
+      "title": "API Client Secret *",
       "description": "Your personal API key client_secret from the Bitwarden web vault",
       "type": "textfield",
       "required": true
@@ -208,7 +208,7 @@
       "name": "receive-send",
       "title": "Receive Send from Clipboard",
       "description": "Receive a Send from a URL in your clipboard — copies text or downloads files",
-      "mode": "no-view"
+      "mode": "view"
     }
   ],
   "scripts": {
