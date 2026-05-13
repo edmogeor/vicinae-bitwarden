@@ -91,8 +91,8 @@ export default function SearchSends() {
     void (async () => {
       const cached = await loadCachedSends();
       if (cached) setSends(cached);
-      await loadSends();
       setState({ kind: 'list' });
+      await loadSends();
     })();
   }, [state.kind]);
 
