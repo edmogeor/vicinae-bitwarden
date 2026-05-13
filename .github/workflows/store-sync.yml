@@ -4,16 +4,33 @@ on:
   workflow_run:
     workflows: ['Release']
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.3.0)'
+        required: true
+        type: string
 
 jobs:
   sync:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve tag and ref
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+            echo "ref=refs/tags/${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout extension at release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ steps.meta.outputs.ref }}
 
       - name: Checkout store fork
         uses: actions/checkout@v4
@@ -34,14 +51,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add extensions/bitwarden
-          git diff --cached --quiet || git commit -m "bitwarden ${{ github.event.workflow_run.head_branch }}"
+          git diff --cached --quiet || git commit -m "bitwarden ${{ steps.meta.outputs.tag }}"
           git push origin main
 
       - name: Create or update store PR
-        if: false
         run: |
           cd store
-          TAG="${{ github.event.workflow_run.head_branch }}"
+          TAG="${{ steps.meta.outputs.tag }}"
           VERSION="${TAG#v}"
           CHANGELOG=$(awk -v ver="$VERSION" '
             BEGIN { found=0 }
