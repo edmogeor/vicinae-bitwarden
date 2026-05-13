@@ -116,6 +116,18 @@ Clears your API key session and removes the cached token from the system keyring
 
 Creates a random password using your configured settings (length, character sets) and copies it straight to your clipboard. No vault access needed.
 
+### Search Sends
+
+List and search your Sends — text or file shares. Filter by name (case-insensitive). Each Send shows its type and countdowns for deletion and expiration. **Actions**: Copy Send Link, Copy Text (text Sends only), View Details, Edit, Delete. A Sync action pulls the latest from the server.
+
+### Create Send
+
+Create a new Text or File Send. Set a name, content, optional password, deletion and expiration dates, max access count, and privacy options. The Send link is copied to your clipboard on creation.
+
+### Receive Send
+
+Reads a Send URL from your clipboard and receives it — no vault session required. Text Sends are copied to your clipboard; File Sends download to your configured Download Directory. Password-protected Sends are surfaced with clear guidance.
+
 ## Session Caching
 
 Once unlocked, your session token is stored securely in the system keyring via `secret-tool`. Future command invocations show your vault immediately — no need to re-enter your master password until the token expires.

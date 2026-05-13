@@ -57,6 +57,15 @@ vi.mock('@vicinae/api', () => ({
   Toast: { Style: { Success: 'success', Failure: 'failure', Animated: 'animated' } },
 }));
 
+vi.mock('../vault-cache', () => ({
+  clearCachedSends: vi.fn().mockResolvedValue(undefined),
+  clearCachedVault: vi.fn().mockResolvedValue(undefined),
+  loadCachedVault: vi.fn().mockResolvedValue(null),
+  saveCachedVault: vi.fn().mockResolvedValue(undefined),
+  loadCachedSends: vi.fn().mockResolvedValue(null),
+  saveCachedSends: vi.fn().mockResolvedValue(undefined),
+}));
+
 const sessionLookupArgs = ['lookup', 'service', 'vicinae-bitwarden', 'account', 'session'];
 const sessionStoreArgs = [
   'store',

@@ -1,23 +1,16 @@
 // fallow-ignore-file unused-file
-import {
-  Action,
-  ActionPanel,
-  Alert,
-  confirmAlert,
-  Form,
-  Icon,
-  popToRoot,
-  showToast,
-  Toast,
-} from '@vicinae/api';
+import { Action, ActionPanel, Form, Icon, popToRoot, showToast, Toast } from '@vicinae/api';
 import { useCallback, useEffect, useState } from 'react';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
-import type { BwSend } from './send-types';
-import type { SendTypeValue } from './send-types';
-import { SendType } from './send-types';
+import { showFailureToast } from './item-utils';
+import { SendType, type BwSend } from './send-types';
 import { readFormValues } from './item-utils';
-import { sendTypeLabel, toSendPayload, EDIT_HOURS_OPTIONS } from './send-utils';
+import {
+  deleteSendWithConfirm,
+  sendTypeLabel,
+  toSendPayload,
+  EDIT_HOURS_OPTIONS,
+} from './send-utils';
 
 interface EditSendProps {
   send: BwSend;
@@ -55,7 +48,7 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
       setIsSubmitting(true);
       try {
         const sendValues = readFormValues(values);
-        const payload = toSendPayload(sendValues, type as SendTypeValue, 'edit');
+        const payload = toSendPayload(sendValues, type);
         await bw.editSend(send.id, payload, session);
         await showToast({
           style: Toast.Style.Success,
@@ -65,8 +58,7 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
         onSaved();
         await popToRoot();
       } catch (err) {
-        const message = getErrorMessage(err);
-        await showToast({ style: Toast.Style.Failure, title: 'Failed to update send', message });
+        await showFailureToast(err, 'Failed to update send');
       } finally {
         setIsSubmitting(false);
       }
@@ -75,21 +67,10 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
   );
 
   const handleDelete = useCallback(async () => {
-    const confirmed = await confirmAlert({
-      title: 'Delete Send',
-      message: `Are you sure you want to delete "${send.name}"?`,
-      primaryAction: { title: 'Delete', style: Alert.ActionStyle.Destructive },
-    });
-    if (!confirmed) return;
-    try {
-      await bw.deleteSend(send.id, session);
-      await showToast({ style: Toast.Style.Success, title: 'Send deleted', message: send.name });
+    await deleteSendWithConfirm(send, session, async () => {
       onSaved();
       await popToRoot();
-    } catch (err) {
-      const message = getErrorMessage(err);
-      await showToast({ style: Toast.Style.Failure, title: 'Delete failed', message });
-    }
+    });
   }, [send.id, send.name, session, onSaved]);
 
   if (isLoading || !fullSend) {

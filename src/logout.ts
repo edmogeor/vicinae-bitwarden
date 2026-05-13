@@ -1,6 +1,6 @@
 import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
+import { showFailureToast } from './item-utils';
 import { deleteSession } from './session-store';
 import { clearCachedSends, clearCachedVault } from './vault-cache';
 
@@ -16,11 +16,6 @@ export default async function Logout() {
       message: 'Your Bitwarden session has been cleared',
     });
   } catch (err) {
-    const message = getErrorMessage(err);
-    await showToast({
-      style: Toast.Style.Failure,
-      title: 'Logout failed',
-      message,
-    });
+    await showFailureToast(err, 'Logout failed');
   }
 }

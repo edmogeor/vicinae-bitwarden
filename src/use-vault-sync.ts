@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
+import { showFailureToast } from './item-utils';
 import { saveCachedVault } from './vault-cache';
 import type { BwFolder, BwItem } from './bitwarden-types';
 
@@ -28,12 +28,7 @@ export function useVaultSync(
       await syncVault(session);
       await showToast({ style: Toast.Style.Success, title: 'Vault synced' });
     } catch (err) {
-      const message = getErrorMessage(err);
-      await showToast({
-        style: Toast.Style.Failure,
-        title: 'Sync failed',
-        message,
-      });
+      await showFailureToast(err, 'Sync failed');
     } finally {
       setIsSyncing(false);
     }

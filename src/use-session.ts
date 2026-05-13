@@ -9,6 +9,7 @@ import {
   storeApiCredentials,
   clearApiCredentialsFromDisk,
 } from './api-credential-store';
+import { clearCachedSends } from './vault-cache';
 
 interface SessionState {
   session: Session | null;
@@ -106,6 +107,7 @@ export function useSession(): SessionState {
 
   const clearSession = useCallback(async () => {
     await deleteSession();
+    await clearCachedSends();
     setSession(null);
     if (session) {
       void bw.lock(session).catch(() => {

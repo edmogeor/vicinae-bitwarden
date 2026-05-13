@@ -1,8 +1,9 @@
-import { Icon } from '@vicinae/api';
+import { Alert, confirmAlert, Icon, showToast, Toast } from '@vicinae/api';
 import type { Image } from '@vicinae/api';
-import type { BwSend, CreateSendPayload, SendAction } from './send-types';
 import { SendType } from './send-types';
-import type { SendTypeValue } from './send-types';
+import type { BwSend, CreateSendPayload, SendAction, SendTypeValue } from './send-types';
+import * as bw from './bw-executor';
+import { showFailureToast } from './item-utils';
 import { buildIcon } from './item-icons';
 import { getPreferences, getServerUrl } from './preferences';
 import { trimToNull } from './item-utils';
@@ -17,6 +18,27 @@ export function sendTypeLabel(send: BwSend): string {
   return send.type === SendType.File ? 'File' : 'Text';
 }
 
+export async function deleteSendWithConfirm(
+  send: { id: string; name: string },
+  session: bw.Session | null,
+  onSuccess: () => void,
+): Promise<void> {
+  if (!session) return;
+  const confirmed = await confirmAlert({
+    title: 'Delete Send',
+    message: `Are you sure you want to delete "${send.name}"?`,
+    primaryAction: { title: 'Delete', style: Alert.ActionStyle.Destructive },
+  });
+  if (!confirmed) return;
+  try {
+    await bw.deleteSend(send.id, session);
+    await showToast({ style: Toast.Style.Success, title: 'Send deleted', message: send.name });
+    onSuccess();
+  } catch (err) {
+    await showFailureToast(err, 'Delete failed');
+  }
+}
+
 export function sendSubtitle(send: BwSend): string {
   if (send.type === SendType.File && send.file?.fileName) {
     return `File: ${send.file.fileName}`;
@@ -28,7 +50,7 @@ export function sendSubtitle(send: BwSend): string {
   return sendTypeLabel(send);
 }
 
-export function sendActions(send: BwSend): SendAction[] {
+export function getSendActions(send: BwSend): SendAction[] {
   const actions: SendAction[] = [{ label: 'Copy Send Link', value: sendAccessUrl(send) }];
   if (send.type === SendType.Text && send.text?.text) {
     actions.push({ label: 'Copy Text', value: send.text.text });
@@ -104,58 +126,63 @@ export const EDIT_HOURS_OPTIONS = [{ value: '-1', title: 'Keep existing' }, ...H
 export function toSendPayload(
   formValues: Record<string, string>,
   type: SendTypeValue,
-  _mode: 'create' | 'edit' = 'create',
 ): CreateSendPayload {
-  const payload: Record<string, unknown> = {
-    name: formValues.name ?? '',
-    type,
-    disabled: formValues.disabled === 'true',
-    hideEmail: formValues.hideEmail === 'true',
-  };
+  const password = trimToNull(formValues.password);
+  const notes = trimToNull(formValues.notes);
+  let maxAccessCount: number | null = null;
+  if (formValues.maxAccessCount?.trim()) {
+    const raw = Number(formValues.maxAccessCount);
+    if (!isNaN(raw)) maxAccessCount = raw;
+  }
 
+  let deletionDate: string | null = null;
   if (
     formValues.deletionHours &&
     formValues.deletionHours !== '0' &&
     formValues.deletionHours !== '-1'
   ) {
     const hours = Number(formValues.deletionHours) || 0;
-    payload.deletionDate = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    deletionDate = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
   }
 
+  let expirationDate: string | null = null;
   if (
     formValues.expirationHours &&
     formValues.expirationHours !== '0' &&
     formValues.expirationHours !== '-1'
   ) {
     const hours = Number(formValues.expirationHours) || 0;
-    payload.expirationDate = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    expirationDate = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
   }
 
-  const password = trimToNull(formValues.password);
-  if (password !== null) payload.password = password;
+  const text =
+    type === SendType.Text
+      ? {
+          text: formValues.textContent ?? '',
+          hidden: formValues.hideText === 'true',
+        }
+      : null;
 
-  if (formValues.maxAccessCount?.trim()) {
-    const raw = Number(formValues.maxAccessCount);
-    if (!isNaN(raw)) payload.maxAccessCount = raw;
-  }
+  const file =
+    type === SendType.File
+      ? {
+          fileName: formValues.fileName ?? '',
+        }
+      : null;
 
-  const notes = trimToNull(formValues.notes);
-  if (notes !== null) payload.notes = notes;
-
-  if (type === SendType.Text) {
-    payload.text = {
-      text: formValues.textContent ?? '',
-      hidden: formValues.hideText === 'true',
-    };
-  }
-
-  if (type === SendType.File) {
-    payload.file = {
-      fileName: formValues.fileName ?? '',
-    };
-  }
-
-  return payload as unknown as CreateSendPayload;
+  return {
+    name: formValues.name ?? '',
+    type,
+    notes,
+    disabled: formValues.disabled === 'true',
+    hideEmail: formValues.hideEmail === 'true',
+    password,
+    maxAccessCount,
+    deletionDate,
+    expirationDate,
+    text,
+    file,
+  };
 }
 
 const SEND_ICON_PATHS: Record<SendTypeValue, string> = {

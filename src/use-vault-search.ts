@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Clipboard, showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
+import { showFailureToast } from './item-utils';
 import { filterItems, groupByFolder } from './item-utils';
 import { useSession } from './use-session';
 import { createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
@@ -50,12 +50,7 @@ export function useVaultSearch(preFilter?: (items: BwItem[]) => BwItem[]) {
         await Clipboard.copy(totp);
         await showToast({ style: Toast.Style.Success, title: 'Copied TOTP' });
       } catch (err) {
-        const message = getErrorMessage(err);
-        await showToast({
-          style: Toast.Style.Failure,
-          title: 'Failed to get TOTP',
-          message,
-        });
+        await showFailureToast(err, 'Failed to get TOTP');
       }
     },
     [session],

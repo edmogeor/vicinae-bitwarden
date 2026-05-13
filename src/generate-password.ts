@@ -1,7 +1,7 @@
 // fallow-ignore-file unused-file
 import { Clipboard, showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
+import { showFailureToast } from './item-utils';
 import { getPasswordPrefs, getPreferences } from './preferences';
 
 export default async function GeneratePassword() {
@@ -16,11 +16,6 @@ export default async function GeneratePassword() {
       message: 'Copied to clipboard',
     });
   } catch (err) {
-    const message = getErrorMessage(err);
-    await showToast({
-      style: Toast.Style.Failure,
-      title: 'Generation failed',
-      message,
-    });
+    await showFailureToast(err, 'Generation failed');
   }
 }

@@ -37,6 +37,18 @@ function buildPlaceholderIcon(type: ItemTypeValue): Image.ImageLike {
   return buildIcon(path, color);
 }
 
+function isImageWithSource(
+  value: Image.ImageLike,
+): value is { source: { light: string; dark: string } } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'source' in value &&
+    typeof value.source === 'object' &&
+    value.source !== null
+  );
+}
+
 export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
   if (item.type !== ItemType.Login) return buildPlaceholderIcon(item.type);
 
@@ -47,10 +59,10 @@ export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {
   if (cached === undefined || cached === '') return buildPlaceholderIcon(item.type);
 
   const fallback = buildPlaceholderIcon(ItemType.Login);
-  if (typeof fallback === 'object' && 'source' in fallback) {
+  if (isImageWithSource(fallback)) {
     return {
       source: cached,
-      fallback: (fallback as { source: { light: string; dark: string } }).source,
+      fallback: fallback.source,
     };
   }
   return { source: cached };

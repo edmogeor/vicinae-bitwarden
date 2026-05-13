@@ -4,7 +4,7 @@ import {
   daysUntilDeletion,
   filterSends,
   sendAccessUrl,
-  sendActions,
+  getSendActions,
   sendSubtitle,
   sendTypeLabel,
   toSendPayload,
@@ -107,14 +107,14 @@ describe('sendSubtitle', () => {
   });
 });
 
-describe('sendActions', () => {
+describe('getSendActions', () => {
   it('always includes Copy Send Link', () => {
-    const actions = sendActions(makeSend());
+    const actions = getSendActions(makeSend());
     expect(actions.some((a) => a.label === 'Copy Send Link')).toBe(true);
   });
 
   it('includes Copy Text for Text sends with content', () => {
-    const actions = sendActions(
+    const actions = getSendActions(
       makeSend({ type: SendType.Text, text: { text: 'secret', hidden: false } }),
     );
     expect(actions.some((a) => a.label === 'Copy Text')).toBe(true);
@@ -126,7 +126,7 @@ describe('sendActions', () => {
       text: null,
       file: { id: 'f1', fileName: 'x.pdf', size: 0, sizeName: '0 B' },
     });
-    const actions = sendActions(send);
+    const actions = getSendActions(send);
     expect(actions.some((a) => a.label === 'Copy Text')).toBe(false);
   });
 });
@@ -177,7 +177,7 @@ describe('toSendPayload', () => {
     expect(payload.type).toBe(SendType.Text);
     expect(payload.text?.text).toBe('hello');
     expect(payload.text?.hidden).toBe(true);
-    expect(payload.file).toBeUndefined();
+    expect(payload.file).toBeNull();
   });
 
   it('builds basic File send payload', () => {
@@ -187,7 +187,7 @@ describe('toSendPayload', () => {
     );
     expect(payload.type).toBe(SendType.File);
     expect(payload.file?.fileName).toBe('doc.pdf');
-    expect(payload.text).toBeUndefined();
+    expect(payload.text).toBeNull();
   });
 
   it('sets deletionDate from deletionHours', () => {

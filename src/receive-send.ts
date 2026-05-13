@@ -4,6 +4,35 @@ import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { getDownloadDir, getPreferences } from './preferences';
 
+async function handleReceiveError(err: unknown): Promise<boolean> {
+  if (isPasswordError(err)) {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: 'Send is password-protected',
+      message: 'Use the CLI with --passwordenv: bw send receive <url> --passwordenv BW_PASSWORD',
+    });
+    return true;
+  }
+  if (isEmailVerificationError(err)) {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: 'Email verification required',
+      message:
+        'This Send requires email verification, which is a premium feature not supported here.',
+    });
+    return true;
+  }
+  return false;
+}
+
+function getDownloadDirectory(): string {
+  try {
+    return getDownloadDir(getPreferences());
+  } catch {
+    return `${process.env.HOME ?? '/tmp'}/Downloads`;
+  }
+}
+
 export default async function ReceiveSend() {
   let url = '';
   try {
@@ -28,35 +57,12 @@ export default async function ReceiveSend() {
       return;
     }
   } catch (textErr) {
-    if (isPasswordError(textErr)) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: 'Send is password-protected',
-        message: 'Use the CLI with --passwordenv: bw send receive <url> --passwordenv BW_PASSWORD',
-      });
-      return;
-    }
-    if (isEmailVerificationError(textErr)) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: 'Email verification required',
-        message:
-          'This Send requires email verification, which is a premium feature not supported here.',
-      });
-      return;
-    }
+    if (await handleReceiveError(textErr)) return;
     // Text receive failed, try file receive
   }
 
   try {
-    let downloadDir: string;
-    try {
-      const prefs = getPreferences();
-      downloadDir = getDownloadDir(prefs);
-    } catch {
-      downloadDir = `${process.env.HOME ?? '/tmp'}/Downloads`;
-    }
-
+    const downloadDir = getDownloadDirectory();
     const result = await bw.receiveSend(url, undefined, downloadDir);
 
     if (result.kind === 'file' && result.path) {
@@ -65,23 +71,7 @@ export default async function ReceiveSend() {
       return;
     }
   } catch (fileErr) {
-    if (isPasswordError(fileErr)) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: 'Send is password-protected',
-        message: 'Use the CLI with --passwordenv: bw send receive <url> --passwordenv BW_PASSWORD',
-      });
-      return;
-    }
-    if (isEmailVerificationError(fileErr)) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: 'Email verification required',
-        message:
-          'This Send requires email verification, which is a premium feature not supported here.',
-      });
-      return;
-    }
+    if (await handleReceiveError(fileErr)) return;
     const message = getErrorMessage(fileErr);
     await showToast({
       style: Toast.Style.Failure,
@@ -101,7 +91,5 @@ function isPasswordError(err: unknown): boolean {
 
 function isEmailVerificationError(err: unknown): boolean {
   const message = getErrorMessage(err).toLowerCase();
-  return (
-    message.includes('email') && (message.includes('verification') || message.includes('verify'))
-  );
+  return message.includes('email') && message.includes('verify');
 }

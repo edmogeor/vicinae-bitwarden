@@ -2,9 +2,7 @@
 import {
   Action,
   ActionPanel,
-  Alert,
   Clipboard,
-  confirmAlert,
   Detail,
   Icon,
   List,
@@ -14,14 +12,16 @@ import {
 } from '@vicinae/api';
 import { useCallback, useEffect, useState } from 'react';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
+import { showFailureToast } from './item-utils';
 import type { BwSend } from './send-types';
+import type { SendAction } from './send-types';
 import {
   buildDeletionCountdown,
   buildExpirationCountdown,
+  deleteSendWithConfirm,
   filterSends,
+  getSendActions,
   sendAccessUrl,
-  sendActions as getSendActions,
   sendActionIcon,
   sendIcon,
   sendSubtitle,
@@ -29,9 +29,31 @@ import {
 } from './send-utils';
 import { useSession } from './use-session';
 import { loadCachedSends, saveCachedSends } from './vault-cache';
-import { renderGate, useGateEffects } from './unlock-gate';
+import { castGateSetter, renderGate, useGateEffects } from './unlock-gate';
 import type { GateUIState } from './unlock-gate';
 import EditSend from './edit-send';
+
+function SendCopyActions({ actions }: { actions: SendAction[] }) {
+  return (
+    <>
+      {actions.map((action) => (
+        <Action
+          key={action.label}
+          title={action.label}
+          icon={sendActionIcon(action)}
+          onAction={async () => {
+            await Clipboard.copy(action.value);
+            await showToast({
+              style: Toast.Style.Success,
+              title: 'Copied',
+              message: action.label,
+            });
+          }}
+        />
+      ))}
+    </>
+  );
+}
 
 type UIState = GateUIState | { kind: 'loading' } | { kind: 'list' };
 
@@ -48,7 +70,7 @@ export default function SearchSends() {
     loginIfNeeded,
     loginError,
     unlock,
-    setState: (next) => setState(next as UIState),
+    setState: castGateSetter(setState),
     readyKind: 'loading',
   });
 
@@ -60,8 +82,7 @@ export default function SearchSends() {
       setSends(result);
       await saveCachedSends(result);
     } catch (err) {
-      const message = getErrorMessage(err);
-      await showToast({ style: Toast.Style.Failure, title: 'Failed to load sends', message });
+      await showFailureToast(err, 'Failed to load sends');
     }
   }, [session]);
 
@@ -163,21 +184,7 @@ function renderSendActions(
 
   return (
     <>
-      {actions.map((action) => (
-        <Action
-          key={action.label}
-          title={action.label}
-          icon={sendActionIcon(action)}
-          onAction={async () => {
-            await Clipboard.copy(action.value);
-            await showToast({
-              style: Toast.Style.Success,
-              title: 'Copied',
-              message: action.label,
-            });
-          }}
-        />
-      ))}
+      <SendCopyActions actions={actions} />
       <Action
         title="View Details"
         icon={Icon.Eye}
@@ -203,31 +210,16 @@ function SendDetailView({
 }) {
   const { pop, push } = useNavigation();
   const url = sendAccessUrl(send);
-  const hasText = !!send.text?.text;
-  const markdown = [
-    hasText ? send.text!.text : '',
-    send.notes ? `${hasText ? '\n---\n' : ''}## Notes\n${send.notes}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const textContent = send.text?.text ?? '';
+  const notesSection = send.notes ? `## Notes\n${send.notes}` : '';
+  const separator = textContent && notesSection ? '\n---\n' : '';
+  const markdown = [textContent, separator, notesSection].filter(Boolean).join('');
 
   const handleDelete = async () => {
-    if (!session) return;
-    const confirmed = await confirmAlert({
-      title: 'Delete Send',
-      message: `Are you sure you want to delete "${send.name}"?`,
-      primaryAction: { title: 'Delete', style: Alert.ActionStyle.Destructive },
-    });
-    if (!confirmed) return;
-    try {
-      await bw.deleteSend(send.id, session);
-      await showToast({ style: Toast.Style.Success, title: 'Send deleted', message: send.name });
+    await deleteSendWithConfirm(send, session, async () => {
       onDeleted();
       pop();
-    } catch (err) {
-      const message = getErrorMessage(err);
-      await showToast({ style: Toast.Style.Failure, title: 'Delete failed', message });
-    }
+    });
   };
 
   const sendActions = getSendActions(send);
@@ -248,7 +240,11 @@ function SendDetailView({
           <Detail.Metadata.Separator />
           <Detail.Metadata.Label
             title="Access Count"
-            text={`${send.accessCount}${send.maxAccessCount ? ` / ${send.maxAccessCount}` : ''}`}
+            text={
+              send.maxAccessCount
+                ? `${send.accessCount} / ${send.maxAccessCount}`
+                : String(send.accessCount)
+            }
           />
           <Detail.Metadata.Label
             title="Deletion Date"
@@ -261,21 +257,7 @@ function SendDetailView({
       }
       actions={
         <ActionPanel>
-          {sendActions.map((action) => (
-            <Action
-              key={action.label}
-              title={action.label}
-              icon={sendActionIcon(action)}
-              onAction={async () => {
-                await Clipboard.copy(action.value);
-                await showToast({
-                  style: Toast.Style.Success,
-                  title: 'Copied',
-                  message: action.label,
-                });
-              }}
-            />
-          ))}
+          <SendCopyActions actions={sendActions} />
           {session && (
             <>
               <Action

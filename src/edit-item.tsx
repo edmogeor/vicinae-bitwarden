@@ -11,11 +11,17 @@ import {
 } from '@vicinae/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
+import { showFailureToast } from './item-utils';
 import type { BwFolder, BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
-import { CARD_BRANDS, itemTypeLabel, toCreatePayload, uploadAttachments } from './item-utils';
+import {
+  CARD_BRANDS,
+  digitsOnly,
+  itemTypeLabel,
+  toCreatePayload,
+  uploadAttachments,
+} from './item-utils';
 import CustomFieldsSection, { type CustomField } from './custom-fields-section';
 
 interface EditItemProps {
@@ -124,10 +130,6 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
   const [cardCode, setCardCode] = useState('');
   const fieldIdRef = useRef(0);
 
-  function digitsOnly(value: string): string {
-    return value.replace(/\D/g, '');
-  }
-
   useEffect(() => {
     void (async () => {
       let resolved: BwItem;
@@ -194,8 +196,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
         onSaved();
         await popToRoot();
       } catch (err) {
-        const message = getErrorMessage(err);
-        await showToast({ style: Toast.Style.Failure, title: 'Failed to update item', message });
+        await showFailureToast(err, 'Failed to update item');
       } finally {
         setIsSubmitting(false);
       }
@@ -219,8 +220,7 @@ export default function EditItem({ item, session, onSaved }: EditItemProps) {
       onSaved();
       await popToRoot();
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await showToast({ style: Toast.Style.Failure, title: 'Delete failed', message });
+      await showFailureToast(err, 'Delete failed');
     }
   }, [item.id, item.name, session, onSaved]);
 
