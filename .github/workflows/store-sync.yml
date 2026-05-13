@@ -53,27 +53,3 @@ jobs:
           git add extensions/bitwarden
           git diff --cached --quiet || git commit -m "bitwarden ${{ steps.meta.outputs.tag }}"
           git push origin main
-
-      - name: Create or update store PR
-        run: |
-          cd store
-          TAG="${{ steps.meta.outputs.tag }}"
-          VERSION="${TAG#v}"
-          CHANGELOG=$(awk -v ver="$VERSION" '
-            BEGIN { found=0 }
-            /^## \[/ {
-              if (found) exit
-              if ($0 ~ "## \\[" ver "\\]") found=1
-            }
-            found { print }
-          ' ../CHANGELOG.md | sed '1d')
-          EXISTING=$(gh pr list --repo vicinaehq/extensions --head edmogeor:main --state open --json number --jq '.[0].number')
-          TITLE="Extension update: Bitwarden $TAG"
-          BODY=$(printf 'Release %s\n\n%s' "$TAG" "$CHANGELOG")
-          if [ -n "$EXISTING" ]; then
-            gh pr edit "$EXISTING" --repo vicinaehq/extensions --title "$TITLE" --body "$BODY"
-          else
-            gh pr create --repo vicinaehq/extensions --head edmogeor:main --base main --title "$TITLE" --body "$BODY"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.STORE_REPO_PAT }}
