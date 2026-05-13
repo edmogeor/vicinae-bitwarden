@@ -10,7 +10,7 @@ import { trimToNull } from './item-utils';
 import { loadSendKeys } from './vault-cache';
 
 export const SEND_LINK_ACTION_LABEL = 'Copy Send Link' as const;
-export const COPY_TEXT_ACTION_LABEL = 'Copy Text' as const;
+const COPY_TEXT_ACTION_LABEL = 'Copy Text' as const;
 
 export function filterSends(sends: BwSend[], query: string): BwSend[] {
   if (!query.trim()) return sends;
@@ -81,14 +81,15 @@ export function sendActionIcon(action: { label: string }): Image.ImageLike | und
 }
 
 export function sendAccessUrl(send: BwSend): string {
+  let base = 'https://vault.bitwarden.com';
   try {
     const prefs = getPreferences();
     const serverUrl = getServerUrl(prefs);
-    const base = serverUrl.replace(/\/+$/, '');
-    return `${base}/#/send/${send.accessId}/${send.key}`;
+    base = serverUrl.replace(/\/+$/, '');
   } catch {
-    return `https://vault.bitwarden.com/#/send/${send.accessId}/${send.key}`;
+    // fall back to default
   }
+  return `${base}/#/send/${send.accessId}/${send.key}`;
 }
 
 export function daysUntilDeletion(send: BwSend): number | null {
