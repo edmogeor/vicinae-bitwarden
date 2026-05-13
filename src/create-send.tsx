@@ -18,7 +18,7 @@ import type { SendTypeValue } from './send-types';
 import { sendAccessUrl, toSendPayload, HOURS_OPTIONS } from './send-utils';
 import { readFormValues } from './item-utils';
 import { useSession } from './use-session';
-import { renderGate, useGateEffects } from './unlock-gate';
+import { renderGate, useGateEffects, castGateSetter } from './unlock-gate';
 import type { GateUIState } from './unlock-gate';
 
 type UIState = GateUIState | { kind: 'form' };
@@ -50,7 +50,7 @@ export default function CreateSend() {
     loginIfNeeded,
     loginError,
     unlock,
-    setState: (next) => setState(next as UIState),
+    setState: castGateSetter(setState),
     readyKind: 'form',
   });
 

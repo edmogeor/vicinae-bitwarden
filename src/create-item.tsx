@@ -20,7 +20,7 @@ import CustomFieldsSection from './custom-fields-section';
 import type { CustomField } from './custom-fields-section';
 import { useSession } from './use-session';
 import { getPasswordPrefs, getPreferences } from './preferences';
-import { renderGate, useGateEffects } from './unlock-gate';
+import { renderGate, useGateEffects, castGateSetter } from './unlock-gate';
 import type { GateUIState } from './unlock-gate';
 
 type UIState = GateUIState | { kind: 'form' };
@@ -84,7 +84,7 @@ export default function CreateItem() {
     loginIfNeeded,
     loginError,
     unlock,
-    setState: (next) => setState(next as UIState),
+    setState: castGateSetter(setState),
     readyKind: 'form',
   });
 

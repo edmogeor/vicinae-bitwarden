@@ -1,5 +1,6 @@
 import { Action, ActionPanel, Form, showToast, Toast } from '@vicinae/api';
 import { useCallback, useEffect } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { BwNotInstalled, SecretToolNotInstalled } from './bw-not-installed';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
@@ -185,6 +186,12 @@ interface UseGateEffectsParams {
   unlock: (password: string) => Promise<string>;
   setState: (value: { kind: string; error?: string }) => void;
   readyKind: string;
+}
+
+export function castGateSetter<T extends { kind: string }>(
+  setState: Dispatch<SetStateAction<T>>,
+): (value: { kind: string; error?: string }) => void {
+  return (value) => setState(value as T);
 }
 
 export function useGateEffects(params: UseGateEffectsParams) {

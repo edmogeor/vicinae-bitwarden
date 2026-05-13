@@ -20,8 +20,8 @@ import {
   buildDeletionCountdown,
   buildExpirationCountdown,
   filterSends,
+  getSendActions,
   sendAccessUrl,
-  sendActions as getSendActions,
   sendActionIcon,
   sendIcon,
   sendSubtitle,
@@ -29,7 +29,7 @@ import {
 } from './send-utils';
 import { useSession } from './use-session';
 import { loadCachedSends, saveCachedSends } from './vault-cache';
-import { renderGate, useGateEffects } from './unlock-gate';
+import { castGateSetter, renderGate, useGateEffects } from './unlock-gate';
 import type { GateUIState } from './unlock-gate';
 import EditSend from './edit-send';
 
@@ -48,7 +48,7 @@ export default function SearchSends() {
     loginIfNeeded,
     loginError,
     unlock,
-    setState: (next) => setState(next as UIState),
+    setState: castGateSetter(setState),
     readyKind: 'loading',
   });
 
