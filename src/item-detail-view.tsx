@@ -9,7 +9,7 @@ import {
   Toast,
   useNavigation,
 } from '@vicinae/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as bw from './bw-executor';
 import type { Session } from './bw-executor';
 import {
@@ -22,6 +22,8 @@ import {
 import type { BwField, BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import EditItem from './edit-item';
+import { computeLocalTotp, isSteamSecret } from './totp-compute';
+import { useTotpSecrets } from './use-totp-secrets';
 
 function resolveFetchValue(fetchKind: string, item: BwItem): string | undefined {
   switch (fetchKind) {
@@ -274,6 +276,7 @@ export default function ItemDetailView({
   const [totpCountdown, setTotpCountdown] = useState(30);
   const [showPassword, setShowPassword] = useState(false);
   const [revealedFields, setRevealedFields] = useState<Set<number>>(new Set());
+  const totpSecrets = useTotpSecrets();
   const { pop, push } = useNavigation();
 
   useEffect(() => {
@@ -293,11 +296,26 @@ export default function ItemDetailView({
     })();
   }, [item.id, session]);
 
-  useEffect(() => {
-    if (!session) return;
+  const totpInfo = useMemo(() => {
     const resolved = fullItem ?? item;
-    if (resolved.type !== ItemType.Login || !resolved.login?.totp) return;
+    if (resolved.type !== ItemType.Login || !resolved.login?.totp) return null;
+    const secret = resolved.login.totp || totpSecrets[item.id] || '';
+    const probe = secret && !isSteamSecret(secret) ? computeLocalTotp(secret, Date.now()) : null;
+    return { secret, probe };
+  }, [fullItem, item, totpSecrets]);
 
+  useEffect(() => {
+    if (!totpInfo) return;
+    const { secret, probe } = totpInfo;
+
+    if (probe) {
+      setTotpCode(probe.code);
+      const tick = () => setTotpCode(computeLocalTotp(secret, Date.now())?.code ?? undefined);
+      const interval = setInterval(tick, probe.periodSec * 1000);
+      return () => clearInterval(interval);
+    }
+
+    if (!session) return;
     let active = true;
     const fetch = async () => {
       try {
@@ -307,26 +325,29 @@ export default function ItemDetailView({
         if (active) setTotpCode(undefined);
       }
     };
-
     fetch();
     const interval = setInterval(fetch, 30_000);
     return () => {
       active = false;
       clearInterval(interval);
     };
-  }, [session, fullItem]);
+  }, [session, item.id, totpInfo]);
 
   useEffect(() => {
-    const resolved = fullItem ?? item;
-    if (resolved.type !== ItemType.Login || !resolved.login?.totp) return;
-
+    if (!totpInfo) return;
+    const { secret, probe } = totpInfo;
     const tick = () => {
-      setTotpCountdown(30 - (Math.floor(Date.now() / 1000) % 30));
+      if (probe) {
+        const next = computeLocalTotp(secret, Date.now());
+        setTotpCountdown(next ? Math.max(0, Math.ceil(next.remainingMs / 1000)) : 0);
+      } else {
+        setTotpCountdown(30 - (Math.floor(Date.now() / 1000) % 30));
+      }
     };
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [session, fullItem]);
+  }, [totpInfo]);
 
   const resolved = fullItem ?? item;
   const markdown = buildItemDetailMarkdown(resolved);

@@ -20,6 +20,17 @@ vi.mock('../bw-executor', () => ({
   getErrorMessage: mockBw.getErrorMessage,
 }));
 
+const mockCompute = vi.hoisted(() => ({
+  computeLocalTotp: vi.fn<
+    (secret: string, ts: number) => { code: string; remainingMs: number; periodSec: number } | null
+  >(() => ({ code: '123456', remainingMs: 15_000, periodSec: 30 })),
+  isSteamSecret: vi.fn(
+    (secret: string | null | undefined) => !!secret && secret.startsWith('steam://'),
+  ),
+}));
+
+vi.mock('../totp-compute', () => mockCompute);
+
 vi.mock('../item-utils', () => ({
   formatTotp: (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`,
   itemIcon: () => ({ source: 'icon.png' }),
@@ -207,6 +218,7 @@ describe('SearchTotp', () => {
   });
 
   it('shows Loading... accessory before TOTP codes arrive', async () => {
+    mockCompute.computeLocalTotp.mockReturnValueOnce(null);
     mockBw.getTotp.mockReturnValue(new Promise(() => {})); // never resolves
 
     render(React.createElement(SearchTotp));

@@ -2,8 +2,8 @@ import { useCallback, useState } from 'react';
 import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { showFailureToast } from './item-utils';
-import { saveCachedVault } from './vault-cache';
-import type { BwFolder, BwItem } from './bitwarden-types';
+import { saveCachedVault, saveTotpSecrets } from './vault-cache';
+import { ItemType, type BwFolder, type BwItem } from './bitwarden-types';
 
 export function useVaultSync(
   session: string | null,
@@ -16,6 +16,13 @@ export function useVaultSync(
       await bw.sync(token);
       const [items, folders] = await Promise.all([bw.listItems(token), bw.listFolders(token)]);
       await saveCachedVault(items, folders);
+      const totpMap: Record<string, string> = {};
+      for (const item of items) {
+        if (item.type === ItemType.Login && item.login?.totp) {
+          totpMap[item.id] = item.login.totp;
+        }
+      }
+      await saveTotpSecrets(totpMap);
       setVault(items, folders);
     },
     [setVault],

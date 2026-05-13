@@ -109,6 +109,7 @@ export async function clearCachedVault(): Promise<void> {
 
 const SENDS_CACHE_KEY = 'vicinae-bitwarden-sends-cache';
 const SENDS_SECRET_KEY = 'sends-keys';
+const TOTP_SECRETS_KEY = 'totp-secrets';
 
 interface CachedSends {
   sends: BwSend[];
@@ -127,6 +128,28 @@ function stripSensitiveSendFields(send: BwSend): BwSend {
     notes: null,
     text: send.text ? { text: '', hidden: send.text.hidden } : null,
   };
+}
+
+export async function loadTotpSecrets(): Promise<Record<string, string>> {
+  try {
+    const raw = await secretLookup(TOTP_SECRETS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+export async function saveTotpSecrets(map: Record<string, string>): Promise<void> {
+  await secretStore(TOTP_SECRETS_KEY, JSON.stringify(map), 'Vicinae Bitwarden TOTP');
+}
+
+export async function clearTotpSecrets(): Promise<void> {
+  await secretClear(TOTP_SECRETS_KEY);
+}
+
+export async function clearSendKeys(): Promise<void> {
+  await secretClear(SENDS_SECRET_KEY);
 }
 
 export async function loadSendKeys(): Promise<Record<string, string>> {

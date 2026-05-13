@@ -28,6 +28,15 @@ vi.mock('../bw-executor', () => ({
   getErrorMessage: mockBw.getErrorMessage,
 }));
 
+vi.mock('../use-totp-secrets', () => ({
+  useTotpSecrets: () => ({}),
+}));
+
+vi.mock('../totp-compute', () => ({
+  computeLocalTotp: () => null,
+  isSteamSecret: () => false,
+}));
+
 vi.mock('../item-utils', () => ({
   buildItemDetailMarkdown: (item: BwItem) => (item.notes ? item.notes : ''),
   formatTotp: (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`,

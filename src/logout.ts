@@ -2,7 +2,7 @@ import { showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { showFailureToast } from './item-utils';
 import { deleteSession } from './session-store';
-import { clearCachedSends, clearCachedVault } from './vault-cache';
+import { clearCachedSends, clearCachedVault, clearSendKeys, clearTotpSecrets } from './vault-cache';
 
 export default async function Logout() {
   try {
@@ -10,6 +10,8 @@ export default async function Logout() {
     await deleteSession();
     await clearCachedVault();
     await clearCachedSends();
+    await clearTotpSecrets();
+    await clearSendKeys();
     await showToast({
       style: Toast.Style.Success,
       title: 'Logged out',

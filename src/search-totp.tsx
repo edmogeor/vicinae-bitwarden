@@ -5,12 +5,29 @@ import { formatTotp, itemIcon, itemSubtitle } from './item-utils';
 import { useVaultSearch } from './use-vault-search';
 import type { BwItem } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
+import { computeLocalTotp, isSteamSecret } from './totp-compute';
 
 function totpItems(items: BwItem[]): BwItem[] {
   return items.filter(
     (item) =>
       item.type === ItemType.Login && item.login?.totp !== null && item.login?.totp !== undefined,
   );
+}
+
+const WINDOW_MS = 30_000;
+const CLI_FETCH_CONCURRENCY = 5;
+
+interface CachedCode {
+  code: string;
+  window: number;
+}
+
+function currentWindow(now: number): number {
+  return Math.floor(now / WINDOW_MS);
+}
+
+function countdownFor(now: number): number {
+  return 30 - Math.floor((now / 1000) % 30);
 }
 
 export default function SearchTotp() {
@@ -22,41 +39,60 @@ export default function SearchTotp() {
     faviconMap,
     handleSync,
     handleCopyTotp,
+    totpSecrets,
     gateRender,
     isLoading,
     sortedSections,
   } = useVaultSearch(totpItems);
 
-  const [totpMap, setTotpMap] = useState<Record<string, string>>({});
-  const [countdown, setCountdown] = useState(30 - (Math.floor(Date.now() / 1000) % 30));
+  const [now, setNow] = useState(() => Date.now());
+  const [cliCache, setCliCache] = useState<Record<string, CachedCode>>({});
 
-  // TOTP countdown tick
   useEffect(() => {
-    const tick = () => setCountdown(30 - (Math.floor(Date.now() / 1000) % 30));
-    tick();
-    const interval = setInterval(tick, 1000);
+    const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch TOTP codes when session is available and vault is loaded
+  const win = currentWindow(now);
+  const countdown = countdownFor(now);
+
+  // Fetch only the items that can't be computed locally (Steam/unparseable).
   useEffect(() => {
-    if (!session) return;
-    if (state.kind !== 'vault') return;
-    const ids = totpItems(state.items).map((i) => i.id);
+    if (!session || state.kind !== 'vault') return;
+    const cliStale = totpItems(state.items)
+      .filter((item) => {
+        if (cliCache[item.id]?.window === win) return false;
+        const secret = item.login?.totp || totpSecrets[item.id] || '';
+        if (isSteamSecret(secret)) return true;
+        return computeLocalTotp(secret, Date.now()) === null;
+      })
+      .map((i) => i.id);
+    if (cliStale.length === 0) return;
 
-    const fetchCodes = async () => {
-      const results = await Promise.allSettled(ids.map((id) => bw.getTotp(id, session)));
-      const map: Record<string, string> = {};
-      results.forEach((r, i) => {
-        if (r.status === 'fulfilled') map[ids[i]] = r.value;
-      });
-      setTotpMap(map);
+    let cancelled = false;
+    let cursor = 0;
+    const worker = async () => {
+      while (!cancelled) {
+        const i = cursor++;
+        if (i >= cliStale.length) return;
+        const id = cliStale[i];
+        try {
+          const code = await bw.getTotp(id, session);
+          if (cancelled) return;
+          setCliCache((prev) => ({
+            ...prev,
+            [id]: { code, window: currentWindow(Date.now()) },
+          }));
+        } catch {}
+      }
     };
-
-    fetchCodes();
-    const interval = setInterval(fetchCodes, 30_000);
-    return () => clearInterval(interval);
-  }, [session, state.kind === 'vault' ? state.items.length : 0]);
+    void Promise.all(
+      Array.from({ length: Math.min(CLI_FETCH_CONCURRENCY, cliStale.length) }, worker),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [session, win, state.kind === 'vault' ? state.items.length : 0, totpSecrets]);
 
   if (gateRender) return gateRender;
 
@@ -77,7 +113,13 @@ export default function SearchTotp() {
     return sortedSections.map(([folderId, { folderName, items: sectionItems }]) => (
       <List.Section key={folderId ?? 'unfiled'} title={folderName}>
         {sectionItems.map((item) => {
-          const code = totpMap[item.id];
+          const secret = item.login?.totp || totpSecrets[item.id] || '';
+          const local = isSteamSecret(secret) ? null : computeLocalTotp(secret, now);
+          const cached = cliCache[item.id];
+          const fresh = local?.code ?? (cached?.window === win ? cached.code : undefined);
+          const localCountdown = local
+            ? Math.max(0, Math.ceil(local.remainingMs / 1000))
+            : countdown;
           return (
             <List.Item
               key={item.id}
@@ -85,8 +127,8 @@ export default function SearchTotp() {
               title={item.name}
               subtitle={itemSubtitle(item)}
               accessories={
-                code
-                  ? [{ text: formatTotp(code) }, { icon: Icon.Clock, text: `${countdown}s` }]
+                fresh
+                  ? [{ text: formatTotp(fresh) }, { icon: Icon.Clock, text: `${localCountdown}s` }]
                   : [{ text: 'Loading...' }]
               }
               actions={
@@ -94,7 +136,7 @@ export default function SearchTotp() {
                   <Action
                     title="Copy TOTP"
                     icon={Icon.CopyClipboard}
-                    onAction={() => handleCopyTotp(item.id)}
+                    onAction={() => handleCopyTotp(item.id, local?.code ?? fresh)}
                   />
                   <Action title="Sync Vault" icon={Icon.ArrowClockwise} onAction={handleSync} />
                 </ActionPanel>

@@ -85,6 +85,7 @@ vi.mock('../vault-cache', () => ({
   loadCachedVault: () => null,
   saveCachedVault: vi.fn(),
   clearCachedVault: vi.fn(),
+  loadTotpSecrets: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../item-utils', () => ({

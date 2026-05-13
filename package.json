@@ -228,6 +228,7 @@
   "dependencies": {
     "@vicinae/api": "^0.19.9",
     "better-sqlite3": "^12.9.0",
+    "otpauth": "^9.5.1",
     "pngjs": "^7.0.0"
   },
   "devDependencies": {

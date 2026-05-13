@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useVaultSync } from '../use-vault-sync';
 import { makeItems, makeFolders } from './__utils__/test-data';
 
-const { mockBw, mockSaveCachedVault } = vi.hoisted(() => {
+const { mockBw, mockSaveCachedVault, mockSaveTotpSecrets } = vi.hoisted(() => {
   const mockBw = {
     sync: vi.fn(),
     listItems: vi.fn(),
@@ -12,8 +12,9 @@ const { mockBw, mockSaveCachedVault } = vi.hoisted(() => {
   };
 
   const mockSaveCachedVault = vi.fn().mockResolvedValue(undefined);
+  const mockSaveTotpSecrets = vi.fn().mockResolvedValue(undefined);
 
-  return { mockBw, mockSaveCachedVault };
+  return { mockBw, mockSaveCachedVault, mockSaveTotpSecrets };
 });
 
 const mockShowToast = vi.hoisted(() => vi.fn());
@@ -25,6 +26,7 @@ vi.mock('../bw-executor', () => ({
 
 vi.mock('../vault-cache', () => ({
   saveCachedVault: mockSaveCachedVault,
+  saveTotpSecrets: mockSaveTotpSecrets,
 }));
 
 vi.mock('@vicinae/api', () => ({

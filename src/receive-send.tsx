@@ -157,9 +157,7 @@ export default function ReceiveSend() {
       let url = '';
       try {
         url = (await Clipboard.readText()).trim();
-      } catch {
-        // clipboard read failed
-      }
+      } catch {}
       if (!url) {
         await showToast({ style: Toast.Style.Failure, title: 'No Send URL in clipboard' });
         await popToRoot();

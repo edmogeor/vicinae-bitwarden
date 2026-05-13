@@ -1,20 +1,29 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const { mockBw, mockDeleteSession, mockShowToast, mockClearCachedVault, mockClearCachedSends } =
-  vi.hoisted(() => ({
-    mockBw: {
-      logout: vi.fn().mockResolvedValue(undefined),
-      lock: vi.fn(),
-      sync: vi.fn(),
-      unlock: vi.fn(),
-      login: vi.fn(),
-      getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
-    },
-    mockDeleteSession: vi.fn().mockResolvedValue(undefined),
-    mockShowToast: vi.fn(),
-    mockClearCachedVault: vi.fn().mockResolvedValue(undefined),
-    mockClearCachedSends: vi.fn().mockResolvedValue(undefined),
-  }));
+const {
+  mockBw,
+  mockDeleteSession,
+  mockShowToast,
+  mockClearCachedVault,
+  mockClearCachedSends,
+  mockClearTotpSecrets,
+  mockClearSendKeys,
+} = vi.hoisted(() => ({
+  mockBw: {
+    logout: vi.fn().mockResolvedValue(undefined),
+    lock: vi.fn(),
+    sync: vi.fn(),
+    unlock: vi.fn(),
+    login: vi.fn(),
+    getErrorMessage: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
+  },
+  mockDeleteSession: vi.fn().mockResolvedValue(undefined),
+  mockShowToast: vi.fn(),
+  mockClearCachedVault: vi.fn().mockResolvedValue(undefined),
+  mockClearCachedSends: vi.fn().mockResolvedValue(undefined),
+  mockClearTotpSecrets: vi.fn().mockResolvedValue(undefined),
+  mockClearSendKeys: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('../bw-executor', () => mockBw);
 
@@ -30,6 +39,8 @@ vi.mock('@vicinae/api', () => ({
 vi.mock('../vault-cache', () => ({
   clearCachedVault: mockClearCachedVault,
   clearCachedSends: mockClearCachedSends,
+  clearTotpSecrets: mockClearTotpSecrets,
+  clearSendKeys: mockClearSendKeys,
 }));
 
 import Logout from '../logout';
@@ -46,6 +57,8 @@ describe('Logout', () => {
     expect(mockDeleteSession).toHaveBeenCalledOnce();
     expect(mockClearCachedVault).toHaveBeenCalledOnce();
     expect(mockClearCachedSends).toHaveBeenCalledOnce();
+    expect(mockClearTotpSecrets).toHaveBeenCalledOnce();
+    expect(mockClearSendKeys).toHaveBeenCalledOnce();
     expect(mockShowToast).toHaveBeenCalledWith({
       style: 'success',
       title: 'Logged out',

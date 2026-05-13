@@ -7,6 +7,8 @@ import { useSession } from './use-session';
 import { createUnlockCallbacks, renderGate, useUnlockGate } from './unlock-gate';
 import { useVaultSync } from './use-vault-sync';
 import { useVaultLifecycle, type UIState } from './vault-lifecycle';
+import { useTotpSecrets } from './use-totp-secrets';
+import { computeLocalTotp, isSteamSecret } from './totp-compute';
 import type { BwFolder, BwItem } from './bitwarden-types';
 
 export function useVaultSearch(preFilter?: (items: BwItem[]) => BwItem[]) {
@@ -41,19 +43,28 @@ export function useVaultSearch(preFilter?: (items: BwItem[]) => BwItem[]) {
 
   const vaultItems = state.kind === 'vault' ? state.items : [];
   const vaultFolders = state.kind === 'vault' ? state.folders : [];
+  const totpSecrets = useTotpSecrets();
 
   const handleCopyTotp = useCallback(
-    async (id: string) => {
+    async (id: string, cachedCode?: string) => {
       if (!session) return;
       try {
-        const totp = await bw.getTotp(id, session);
+        let totp = cachedCode;
+        if (!totp) {
+          const item = vaultItems.find((i) => i.id === id);
+          const secret = item?.login?.totp || totpSecrets[id] || '';
+          if (secret && !isSteamSecret(secret)) {
+            totp = computeLocalTotp(secret, Date.now())?.code ?? undefined;
+          }
+        }
+        if (!totp) totp = await bw.getTotp(id, session);
         await Clipboard.copy(totp);
         await showToast({ style: Toast.Style.Success, title: 'Copied TOTP' });
       } catch (err) {
         await showFailureToast(err, 'Failed to get TOTP');
       }
     },
-    [session],
+    [session, vaultItems, totpSecrets],
   );
 
   const displayItems = useMemo(
@@ -90,6 +101,7 @@ export function useVaultSearch(preFilter?: (items: BwItem[]) => BwItem[]) {
     handleLogin,
     handleSync,
     handleCopyTotp,
+    totpSecrets,
     isSyncing,
     gateRender,
     isLoading,
