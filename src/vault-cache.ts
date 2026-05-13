@@ -129,7 +129,7 @@ function stripSensitiveSendFields(send: BwSend): BwSend {
   };
 }
 
-async function loadSendKeys(): Promise<Record<string, string>> {
+export async function loadSendKeys(): Promise<Record<string, string>> {
   try {
     const raw = await secretLookup(SENDS_SECRET_KEY);
     if (!raw) return {};
@@ -149,9 +149,7 @@ export async function loadCachedSends(): Promise<BwSend[] | null> {
     if (!raw) return null;
     const cached: CachedSends = JSON.parse(raw);
     if (Date.now() - cached.timestamp > SENDS_CACHE_TTL) return null;
-
-    const keys = await loadSendKeys();
-    return cached.sends.map((s) => ({ ...s, key: keys[s.id] ?? '' }));
+    return cached.sends;
   } catch {
     return null;
   }
