@@ -108,9 +108,7 @@ export function getErrorMessage(err: unknown): string {
       .split('\n')
       .filter(
         (line) =>
-          !line.includes('[DEP0') &&
-          !line.includes('DeprecationWarning') &&
-          !line.includes('trace-deprecation'),
+          !['[DEP0', 'DeprecationWarning', 'trace-deprecation'].some((s) => line.includes(s)),
       )
       .join('\n')
       .trim();
@@ -577,9 +575,9 @@ export async function receiveSend(
   try {
     const stdout = await execBw(args, { timeout: 30000, env });
     const trimmed = stdout.trim();
-    const savedPrefix = 'Saved ';
-    if (trimmed.toLowerCase().startsWith(savedPrefix.toLowerCase())) {
-      const filePath = trimmed.slice(savedPrefix.length).trim();
+    const lower = trimmed.toLowerCase();
+    if (lower.startsWith('saved ')) {
+      const filePath = trimmed.slice(6).trim();
       return { kind: 'file', path: filePath };
     }
     return { kind: 'text', text: trimmed };

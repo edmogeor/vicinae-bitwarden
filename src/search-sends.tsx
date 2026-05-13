@@ -108,16 +108,12 @@ export default function SearchSends() {
   const gateRender = renderGate(state, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
 
-  if (state.kind === 'checking-bw' || state.kind === 'loading') {
-    if (sends.length > 0) {
-      // fall through to render the list with cached data
-    } else {
-      return (
-        <List isLoading>
-          <List.EmptyView title="Loading..." />
-        </List>
-      );
-    }
+  if ((state.kind === 'checking-bw' || state.kind === 'loading') && sends.length === 0) {
+    return (
+      <List isLoading>
+        <List.EmptyView title="Loading..." />
+      </List>
+    );
   }
 
   if (state.kind === 'logging-in') {
