@@ -203,13 +203,10 @@ function SendDetailView({
 }) {
   const { pop, push } = useNavigation();
   const url = sendAccessUrl(send);
-  const hasText = !!send.text?.text;
-  const markdown = [
-    hasText ? send.text!.text : '',
-    send.notes ? `${hasText ? '\n---\n' : ''}## Notes\n${send.notes}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const textContent = send.text?.text ?? '';
+  const notesSection = send.notes ? `## Notes\n${send.notes}` : '';
+  const separator = textContent && notesSection ? '\n---\n' : '';
+  const markdown = [textContent, separator, notesSection].filter(Boolean).join('');
 
   const handleDelete = async () => {
     if (!session) return;
@@ -248,7 +245,11 @@ function SendDetailView({
           <Detail.Metadata.Separator />
           <Detail.Metadata.Label
             title="Access Count"
-            text={`${send.accessCount}${send.maxAccessCount ? ` / ${send.maxAccessCount}` : ''}`}
+            text={
+              send.maxAccessCount
+                ? `${send.accessCount} / ${send.maxAccessCount}`
+                : String(send.accessCount)
+            }
           />
           <Detail.Metadata.Label
             title="Deletion Date"

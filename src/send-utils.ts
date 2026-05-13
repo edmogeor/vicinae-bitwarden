@@ -1,8 +1,7 @@
 import { Icon } from '@vicinae/api';
 import type { Image } from '@vicinae/api';
-import type { BwSend, CreateSendPayload, SendAction } from './send-types';
 import { SendType } from './send-types';
-import type { SendTypeValue } from './send-types';
+import type { BwSend, CreateSendPayload, SendAction, SendTypeValue } from './send-types';
 import { buildIcon } from './item-icons';
 import { getPreferences, getServerUrl } from './preferences';
 import { trimToNull } from './item-utils';
@@ -104,7 +103,6 @@ export const EDIT_HOURS_OPTIONS = [{ value: '-1', title: 'Keep existing' }, ...H
 export function toSendPayload(
   formValues: Record<string, string>,
   type: SendTypeValue,
-  _mode: 'create' | 'edit' = 'create',
 ): CreateSendPayload {
   const password = trimToNull(formValues.password);
   const notes = trimToNull(formValues.notes);

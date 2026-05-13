@@ -13,8 +13,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-import type { BwSend } from './send-types';
-import { SendType } from './send-types';
+import { SendType, type BwSend } from './send-types';
 import { readFormValues } from './item-utils';
 import { sendTypeLabel, toSendPayload, EDIT_HOURS_OPTIONS } from './send-utils';
 
@@ -54,7 +53,7 @@ export default function EditSend({ send, session, onSaved }: EditSendProps) {
       setIsSubmitting(true);
       try {
         const sendValues = readFormValues(values);
-        const payload = toSendPayload(sendValues, type, 'edit');
+        const payload = toSendPayload(sendValues, type);
         await bw.editSend(send.id, payload, session);
         await showToast({
           style: Toast.Style.Success,

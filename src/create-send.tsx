@@ -13,8 +13,7 @@ import {
 import { useCallback, useState } from 'react';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-import { SendType } from './send-types';
-import type { SendTypeValue } from './send-types';
+import { SendType, type SendTypeValue } from './send-types';
 import { sendAccessUrl, toSendPayload, HOURS_OPTIONS } from './send-utils';
 import { readFormValues } from './item-utils';
 import { useSession } from './use-session';
