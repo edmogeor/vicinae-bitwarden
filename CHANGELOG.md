@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-13
+
+### Added
+
+- Bitwarden Send support — search, create, and receive Sends directly from the launcher
+- Search Sends command (view) — browse your Sends and copy links or text with a keystroke
+- Create Send command (view) — create new Sends to share text or files securely from the launcher
+- Receive Send command (no-view) — receive a Send from a URL in your clipboard, copying text or downloading files
+- Send editing, expiration date controls, and deletion from the Send detail view
+- Send access IDs are now encrypted before storage for security
+
 ## [0.2.0] - 2026-05-11
 
 ### Added
