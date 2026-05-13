@@ -1,4 +1,5 @@
 // fallow-ignore-file unused-file
+// fallow-ignore-file unused-export
 import { Action, ActionPanel, Form, Icon, popToRoot, showToast, Toast } from '@vicinae/api';
 import { useCallback, useEffect, useState } from 'react';
 import * as bw from './bw-executor';

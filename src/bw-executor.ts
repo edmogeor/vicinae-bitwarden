@@ -511,9 +511,14 @@ export async function getSend(id: string, session: Session): Promise<BwSend> {
  * Requires a valid Session. The payload is the full JSON object
  * matching Bitwarden's internal send schema.
  */
-export async function createSend(payload: CreateSendPayload, session: Session): Promise<BwSend> {
+export async function createSend(
+  payload: CreateSendPayload,
+  session: Session,
+  filePath?: string,
+): Promise<BwSend> {
   try {
-    const stdout = await encodeAndExec(payload, 'send', ['create'], session);
+    const extraArgs = filePath ? ['--file', filePath] : [];
+    const stdout = await encodeAndExec(payload, 'send', ['create', ...extraArgs], session);
     return parseJson<BwSend>(stdout);
   } catch (err) {
     throw toBwError(err);

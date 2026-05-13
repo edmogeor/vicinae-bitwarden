@@ -53,11 +53,18 @@ export default function CreateSend() {
 
       const sendValues = readFormValues(values);
       const typeNum = SEND_TYPE_MAP[selectedType] ?? SendType.Text;
+      const rawFile = Array.isArray(values.file) ? values.file[0] : undefined;
+      const filePath = typeNum === SendType.File && rawFile != null ? String(rawFile) : undefined;
+
+      if (typeNum === SendType.File && !filePath) {
+        await showToast({ style: Toast.Style.Failure, title: 'Select a file' });
+        return;
+      }
 
       setIsSubmitting(true);
       try {
-        const payload = toSendPayload(sendValues, typeNum);
-        const created = await bw.createSend(payload, session);
+        const payload = toSendPayload({ ...sendValues, filePath: filePath ?? '' }, typeNum);
+        const created = await bw.createSend(payload, session, filePath);
         const url = sendAccessUrl(created);
         await Clipboard.copy(url);
         await showToast({
@@ -109,7 +116,9 @@ export default function CreateSend() {
         </>
       )}
 
-      {selectedType === 'File' && <Form.TextField id="fileName" title="File Name" />}
+      {selectedType === 'File' && (
+        <Form.FilePicker id="file" title="File" allowMultipleSelection={false} />
+      )}
 
       <Form.Separator />
 

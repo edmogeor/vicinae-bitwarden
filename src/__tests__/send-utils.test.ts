@@ -183,7 +183,7 @@ describe('toSendPayload', () => {
 
   it('builds basic File send payload', () => {
     const payload = toSendPayload(
-      { name: 'My File', fileName: 'doc.pdf', deletionDays: '5' },
+      { name: 'My File', filePath: '/home/user/docs/doc.pdf', deletionDays: '5' },
       SendType.File,
     );
     expect(payload.type).toBe(SendType.File);

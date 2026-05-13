@@ -1,3 +1,4 @@
+import { basename } from 'node:path';
 import { Alert, confirmAlert, Icon, showToast, Toast } from '@vicinae/api';
 import type { Image } from '@vicinae/api';
 import { SendType } from './send-types';
@@ -178,7 +179,7 @@ export function toSendPayload(
   const file =
     type === SendType.File
       ? {
-          fileName: formValues.fileName ?? '',
+          fileName: basename(formValues.filePath ?? formValues.fileName ?? ''),
         }
       : null;
 
