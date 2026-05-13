@@ -77,6 +77,30 @@ function hasStderr(err: unknown): err is { stderr: unknown } {
   return typeof err === 'object' && err !== null && 'stderr' in err;
 }
 
+async function execBw(
+  args: string[],
+  opts: { timeout?: number; maxBuffer?: number; env?: NodeJS.ProcessEnv },
+): Promise<string> {
+  const { stdout } = await exec('bw', args, opts);
+  return stdout;
+}
+
+async function execBwJson<T>(
+  args: string[],
+  opts: { timeout?: number; maxBuffer?: number; env?: NodeJS.ProcessEnv },
+): Promise<T> {
+  const stdout = await execBw(args, opts);
+  return parseJson<T>(stdout);
+}
+
+async function execBwTrim(
+  args: string[],
+  opts: { timeout?: number; env?: NodeJS.ProcessEnv },
+): Promise<string> {
+  const stdout = await execBw(args, opts);
+  return stdout.trim();
+}
+
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Error) {
     const stderrRaw = hasStderr(err) ? String(err.stderr ?? '').trim() : '';
@@ -172,7 +196,7 @@ export async function login(params: {
   };
 
   try {
-    await exec('bw', ['config', 'server', params.serverUrl], {
+    await execBw(['config', 'server', params.serverUrl], {
       timeout: 10000,
       env,
     });
@@ -181,7 +205,7 @@ export async function login(params: {
   }
 
   try {
-    await exec('bw', ['login', '--apikey'], {
+    await execBw(['login', '--apikey'], {
       timeout: 30000,
       env,
     });
@@ -195,8 +219,7 @@ export async function login(params: {
  */
 export async function status(): Promise<BwStatus> {
   try {
-    const { stdout } = await exec('bw', ['status'], { timeout: 10000 });
-    return parseJson<BwStatus>(stdout);
+    return await execBwJson<BwStatus>(['status'], { timeout: 10000 });
   } catch (err) {
     throw toBwError(err);
   }
@@ -231,7 +254,7 @@ export async function unlock(masterPassword: string): Promise<Session> {
  */
 export async function sync(session: Session): Promise<void> {
   try {
-    await exec('bw', ['sync'], { timeout: 30000, env: sessionEnv(session) });
+    await execBw(['sync'], { timeout: 30000, env: sessionEnv(session) });
   } catch (err) {
     throw toBwError(err);
   }
@@ -243,12 +266,11 @@ export async function sync(session: Session): Promise<void> {
  */
 export async function listItems(session: Session): Promise<BwItem[]> {
   try {
-    const { stdout } = await exec('bw', ['list', 'items'], {
+    return await execBwJson<BwItem[]>(['list', 'items'], {
       timeout: 30000,
       maxBuffer: 10 * 1024 * 1024,
       env: sessionEnv(session),
     });
-    return parseJson<BwItem[]>(stdout);
   } catch (err) {
     throw toBwError(err);
   }
@@ -260,11 +282,10 @@ export async function listItems(session: Session): Promise<BwItem[]> {
  */
 export async function listFolders(session: Session): Promise<BwFolder[]> {
   try {
-    const { stdout } = await exec('bw', ['list', 'folders'], {
+    return await execBwJson<BwFolder[]>(['list', 'folders'], {
       timeout: 15000,
       env: sessionEnv(session),
     });
-    return parseJson<BwFolder[]>(stdout);
   } catch (err) {
     throw toBwError(err);
   }
@@ -276,11 +297,10 @@ export async function listFolders(session: Session): Promise<BwFolder[]> {
  */
 export async function getItem(id: string, session: Session): Promise<BwItem> {
   try {
-    const { stdout } = await exec('bw', ['get', 'item', id], {
+    return await execBwJson<BwItem>(['get', 'item', id], {
       timeout: 15000,
       env: sessionEnv(session),
     });
-    return parseJson<BwItem>(stdout);
   } catch (err) {
     throw toBwError(err);
   }
@@ -292,11 +312,10 @@ export async function getItem(id: string, session: Session): Promise<BwItem> {
  */
 export async function getTotp(id: string, session: Session): Promise<string> {
   try {
-    const { stdout } = await exec('bw', ['get', 'totp', id], {
+    return await execBwTrim(['get', 'totp', id], {
       timeout: 10000,
       env: sessionEnv(session),
     });
-    return stdout.trim();
   } catch (err) {
     throw toBwError(err);
   }
@@ -348,7 +367,7 @@ export async function createFolder(name: string, session: Session): Promise<BwFo
  */
 export async function deleteItem(id: string, session: Session): Promise<void> {
   try {
-    await exec('bw', ['delete', 'item', id], {
+    await execBw(['delete', 'item', id], {
       timeout: 15000,
       env: sessionEnv(session),
     });
@@ -375,7 +394,7 @@ export async function logout(): Promise<void> {
  */
 export async function lock(session: Session): Promise<void> {
   try {
-    await exec('bw', ['lock'], { timeout: 10000, env: sessionEnv(session) });
+    await execBw(['lock'], { timeout: 10000, env: sessionEnv(session) });
   } catch {
     // Lock failures are non-fatal — the session is cleared client-side regardless
   }
@@ -400,10 +419,9 @@ export async function generatePassword(options: {
   flags.push('--length', String(options.length));
 
   try {
-    const { stdout } = await exec('bw', ['generate', ...flags], {
+    return await execBwTrim(['generate', ...flags], {
       timeout: 10000,
     });
-    return stdout.trim();
   } catch (err) {
     throw toBwError(err);
   }
@@ -427,7 +445,7 @@ export async function downloadAttachment(
   }
   const outPath = join(downloadDir, fileName);
   try {
-    await exec('bw', ['get', 'attachment', attachmentId, '--itemid', itemId, '--output', outPath], {
+    await execBw(['get', 'attachment', attachmentId, '--itemid', itemId, '--output', outPath], {
       timeout: 30000,
       env: sessionEnv(session),
     });
@@ -446,7 +464,7 @@ export async function createAttachment(
   session: Session,
 ): Promise<void> {
   try {
-    await exec('bw', ['create', 'attachment', '--itemid', itemId, '--file', filePath], {
+    await execBw(['create', 'attachment', '--itemid', itemId, '--file', filePath], {
       timeout: 30000,
       env: sessionEnv(session),
     });
@@ -461,11 +479,10 @@ export async function createAttachment(
  */
 export async function listSends(session: Session): Promise<BwSend[]> {
   try {
-    const { stdout } = await exec('bw', ['send', 'list'], {
+    return await execBwJson<BwSend[]>(['send', 'list'], {
       timeout: 30000,
       env: sessionEnv(session),
     });
-    return parseJson<BwSend[]>(stdout);
   } catch (err) {
     throw toBwError(err);
   }
@@ -477,11 +494,10 @@ export async function listSends(session: Session): Promise<BwSend[]> {
  */
 export async function getSend(id: string, session: Session): Promise<BwSend> {
   try {
-    const { stdout } = await exec('bw', ['send', 'get', id], {
+    return await execBwJson<BwSend>(['send', 'get', id], {
       timeout: 15000,
       env: sessionEnv(session),
     });
-    return parseJson<BwSend>(stdout);
   } catch (err) {
     throw toBwError(err);
   }
@@ -519,7 +535,7 @@ export async function editSend(id: string, payload: object, session: Session): P
  */
 export async function deleteSend(id: string, session: Session): Promise<void> {
   try {
-    await exec('bw', ['send', 'delete', id], {
+    await execBw(['send', 'delete', id], {
       timeout: 15000,
       env: sessionEnv(session),
     });
@@ -553,10 +569,7 @@ export async function receiveSend(
   }
   if (output) args.push('--output', output);
   try {
-    const { stdout } = await exec('bw', args, {
-      timeout: 30000,
-      env,
-    });
+    const stdout = await execBw(args, { timeout: 30000, env });
     const trimmed = stdout.trim();
     if (output) return { kind: 'file', path: trimmed };
     return { kind: 'text', text: trimmed };

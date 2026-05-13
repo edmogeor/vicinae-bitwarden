@@ -26,6 +26,8 @@ vi.mock('../item-utils', () => ({
     }
     return map;
   },
+  showFailureToast: async (_err: unknown, title: string) =>
+    mockShowToast({ style: 'failure', title }),
 }));
 
 let mockSession: string | null = 'token';

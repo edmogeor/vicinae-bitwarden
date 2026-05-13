@@ -1,7 +1,9 @@
-import { Icon } from '@vicinae/api';
+import { Alert, confirmAlert, Icon, showToast, Toast } from '@vicinae/api';
 import type { Image } from '@vicinae/api';
 import { SendType } from './send-types';
 import type { BwSend, CreateSendPayload, SendAction, SendTypeValue } from './send-types';
+import * as bw from './bw-executor';
+import { showFailureToast } from './item-utils';
 import { buildIcon } from './item-icons';
 import { getPreferences, getServerUrl } from './preferences';
 import { trimToNull } from './item-utils';
@@ -14,6 +16,27 @@ export function filterSends(sends: BwSend[], query: string): BwSend[] {
 
 export function sendTypeLabel(send: BwSend): string {
   return send.type === SendType.File ? 'File' : 'Text';
+}
+
+export async function deleteSendWithConfirm(
+  send: { id: string; name: string },
+  session: bw.Session | null,
+  onSuccess: () => void,
+): Promise<void> {
+  if (!session) return;
+  const confirmed = await confirmAlert({
+    title: 'Delete Send',
+    message: `Are you sure you want to delete "${send.name}"?`,
+    primaryAction: { title: 'Delete', style: Alert.ActionStyle.Destructive },
+  });
+  if (!confirmed) return;
+  try {
+    await bw.deleteSend(send.id, session);
+    await showToast({ style: Toast.Style.Success, title: 'Send deleted', message: send.name });
+    onSuccess();
+  } catch (err) {
+    await showFailureToast(err, 'Delete failed');
+  }
 }
 
 export function sendSubtitle(send: BwSend): string {

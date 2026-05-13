@@ -129,6 +129,27 @@ export function renderGate(
   return renderUnlockGate(state.kind, gateError, handleUnlock, handleLogin);
 }
 
+/**
+ * Render the gate UI for a form-based command, or the loading placeholder
+ * while gate state is resolving. Returns null when the form itself should render.
+ */
+export function renderFormGate(
+  state: GateState,
+  handleUnlock: (values: Form.Values) => Promise<void>,
+  handleLogin?: () => void,
+): React.ReactElement | null {
+  const gate = renderGate(state, handleUnlock, handleLogin);
+  if (gate) return gate;
+  if (state.kind === 'checking-bw' || state.kind === 'logging-in') {
+    return (
+      <Form>
+        <Form.Description text="Loading..." />
+      </Form>
+    );
+  }
+  return null;
+}
+
 export function renderUnlockGate(
   kind: string,
   error: string | undefined,

@@ -1,4 +1,3 @@
-// fallow-ignore-file code-duplication
 import {
   Action,
   ActionPanel,
@@ -11,16 +10,22 @@ import {
 } from '@vicinae/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
 import type { BwFolder } from './bitwarden-types';
 import { ItemType } from './bitwarden-types';
 import type { ItemTypeValue } from './bitwarden-types';
-import { CARD_BRANDS, readFormValues, toCreatePayload, uploadAttachments } from './item-utils';
+import {
+  CARD_BRANDS,
+  digitsOnly,
+  readFormValues,
+  showFailureToast,
+  toCreatePayload,
+  uploadAttachments,
+} from './item-utils';
 import CustomFieldsSection from './custom-fields-section';
 import type { CustomField } from './custom-fields-section';
 import { useSession } from './use-session';
 import { getPasswordPrefs, getPreferences } from './preferences';
-import { renderGate, useGateEffects, castGateSetter } from './unlock-gate';
+import { renderFormGate, useGateEffects, castGateSetter } from './unlock-gate';
 import type { GateUIState } from './unlock-gate';
 
 type UIState = GateUIState | { kind: 'form' };
@@ -51,8 +56,7 @@ async function createFolderIfNeeded(
     await showToast({ style: Toast.Style.Success, title: 'Folder created', message: name });
     return created.id;
   } catch (err) {
-    const message = getErrorMessage(err);
-    await showToast({ style: Toast.Style.Failure, title: 'Failed to create folder', message });
+    await showFailureToast(err, 'Failed to create folder');
     return null;
   }
 }
@@ -73,10 +77,6 @@ export default function CreateItem() {
   const [expYear, setExpYear] = useState('');
   const [cardCode, setCardCode] = useState('');
   const fieldIdRef = useRef(0);
-
-  function digitsOnly(value: string): string {
-    return value.replace(/\D/g, '');
-  }
 
   const { handleLogin, handleUnlock } = useGateEffects({
     session,
@@ -136,12 +136,7 @@ export default function CreateItem() {
         });
         await popToRoot();
       } catch (err) {
-        const message = getErrorMessage(err);
-        await showToast({
-          style: Toast.Style.Failure,
-          title: 'Failed to create item',
-          message,
-        });
+        await showFailureToast(err, 'Failed to create item');
       } finally {
         setIsSubmitting(false);
       }
@@ -149,16 +144,8 @@ export default function CreateItem() {
     [session, selectedType, customFields, attachmentPaths],
   );
 
-  const gateRender = renderGate(state, handleUnlock, handleLogin);
+  const gateRender = renderFormGate(state, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
-
-  if (state.kind === 'checking-bw' || state.kind === 'logging-in') {
-    return (
-      <Form>
-        <Form.Description text="Loading..." />
-      </Form>
-    );
-  }
 
   return (
     <Form
@@ -189,8 +176,7 @@ export default function CreateItem() {
                       message: 'Copied to clipboard',
                     });
                   } catch (err) {
-                    const message = getErrorMessage(err);
-                    showToast({ style: Toast.Style.Failure, title: 'Generation failed', message });
+                    await showFailureToast(err, 'Generation failed');
                   }
                 }}
               />

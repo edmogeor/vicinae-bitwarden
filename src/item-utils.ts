@@ -6,12 +6,22 @@ import type { CreateItemPayload, ItemAction } from './bw-executor';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 
+export async function showFailureToast(err: unknown, title: string): Promise<string> {
+  const message = getErrorMessage(err);
+  await showToast({ style: Toast.Style.Failure, title, message });
+  return message;
+}
+
 export function formatTotp(code: string): string {
   const mid = Math.floor(code.length / 2);
   return `${code.slice(0, mid)} ${code.slice(mid)}`;
 }
 
 export const CARD_BRANDS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other'];
+
+export function digitsOnly(value: string): string {
+  return value.replace(/\D/g, '');
+}
 
 export function readFormValues(values: Form.Values): Record<string, string> {
   const result: Record<string, string> = {};
@@ -277,8 +287,7 @@ export async function uploadAttachments(
     try {
       await bw.createAttachment(itemId, filePath, session);
     } catch (err) {
-      const message = getErrorMessage(err);
-      await showToast({ style: Toast.Style.Failure, title: 'Failed to attach file', message });
+      await showFailureToast(err, 'Failed to attach file');
     }
   }
 }

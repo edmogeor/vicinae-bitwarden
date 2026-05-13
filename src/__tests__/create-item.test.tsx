@@ -139,6 +139,8 @@ vi.mock('../item-utils', () => ({
     return result;
   }),
   uploadAttachments: vi.fn().mockResolvedValue(undefined),
+  showFailureToast: async (_err: unknown, title: string) =>
+    mockShowToast({ style: 'failure', title }),
 }));
 
 vi.mock('../bw-not-installed', () => ({

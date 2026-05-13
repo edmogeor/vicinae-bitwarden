@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { showToast, Toast } from '@vicinae/api';
-import { getErrorMessage } from './bw-executor';
+import { showFailureToast } from './item-utils';
 import { loadCachedVault } from './vault-cache';
 import { extractHostname, loadFaviconCache, resolveFavicons } from './favicons';
 import { checkBwGate } from './unlock-gate';
@@ -122,8 +122,7 @@ export function useVaultLifecycle(params: VaultLifecycleParams) {
         await syncVault(session);
       } catch (err) {
         if (!cached) {
-          const message = getErrorMessage(err);
-          await showToast({ style: Toast.Style.Failure, title: 'Failed to load vault', message });
+          const message = await showFailureToast(err, 'Failed to load vault');
           await clearSession();
           setState({ kind: 'needs-unlock', error: message });
         }

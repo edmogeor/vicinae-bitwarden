@@ -1,5 +1,6 @@
 import { getAutoLockSeconds, getPreferences } from './preferences';
 import { secretStore, secretLookup, secretClear } from './secret-store';
+import { safeJsonParse } from './json-utils';
 
 export { checkSecretToolInstalled } from './secret-store';
 
@@ -15,29 +16,18 @@ export async function getSession(): Promise<string | null> {
     const raw = await secretLookup(ACCOUNT);
     if (!raw) return null;
 
-    let obj: unknown;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      return null;
-    }
+    const parsed = safeJsonParse<{ token: string; timestamp: number }>(raw, {
+      strings: ['token'],
+      numbers: ['timestamp'],
+    });
+    if (!parsed) return null;
 
-    if (typeof obj !== 'object' || obj === null || !('token' in obj) || !('timestamp' in obj)) {
-      return null;
-    }
-    const record = obj as Record<string, unknown>;
-    if (typeof record.token !== 'string' || typeof record.timestamp !== 'number') {
-      return null;
-    }
-
-    const token = record.token;
-    const timestamp = record.timestamp;
     const timeout = getAutoLockSeconds(getPreferences());
-    if (timeout > 0 && Date.now() - timestamp > timeout * 1000) {
+    if (timeout > 0 && Date.now() - parsed.timestamp > timeout * 1000) {
       await deleteSession();
       return null;
     }
-    return token;
+    return parsed.token;
   } catch {
     return null;
   }

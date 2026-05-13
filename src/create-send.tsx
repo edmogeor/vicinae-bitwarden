@@ -1,5 +1,4 @@
 // fallow-ignore-file unused-file
-// fallow-ignore-file code-duplication
 import {
   Action,
   ActionPanel,
@@ -12,12 +11,11 @@ import {
 } from '@vicinae/api';
 import { useCallback, useState } from 'react';
 import * as bw from './bw-executor';
-import { getErrorMessage } from './bw-executor';
 import { SendType, type SendTypeValue } from './send-types';
 import { sendAccessUrl, toSendPayload, HOURS_OPTIONS } from './send-utils';
-import { readFormValues } from './item-utils';
+import { digitsOnly, readFormValues, showFailureToast } from './item-utils';
 import { useSession } from './use-session';
-import { renderGate, useGateEffects, castGateSetter } from './unlock-gate';
+import { renderFormGate, useGateEffects, castGateSetter } from './unlock-gate';
 import type { GateUIState } from './unlock-gate';
 
 type UIState = GateUIState | { kind: 'form' };
@@ -38,10 +36,6 @@ export default function CreateSend() {
   const [selectedType, setSelectedType] = useState<string>('Text');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [maxAccessCount, setMaxAccessCount] = useState('');
-
-  function digitsOnly(value: string): string {
-    return value.replace(/\D/g, '');
-  }
 
   const { handleLogin, handleUnlock } = useGateEffects({
     session,
@@ -73,12 +67,7 @@ export default function CreateSend() {
         });
         await popToRoot();
       } catch (err) {
-        const message = getErrorMessage(err);
-        await showToast({
-          style: Toast.Style.Failure,
-          title: 'Failed to create send',
-          message,
-        });
+        await showFailureToast(err, 'Failed to create send');
       } finally {
         setIsSubmitting(false);
       }
@@ -86,16 +75,8 @@ export default function CreateSend() {
     [session, selectedType],
   );
 
-  const gateRender = renderGate(state, handleUnlock, handleLogin);
+  const gateRender = renderFormGate(state, handleUnlock, handleLogin);
   if (gateRender) return gateRender;
-
-  if (state.kind === 'checking-bw' || state.kind === 'logging-in') {
-    return (
-      <Form>
-        <Form.Description text="Loading..." />
-      </Form>
-    );
-  }
 
   return (
     <Form

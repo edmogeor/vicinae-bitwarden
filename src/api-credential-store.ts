@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { secretStore, secretLookup, secretClear } from './secret-store';
+import { safeJsonParse } from './json-utils';
 
 const exec = promisify(execFile);
 
@@ -24,20 +25,9 @@ export async function storeApiCredentials(clientId: string, clientSecret: string
 }
 
 function parseJsonRecord(raw: string): { clientId: string; clientSecret: string } | null {
-  let obj: unknown;
-  try {
-    obj = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (typeof obj !== 'object' || obj === null || !('clientId' in obj) || !('clientSecret' in obj)) {
-    return null;
-  }
-  const record = obj as Record<string, unknown>;
-  if (typeof record.clientId !== 'string' || typeof record.clientSecret !== 'string') {
-    return null;
-  }
-  return { clientId: record.clientId, clientSecret: record.clientSecret };
+  return safeJsonParse<{ clientId: string; clientSecret: string }>(raw, {
+    strings: ['clientId', 'clientSecret'],
+  });
 }
 
 export async function getApiCredentials(): Promise<{
