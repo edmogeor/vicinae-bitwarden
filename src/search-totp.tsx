@@ -30,6 +30,18 @@ function countdownFor(now: number): number {
   return 30 - Math.floor((now / 1000) % 30);
 }
 
+function needsCliFetch(
+  item: BwItem,
+  win: number,
+  totpSecrets: Record<string, string>,
+  cliCache: Record<string, CachedCode>,
+): boolean {
+  if (cliCache[item.id]?.window === win) return false;
+  const secret = item.login?.totp || totpSecrets[item.id] || '';
+  if (isSteamSecret(secret)) return true;
+  return computeLocalTotp(secret, Date.now()) === null;
+}
+
 export default function SearchTotp() {
   const {
     state,
@@ -60,12 +72,7 @@ export default function SearchTotp() {
   useEffect(() => {
     if (!session || state.kind !== 'vault') return;
     const cliStale = totpItems(state.items)
-      .filter((item) => {
-        if (cliCache[item.id]?.window === win) return false;
-        const secret = item.login?.totp || totpSecrets[item.id] || '';
-        if (isSteamSecret(secret)) return true;
-        return computeLocalTotp(secret, Date.now()) === null;
-      })
+      .filter((item) => needsCliFetch(item, win, totpSecrets, cliCache))
       .map((i) => i.id);
     if (cliStale.length === 0) return;
 

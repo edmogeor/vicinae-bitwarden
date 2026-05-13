@@ -45,3 +45,15 @@ function el(type: string, testId?: string) {
 
 const DropdownItem = el('option');
 const Dropdown = Object.assign(el('select'), { Item: DropdownItem });
+
+export function createActionMock() {
+  return ({ title, onAction }: { title: string; onAction?: () => void }) =>
+    React.createElement(
+      'button',
+      {
+        'data-testid': `action-${title.replace(/\s+/g, '-').toLowerCase()}`,
+        onClick: () => onAction?.(),
+      },
+      title,
+    );
+}

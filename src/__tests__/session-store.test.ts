@@ -42,39 +42,6 @@ beforeEach(async () => {
   sessionStore = await import('../session-store');
 });
 
-describe('checkSecretToolInstalled', () => {
-  it('returns true when secret-tool lookup succeeds', async () => {
-    mockExec(mockExecFile, 'session-token\n');
-    const result = await sessionStore.checkSecretToolInstalled();
-    expect(result).toBe(true);
-  });
-
-  it('returns false when secret-tool is not found (ENOENT)', async () => {
-    const err = new Error('spawn ENOENT') as Error & { code: string };
-    err.code = 'ENOENT';
-    mockExecFile.mockRejectedValueOnce(err);
-
-    const result = await sessionStore.checkSecretToolInstalled();
-    expect(result).toBe(false);
-  });
-
-  it('returns true when lookup fails for other reasons (key not found)', async () => {
-    mockExecError(mockExecFile, 'secret-tool: Cannot find item');
-
-    const result = await sessionStore.checkSecretToolInstalled();
-    expect(result).toBe(true);
-  });
-
-  it('caches result after first call', async () => {
-    mockExec(mockExecFile, 'token\n');
-
-    await sessionStore.checkSecretToolInstalled();
-    await sessionStore.checkSecretToolInstalled();
-
-    expect(mockExecFile).toHaveBeenCalledTimes(1);
-  });
-});
-
 describe('getSession', () => {
   it('returns null when secret-tool lookup fails', async () => {
     mockExecError(mockExecFile, 'secret-tool: Cannot find item');

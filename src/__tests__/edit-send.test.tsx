@@ -92,26 +92,19 @@ vi.mock('@vicinae/api', () => {
     React.createElement('p', { 'data-testid': 'description' }, text);
   Form.Separator = () => React.createElement('hr');
 
-  const Action: any = ({ title, onAction }: any) =>
-    React.createElement(
-      'button',
-      {
-        'data-testid': `action-${title.replace(/\s+/g, '-').toLowerCase()}`,
-        onClick: () => onAction?.(),
-      },
-      title,
-    );
-  Action.SubmitForm = ({ title, onSubmit }: any) => {
-    submitHandlers.push(onSubmit);
-    return React.createElement(
-      'button',
-      {
-        'data-testid': `submit-${title.replace(/\s+/g, '-').toLowerCase()}`,
-        onClick: () => onSubmit?.(fieldValues),
-      },
-      title,
-    );
-  };
+  const Action = Object.assign(createActionMock(), {
+    SubmitForm: ({ title, onSubmit }: any) => {
+      submitHandlers.push(onSubmit);
+      return React.createElement(
+        'button',
+        {
+          'data-testid': `submit-${title.replace(/\s+/g, '-').toLowerCase()}`,
+          onClick: () => onSubmit?.(fieldValues),
+        },
+        title,
+      );
+    },
+  });
 
   const ActionPanel = ({ children }: any) =>
     React.createElement('div', { 'data-testid': 'action-panel' }, children);
@@ -130,6 +123,7 @@ vi.mock('@vicinae/api', () => {
   };
 });
 
+import { createActionMock } from './__utils__/vicinae-mocks';
 import EditSend from '../edit-send';
 
 function makeSend(overrides: Partial<BwSend> = {}): BwSend {
@@ -158,6 +152,14 @@ function makeSend(overrides: Partial<BwSend> = {}): BwSend {
 beforeEach(() => {
   vi.clearAllMocks();
 });
+
+async function submitForm(values: Record<string, unknown>) {
+  const api = await import('@vicinae/api');
+  const submit = (api as any).__submitHandlers.pop() as (
+    values: Record<string, unknown>,
+  ) => Promise<void>;
+  await submit(values);
+}
 
 describe('EditSend', () => {
   it('renders a loading placeholder before the full send resolves', async () => {
@@ -191,10 +193,7 @@ describe('EditSend', () => {
     mockBw.getSend.mockResolvedValue(makeSend());
     render(React.createElement(EditSend, { send: makeSend(), session: 'token', onSaved: vi.fn() }));
     await waitFor(() => screen.getByTestId('submit-save-changes'));
-
-    const api = await import('@vicinae/api');
-    const submit = (api as any).__submitHandlers.pop();
-    await submit({ name: '   ', textContent: 'still here' });
+    await submitForm({ name: '   ', textContent: 'still here' });
 
     expect(mockBw.editSend).not.toHaveBeenCalled();
   });
@@ -203,10 +202,7 @@ describe('EditSend', () => {
     mockBw.getSend.mockResolvedValue(makeSend());
     render(React.createElement(EditSend, { send: makeSend(), session: 'token', onSaved: vi.fn() }));
     await waitFor(() => screen.getByTestId('submit-save-changes'));
-
-    const api = await import('@vicinae/api');
-    const submit = (api as any).__submitHandlers.pop();
-    await submit({ name: 'ok', textContent: '   ' });
+    await submitForm({ name: 'ok', textContent: '   ' });
 
     expect(mockBw.editSend).not.toHaveBeenCalled();
   });
@@ -219,10 +215,7 @@ describe('EditSend', () => {
       React.createElement(EditSend, { send: makeSend({ id: 's' }), session: 'token', onSaved }),
     );
     await waitFor(() => screen.getByTestId('submit-save-changes'));
-
-    const api = await import('@vicinae/api');
-    const submit = (api as any).__submitHandlers.pop();
-    await submit({ name: 'New name', textContent: 'new body', password: '' });
+    await submitForm({ name: 'New name', textContent: 'new body', password: '' });
 
     expect(mockBw.editSend).toHaveBeenCalledWith(
       's',
@@ -241,10 +234,7 @@ describe('EditSend', () => {
     mockBw.editSend.mockRejectedValue(new Error('save broke'));
     render(React.createElement(EditSend, { send: makeSend(), session: 'token', onSaved: vi.fn() }));
     await waitFor(() => screen.getByTestId('submit-save-changes'));
-
-    const api = await import('@vicinae/api');
-    const submit = (api as any).__submitHandlers.pop();
-    await submit({ name: 'ok', textContent: 'ok' });
+    await submitForm({ name: 'ok', textContent: 'ok' });
 
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({ style: 'failure', title: 'Failed to update send' }),

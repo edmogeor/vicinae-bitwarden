@@ -47,7 +47,6 @@ vi.mock('../unlock-gate', () => ({
   useGateEffects: vi.fn(),
 }));
 
-// fallow-ignore-next-line unresolved-import
 vi.mock('../edit-send', () => ({
   default: () => React.createElement('div', { 'data-testid': 'edit-send' }),
 }));
@@ -71,24 +70,17 @@ vi.mock('@vicinae/api', () => {
     );
   Detail.Metadata.Separator = () => React.createElement('hr');
 
-  const Action: any = ({ title, onAction }: any) =>
-    React.createElement(
-      'button',
-      {
-        'data-testid': `action-${title.replace(/\s+/g, '-').toLowerCase()}`,
-        onClick: () => onAction?.(),
-      },
-      title,
-    );
-  Action.CopyToClipboard = ({ title, content }: any) =>
-    React.createElement(
-      'button',
-      {
-        'data-testid': `copy-${title.replace(/\s+/g, '-').toLowerCase()}`,
-        onClick: () => mockClipboardCopy(content),
-      },
-      title,
-    );
+  const Action = Object.assign(createActionMock(), {
+    CopyToClipboard: ({ title, content }: any) =>
+      React.createElement(
+        'button',
+        {
+          'data-testid': `copy-${title.replace(/\s+/g, '-').toLowerCase()}`,
+          onClick: () => mockClipboardCopy(content),
+        },
+        title,
+      ),
+  });
 
   const ActionPanel = ({ children }: any) =>
     React.createElement('div', { 'data-testid': 'action-panel' }, children);
@@ -114,6 +106,7 @@ vi.mock('@vicinae/api', () => {
   };
 });
 
+import { createActionMock } from './__utils__/vicinae-mocks';
 import { SendDetailView } from '../search-sends';
 
 function makeSend(overrides: Partial<BwSend> = {}): BwSend {

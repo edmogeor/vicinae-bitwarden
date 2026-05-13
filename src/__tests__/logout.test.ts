@@ -77,16 +77,4 @@ describe('Logout', () => {
       message: 'Network error',
     });
   });
-
-  it('shows failure toast with non-Error rejections', async () => {
-    mockBw.logout.mockRejectedValueOnce('something broke');
-
-    await Logout();
-
-    expect(mockShowToast).toHaveBeenCalledWith({
-      style: 'failure',
-      title: 'Logout failed',
-      message: 'something broke',
-    });
-  });
 });

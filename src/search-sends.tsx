@@ -1,4 +1,3 @@
-// fallow-ignore-file unused-file
 import {
   Action,
   ActionPanel,
@@ -61,6 +60,7 @@ function SendCopyActions({ actions, send }: { actions: SendAction[]; send: BwSen
 
 type UIState = GateUIState | { kind: 'loading' } | { kind: 'list' };
 
+// fallow-ignore-next-line unused-export
 export default function SearchSends() {
   const { session, unlock, loginIfNeeded, loginError } = useSession();
   const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
