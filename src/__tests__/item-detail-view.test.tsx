@@ -43,6 +43,7 @@ vi.mock('../item-utils', () => ({
   actionIcon: () => undefined,
 }));
 
+// fallow-ignore-next-line unresolved-import
 vi.mock('./edit-item', () => ({
   default: () => React.createElement('div', { 'data-testid': 'edit-item' }),
 }));
