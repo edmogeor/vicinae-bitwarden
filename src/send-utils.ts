@@ -7,6 +7,7 @@ import { showFailureToast } from './item-utils';
 import { buildIcon } from './item-icons';
 import { getPreferences, getServerUrl } from './preferences';
 import { trimToNull } from './item-utils';
+import { loadSendKeys } from './vault-cache';
 
 export function filterSends(sends: BwSend[], query: string): BwSend[] {
   if (!query.trim()) return sends;
@@ -51,11 +52,18 @@ export function sendSubtitle(send: BwSend): string {
 }
 
 export function getSendActions(send: BwSend): SendAction[] {
-  const actions: SendAction[] = [{ label: 'Copy Send Link', value: sendAccessUrl(send) }];
+  const actions: SendAction[] = [{ label: 'Copy Send Link', value: send.id }];
   if (send.type === SendType.Text && send.text?.text) {
     actions.push({ label: 'Copy Text', value: send.text.text });
   }
   return actions;
+}
+
+export async function resolveSendUrl(send: BwSend): Promise<string> {
+  if (send.key) return sendAccessUrl(send);
+  const keys = await loadSendKeys();
+  const key = keys[send.id] ?? '';
+  return sendAccessUrl({ ...send, key });
 }
 
 export function sendActionIcon(action: { label: string }): Image.ImageLike | undefined {
