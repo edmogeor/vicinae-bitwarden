@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-13
+
+### Added
+
+- Local TOTP computation via `otpauth` — codes are now generated in-process from secrets stored encrypted in libsecret (account `totp-secrets`). The list, item detail view, and Copy actions all share the same path. Per-item countdown uses the secret's actual period (handles 60s codes etc.).
+- Steam guard secrets (`steam://`) keep using `bw get totp` as a fallback; unparseable secrets do the same and are drained through a 5-worker pool to avoid spawning a subprocess per item on first launch.
+- Log Out now wipes `totp-secrets` and the pre-existing `sends-keys` keyring entries alongside the session.
+- Credential rotation detected at login clears the previous account's keyring entries and local caches before swapping the session, so an account switch doesn't leak TOTP secrets or Send keys across accounts.
+- README documents the keyring cleanup behaviour and notes that Log Out should be run before uninstalling the extension to wipe libsecret entries.
+
+### Changed
+
+- TOTP search no longer shells out to `bw get totp` for the common case; once the first sync has populated the keyring, subsequent launches render every code inline with no subprocesses.
+- Detail view TOTP refresh interval is keyed to the secret's period instead of a fixed 30s.
+
+### Tested
+
+- New unit suites for `totp-compute`, `use-totp-secrets`, `vault-cache` totp/send key helpers, `EditSend`, and `SendDetailView`; expanded coverage of `useVaultSearch.handleCopyTotp`, `useVaultSync` (totp persistence), and `useSession` (rotation clears). Suite now at 317 tests.
+
 ## [0.3.4] - 2026-05-13
 
 ### Added
