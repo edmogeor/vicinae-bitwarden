@@ -114,7 +114,7 @@ const {
 
 vi.mock('../bw-executor', () => mockBw);
 
-vi.mock('../session-store', () => ({
+vi.mock('../secret-store', () => ({
   checkSecretToolInstalled: vi.fn().mockResolvedValue(true),
 }));
 
