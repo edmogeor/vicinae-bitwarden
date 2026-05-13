@@ -2,8 +2,8 @@ import { getAutoLockSeconds, getPreferences } from './preferences';
 import { secretStore, secretLookup, secretClear } from './secret-store';
 import { safeJsonParse } from './json-utils';
 
+// fallow-ignore-next-line unused-export
 export { checkSecretToolInstalled } from './secret-store';
-
 const ACCOUNT = 'session';
 
 interface SessionPayload {

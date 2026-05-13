@@ -24,6 +24,7 @@ export function makeFormMock(
  * Shared mock factory for `vi.mock('@vicinae/api', ...)`.
  * Pass your hoisted mockClipboardCopy and mockShowToast.
  */
+// fallow-ignore-next-line unused-export
 export function createVicinaeApiMock(
   copyFn: (...args: unknown[]) => void,
   toastFn: (...args: unknown[]) => void,
@@ -42,6 +43,5 @@ function el(type: string, testId?: string) {
   };
 }
 
-export const DropdownItem = el('option');
-export const Dropdown = Object.assign(el('select'), { Item: DropdownItem });
-export { el };
+const DropdownItem = el('option');
+const Dropdown = Object.assign(el('select'), { Item: DropdownItem });

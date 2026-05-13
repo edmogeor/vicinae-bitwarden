@@ -1,4 +1,3 @@
-// fallow-ignore-file unused-file
 import { Action, ActionPanel, Icon, List } from '@vicinae/api';
 import { useEffect, useState } from 'react';
 import * as bw from './bw-executor';

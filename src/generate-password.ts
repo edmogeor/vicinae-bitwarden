@@ -1,4 +1,3 @@
-// fallow-ignore-file unused-file
 import { Clipboard, showToast, Toast } from '@vicinae/api';
 import * as bw from './bw-executor';
 import { showFailureToast } from './item-utils';
