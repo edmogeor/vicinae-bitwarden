@@ -9,6 +9,9 @@ import { getPreferences, getServerUrl } from './preferences';
 import { trimToNull } from './item-utils';
 import { loadSendKeys } from './vault-cache';
 
+export const SEND_LINK_ACTION_LABEL = 'Copy Send Link' as const;
+export const COPY_TEXT_ACTION_LABEL = 'Copy Text' as const;
+
 export function filterSends(sends: BwSend[], query: string): BwSend[] {
   if (!query.trim()) return sends;
   const lower = query.toLowerCase();
@@ -52,9 +55,9 @@ export function sendSubtitle(send: BwSend): string {
 }
 
 export function getSendActions(send: BwSend): SendAction[] {
-  const actions: SendAction[] = [{ label: 'Copy Send Link', value: send.id }];
+  const actions: SendAction[] = [{ label: SEND_LINK_ACTION_LABEL, value: send.id }];
   if (send.type === SendType.Text && send.text?.text) {
-    actions.push({ label: 'Copy Text', value: send.text.text });
+    actions.push({ label: COPY_TEXT_ACTION_LABEL, value: send.text.text });
   }
   return actions;
 }
@@ -68,9 +71,9 @@ export async function resolveSendUrl(send: BwSend): Promise<string> {
 
 export function sendActionIcon(action: { label: string }): Image.ImageLike | undefined {
   switch (action.label) {
-    case 'Copy Send Link':
+    case SEND_LINK_ACTION_LABEL:
       return Icon.Link;
-    case 'Copy Text':
+    case COPY_TEXT_ACTION_LABEL:
       return Icon.CopyClipboard;
     default:
       return undefined;

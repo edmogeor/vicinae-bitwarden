@@ -108,7 +108,7 @@ export async function clearCachedVault(): Promise<void> {
 }
 
 const SENDS_CACHE_KEY = 'vicinae-bitwarden-sends-cache';
-const SENDS_SECRET_KEY = 'sends-accessids';
+const SENDS_SECRET_KEY = 'sends-keys';
 
 interface CachedSends {
   sends: BwSend[];
@@ -117,13 +117,13 @@ interface CachedSends {
 
 const SENDS_CACHE_TTL = 24 * 60 * 60 * 1000;
 
-function stripSendSecrets(send: BwSend): BwSend {
+function stripSendKey(send: BwSend): BwSend {
   return { ...send, key: '' };
 }
 
 function stripSensitiveSendFields(send: BwSend): BwSend {
   return {
-    ...stripSendSecrets(send),
+    ...stripSendKey(send),
     notes: null,
     text: send.text ? { text: '', hidden: send.text.hidden } : null,
   };

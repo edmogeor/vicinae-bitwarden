@@ -22,6 +22,7 @@ import {
   filterSends,
   getSendActions,
   resolveSendUrl,
+  SEND_LINK_ACTION_LABEL,
   sendAccessUrl,
   sendActionIcon,
   sendIcon,
@@ -44,7 +45,7 @@ function SendCopyActions({ actions, send }: { actions: SendAction[]; send: BwSen
           icon={sendActionIcon(action)}
           onAction={async () => {
             const value =
-              action.label === 'Copy Send Link' ? await resolveSendUrl(send) : action.value;
+              action.label === SEND_LINK_ACTION_LABEL ? await resolveSendUrl(send) : action.value;
             await Clipboard.copy(value);
             await showToast({
               style: Toast.Style.Success,
