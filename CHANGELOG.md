@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Send list now shows a text preview even for "hidden text" Sends (they're the user's own Sends)
 - Edit Send password field pre-fills from the list payload when `bw send get` returns null
 
+## [0.3.3] - 2026-05-13
+
 ### Changed
 
 - Create Send now uses a file picker for File-type sends; the chosen path is uploaded via `bw send create --file` and the file name is derived from the basename
