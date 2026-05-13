@@ -32,7 +32,7 @@ export default async function ReceiveSend() {
       await showToast({
         style: Toast.Style.Failure,
         title: 'Send is password-protected',
-        message: 'Use the CLI directly: bw send receive <url> --password <password>',
+        message: 'Use the CLI with --passwordenv: bw send receive <url> --passwordenv BW_PASSWORD',
       });
       return;
     }
@@ -69,7 +69,7 @@ export default async function ReceiveSend() {
       await showToast({
         style: Toast.Style.Failure,
         title: 'Send is password-protected',
-        message: 'Use the CLI directly: bw send receive <url> --password <password>',
+        message: 'Use the CLI with --passwordenv: bw send receive <url> --passwordenv BW_PASSWORD',
       });
       return;
     }

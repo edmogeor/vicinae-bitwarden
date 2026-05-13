@@ -3,6 +3,7 @@ import type { Image } from '@vicinae/api';
 import type { BwSend, CreateSendPayload, SendAction } from './send-types';
 import { SendType } from './send-types';
 import type { SendTypeValue } from './send-types';
+import { buildIcon } from './item-icons';
 import { getPreferences, getServerUrl } from './preferences';
 import { trimToNull } from './item-utils';
 
@@ -20,9 +21,9 @@ export function sendSubtitle(send: BwSend): string {
   if (send.type === SendType.File && send.file?.fileName) {
     return `File: ${send.file.fileName}`;
   }
-  if (send.type === SendType.Text && send.text?.text) {
-    const preview = send.text.text.slice(0, 60);
-    return send.text.text.length > 60 ? `${preview}…` : preview;
+  if (send.type === SendType.Text && send.text?.text && !send.text.hidden) {
+    const preview = send.text.text.slice(0, 50);
+    return send.text.text.length > 50 ? `${preview}…` : preview;
   }
   return sendTypeLabel(send);
 }
@@ -73,30 +74,73 @@ export function buildDeletionCountdown(send: BwSend): string {
   return `${days}d`;
 }
 
+export function buildExpirationCountdown(send: BwSend): string {
+  if (!send.expirationDate) return '';
+  const now = Date.now();
+  const expiration = new Date(send.expirationDate).getTime();
+  if (isNaN(expiration)) return '';
+  const diff = expiration - now;
+  if (diff <= 0) return 'Expired';
+  const hours = Math.ceil(diff / (60 * 60 * 1000));
+  if (hours < 24) return `${hours}h`;
+  const days = Math.ceil(hours / 24);
+  return `${days}d`;
+}
+
+export const HOURS_OPTIONS = [
+  { value: '1', title: '1 hour' },
+  { value: '6', title: '6 hours' },
+  { value: '12', title: '12 hours' },
+  { value: '24', title: '1 day' },
+  { value: '48', title: '2 days' },
+  { value: '168', title: '7 days' },
+  { value: '336', title: '14 days' },
+  { value: '720', title: '30 days' },
+  { value: '0', title: 'Never' },
+];
+
+export const EDIT_HOURS_OPTIONS = [{ value: '-1', title: 'Keep existing' }, ...HOURS_OPTIONS];
+
 export function toSendPayload(
   formValues: Record<string, string>,
   type: SendTypeValue,
+  _mode: 'create' | 'edit' = 'create',
 ): CreateSendPayload {
-  const deletionDays = Number(formValues.deletionDays) || 7;
-  const deletionDate = new Date(Date.now() + deletionDays * 24 * 60 * 60 * 1000).toISOString();
+  const payload: Record<string, unknown> = {
+    name: formValues.name ?? '',
+    type,
+    disabled: formValues.disabled === 'true',
+    hideEmail: formValues.hideEmail === 'true',
+  };
 
-  const rawMaxAccess = Number(formValues.maxAccessCount);
-  const maxAccessCount =
-    !isNaN(rawMaxAccess) && formValues.maxAccessCount?.trim() ? rawMaxAccess : null;
+  if (
+    formValues.deletionHours &&
+    formValues.deletionHours !== '0' &&
+    formValues.deletionHours !== '-1'
+  ) {
+    const hours = Number(formValues.deletionHours) || 0;
+    payload.deletionDate = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  }
+
+  if (
+    formValues.expirationHours &&
+    formValues.expirationHours !== '0' &&
+    formValues.expirationHours !== '-1'
+  ) {
+    const hours = Number(formValues.expirationHours) || 0;
+    payload.expirationDate = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  }
 
   const password = trimToNull(formValues.password);
+  if (password !== null) payload.password = password;
 
-  const payload: CreateSendPayload = {
-    name: formValues.name ?? '',
-    notes: trimToNull(formValues.notes),
-    type,
-    password,
-    maxAccessCount,
-    deletionDate,
-    expirationDate: null,
-    text: null,
-    file: null,
-  };
+  if (formValues.maxAccessCount?.trim()) {
+    const raw = Number(formValues.maxAccessCount);
+    if (!isNaN(raw)) payload.maxAccessCount = raw;
+  }
+
+  const notes = trimToNull(formValues.notes);
+  if (notes !== null) payload.notes = notes;
 
   if (type === SendType.Text) {
     payload.text = {
@@ -111,5 +155,21 @@ export function toSendPayload(
     };
   }
 
-  return payload;
+  return payload as unknown as CreateSendPayload;
+}
+
+const SEND_ICON_PATHS: Record<SendTypeValue, string> = {
+  [SendType.Text]:
+    'M3.75 2A1.75 1.75 0 0 0 2 3.75v8.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 12.25v-8.5A1.75 1.75 0 0 0 12.25 2zm.75 2.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1 0-1.5m0 3h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1 0-1.5',
+  [SendType.File]:
+    'M5 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V5.414a1.5 1.5 0 0 0-.44-1.06L9.647 1.439A1.5 1.5 0 0 0 8.586 1zm.5 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1H6a.5.5 0 0 1-.5-.5M6 6h4a.5.5 0 0 1 0 1H6a.5.5 0 0 1 0-1m0 2h4a.5.5 0 0 1 0 1H6a.5.5 0 0 1 0-1m0 2h3a.5.5 0 0 1 0 1H6a.5.5 0 0 1 0-1',
+};
+
+const SEND_ICON_COLORS: Record<SendTypeValue, { light: string; dark: string }> = {
+  [SendType.Text]: { light: '#1F6FEB', dark: '#2F6FED' },
+  [SendType.File]: { light: '#3A9C61', dark: '#3A9C61' },
+};
+
+export function sendIcon(type: SendTypeValue): Image.ImageLike {
+  return buildIcon(SEND_ICON_PATHS[type], SEND_ICON_COLORS[type]);
 }

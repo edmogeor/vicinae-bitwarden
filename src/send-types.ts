@@ -34,6 +34,8 @@ export interface CreateSendPayload {
   maxAccessCount: number | null;
   deletionDate: string | null;
   expirationDate: string | null;
+  disabled: boolean;
+  hideEmail: boolean;
 }
 
 export interface SendAction {

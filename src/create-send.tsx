@@ -15,7 +15,7 @@ import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
 import { SendType } from './send-types';
 import type { SendTypeValue } from './send-types';
-import { sendAccessUrl, toSendPayload } from './send-utils';
+import { sendAccessUrl, toSendPayload, HOURS_OPTIONS } from './send-utils';
 import { readFormValues } from './item-utils';
 import { useSession } from './use-session';
 import { renderGate, useGateEffects } from './unlock-gate';
@@ -38,6 +38,11 @@ export default function CreateSend() {
   const [state, setState] = useState<UIState>({ kind: 'checking-bw' });
   const [selectedType, setSelectedType] = useState<string>('Text');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [maxAccessCount, setMaxAccessCount] = useState('');
+
+  function digitsOnly(value: string): string {
+    return value.replace(/\D/g, '');
+  }
 
   const { handleLogin, handleUnlock } = useGateEffects({
     session,
@@ -130,9 +135,28 @@ export default function CreateSend() {
 
       <Form.PasswordField id="password" title="Password (optional)" />
 
-      <Form.TextField id="deletionDays" title="Deletion Days" defaultValue="7" />
+      <Form.Dropdown id="deletionHours" title="Deletion Date" defaultValue="168">
+        {HOURS_OPTIONS.map((opt) => (
+          <Form.Dropdown.Item key={opt.value} value={opt.value} title={opt.title} />
+        ))}
+      </Form.Dropdown>
 
-      <Form.TextField id="maxAccessCount" title="Max Access Count (optional)" />
+      <Form.Dropdown id="expirationHours" title="Expiration Date" defaultValue="0">
+        {HOURS_OPTIONS.map((opt) => (
+          <Form.Dropdown.Item key={opt.value} value={opt.value} title={opt.title} />
+        ))}
+      </Form.Dropdown>
+
+      <Form.TextField
+        id="maxAccessCount"
+        title="Max Accesses"
+        value={maxAccessCount}
+        onChange={(v) => setMaxAccessCount(digitsOnly(v))}
+      />
+
+      <Form.Checkbox id="hideEmail" title="Privacy" label="Hide email from recipients" />
+
+      <Form.Checkbox id="disabled" title="Status" label="Deactivate send" />
 
       <Form.Separator />
 

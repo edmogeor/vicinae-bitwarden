@@ -22,17 +22,19 @@ const TYPE_COLORS: Partial<Record<ItemTypeValue, { light: string; dark: string }
   [ItemType.SecureNote]: { light: '#A48ED6', dark: '#BC8CFF' },
 };
 
-function buildPlaceholderIcon(type: ItemTypeValue): Image.ImageLike {
-  const path = SVG_PATHS[type];
-  const color = TYPE_COLORS[type];
-  if (!path || !color) return 'circle';
-
+export function buildIcon(path: string, color: { light: string; dark: string }): Image.ImageLike {
   const makeSvg = (bg: string) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect rx="4" ry="4" width="16" height="16" fill="${bg}"/><g transform="translate(2.4,2.4) scale(0.7)"><path fill="#fff" fill-rule="evenodd" d="${path}"/></g></svg>`;
     return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   };
-
   return { source: { light: makeSvg(color.light), dark: makeSvg(color.dark) } };
+}
+
+function buildPlaceholderIcon(type: ItemTypeValue): Image.ImageLike {
+  const path = SVG_PATHS[type];
+  const color = TYPE_COLORS[type];
+  if (!path || !color) return 'circle';
+  return buildIcon(path, color);
 }
 
 export function itemIcon(item: BwItem, favicons?: FaviconMap): Image.ImageLike {

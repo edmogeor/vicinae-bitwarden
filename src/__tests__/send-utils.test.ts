@@ -177,7 +177,7 @@ describe('toSendPayload', () => {
     expect(payload.type).toBe(SendType.Text);
     expect(payload.text?.text).toBe('hello');
     expect(payload.text?.hidden).toBe(true);
-    expect(payload.file).toBeNull();
+    expect(payload.file).toBeUndefined();
   });
 
   it('builds basic File send payload', () => {
@@ -187,12 +187,12 @@ describe('toSendPayload', () => {
     );
     expect(payload.type).toBe(SendType.File);
     expect(payload.file?.fileName).toBe('doc.pdf');
-    expect(payload.text).toBeNull();
+    expect(payload.text).toBeUndefined();
   });
 
-  it('defaults deletionDays to 7 when not provided', () => {
-    const payload = toSendPayload({ name: 'Test' }, SendType.Text);
-    const expectedDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  it('sets deletionDate from deletionHours', () => {
+    const payload = toSendPayload({ name: 'Test', deletionHours: '168' }, SendType.Text);
+    const expectedDate = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
     expect(payload.deletionDate?.slice(0, 10)).toBe(expectedDate.slice(0, 10));
   });
 

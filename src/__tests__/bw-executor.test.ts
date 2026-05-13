@@ -594,6 +594,8 @@ describe('createSend', () => {
       maxAccessCount: null,
       deletionDate: null,
       expirationDate: null,
+      disabled: false,
+      hideEmail: false,
     };
 
     const result = await bw.createSend(payload, 'token');
