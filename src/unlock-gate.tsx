@@ -3,7 +3,7 @@ import { useCallback, useEffect } from 'react';
 import { BwNotInstalled, SecretToolNotInstalled } from './bw-not-installed';
 import * as bw from './bw-executor';
 import { getErrorMessage } from './bw-executor';
-import { checkSecretToolInstalled } from './session-store';
+import { checkSecretToolInstalled } from './secret-store';
 
 export type GateUIState =
   | { kind: 'checking-bw' }

@@ -3,11 +3,10 @@ import { promisify } from 'node:util';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { spawnWait } from './spawn-stdin';
+import { secretStore, secretLookup, secretClear } from './secret-store';
 
 const exec = promisify(execFile);
 
-const SERVICE = 'vicinae-bitwarden';
 const ACCOUNT = 'api-creds';
 
 function getHome(): string {
@@ -17,11 +16,10 @@ function getHome(): string {
 }
 
 export async function storeApiCredentials(clientId: string, clientSecret: string): Promise<void> {
-  const payload = JSON.stringify({ clientId, clientSecret });
-  await spawnWait(
-    'secret-tool',
-    ['store', '--label=Vicinae Bitwarden API Key', 'service', SERVICE, 'account', ACCOUNT],
-    payload,
+  await secretStore(
+    ACCOUNT,
+    JSON.stringify({ clientId, clientSecret }),
+    'Vicinae Bitwarden API Key',
   );
 }
 
@@ -47,12 +45,7 @@ export async function getApiCredentials(): Promise<{
   clientSecret: string;
 } | null> {
   try {
-    const { stdout } = await exec(
-      'secret-tool',
-      ['lookup', 'service', SERVICE, 'account', ACCOUNT],
-      { timeout: 5000 },
-    );
-    const raw = stdout.trim();
+    const raw = await secretLookup(ACCOUNT);
     if (!raw) return null;
     return parseJsonRecord(raw);
   } catch {
@@ -61,13 +54,7 @@ export async function getApiCredentials(): Promise<{
 }
 
 async function deleteApiCredentials(): Promise<void> {
-  try {
-    await exec('secret-tool', ['clear', 'service', SERVICE, 'account', ACCOUNT], {
-      timeout: 5000,
-    });
-  } catch {
-    // Not found or error — not fatal
-  }
+  await secretClear(ACCOUNT);
 }
 
 export async function clearApiCredentialsFromDisk(): Promise<void> {
