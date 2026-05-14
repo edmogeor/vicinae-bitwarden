@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Support & troubleshooting
+    url: https://github.com/edmogeor/vicinae-bitwarden/blob/master/.github/SUPPORT.md
+    about: How to collect logs, restart Vicinae, and clear the extension cache before filing a bug.
   - name: Vicinae launcher issues
     url: https://github.com/vicinaehq/vicinae/issues
     about: For bugs in Vicinae itself (not this extension), please report upstream.
