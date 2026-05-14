@@ -1,0 +1,116 @@
+name: Bug report
+description: Report a problem with the Bitwarden extension for Vicinae
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report.
+
+        Before submitting, please:
+        - Search [existing issues](https://github.com/edmogeor/vicinae-bitwarden/issues?q=is%3Aissue) to avoid duplicates.
+        - Make sure you are on the latest version of the extension (`Manage Extensions` → check version).
+        - Do **not** paste your master password, session key, vault contents, or attachment contents. Logs are redacted by the extension, but always double-check before posting.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, concise description of what's going wrong.
+      placeholder: 'Copying a TOTP code does nothing for items synced from a self-hosted server…'
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal, ordered steps so we can reproduce locally.
+      placeholder: |
+        1. Open `Search Vault`
+        2. Select item "Example"
+        3. Trigger `Copy TOTP`
+        4. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: Found in `package.json` or the Vicinae extension list.
+      placeholder: '0.4.1'
+    validations:
+      required: true
+
+  - type: input
+    id: vicinae-version
+    attributes:
+      label: Vicinae version
+    validations:
+      required: true
+
+  - type: input
+    id: bw-version
+    attributes:
+      label: Bitwarden CLI version
+      description: Output of `bw --version`.
+    validations:
+      required: true
+
+  - type: input
+    id: server
+    attributes:
+      label: Server region / self-hosted URL
+      description: Bitwarden.com, Bitwarden EU, or a self-hosted URL (no credentials please).
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: 'CachyOS / Linux 7.0.3'
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Two ways to collect logs — please include at least one.
+
+        **A. From the in-app error screen (easiest).** If the extension shows a "Something went wrong" / VaultError screen, use the `Copy Error` action and paste the output below. Details are redacted before display.
+
+        **B. From the stderr log (best for non-fatal issues).** In a terminal, run:
+
+        ```bash
+        tail -F ~/.local/share/vicinae/support/bitwarden/.vicinae/stderr.txt
+        ```
+
+        Leave it running, reproduce the issue, then copy the new lines that appear. The extension redacts secrets before logging, but please skim the output and remove anything you'd rather not share.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, related issues, recent changes, etc.

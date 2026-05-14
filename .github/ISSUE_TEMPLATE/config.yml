@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Vicinae launcher issues
+    url: https://github.com/vicinaehq/vicinae/issues
+    about: For bugs in Vicinae itself (not this extension), please report upstream.
+  - name: Bitwarden CLI issues
+    url: https://github.com/bitwarden/clients
+    about: For bugs in the `bw` CLI, please report upstream to Bitwarden.
