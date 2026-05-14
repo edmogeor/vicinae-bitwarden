@@ -6,7 +6,13 @@ Thanks for using the Bitwarden extension for Vicinae. This page describes how to
 
 1. Search [existing issues](https://github.com/edmogeor/vicinae-bitwarden/issues?q=is%3Aissue) — your problem may already be tracked.
 2. Update to the latest version of the extension and the Bitwarden CLI (`bw --version`).
-3. Re-launch Vicinae after upgrading either component.
+3. Restart Vicinae and re-check:
+
+   ```bash
+   pkill vicinae && systemctl --user restart vicinae
+   ```
+
+4. If the bug looks like stale state (missing items after a vault change, wrong TOTP, ghost entries from another account), run the extension's **Log Out** command. It wipes the local cache and clears the libsecret entries the extension owns (session, TOTP secrets, Send keys). Then sign back in and retry.
 
 If the problem is in **Vicinae itself**, report it at [vicinaehq/vicinae](https://github.com/vicinaehq/vicinae/issues). If the problem is in the **Bitwarden CLI** (`bw`), report it at [bitwarden/clients](https://github.com/bitwarden/clients).
 

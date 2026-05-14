@@ -11,6 +11,13 @@ body:
         Before submitting, please:
         - Search [existing issues](https://github.com/edmogeor/vicinae-bitwarden/issues?q=is%3Aissue) to avoid duplicates.
         - Make sure you are on the latest version of the extension (`Manage Extensions` → check version).
+        - Try restarting Vicinae and see if it reproduces:
+
+          ```bash
+          pkill vicinae && systemctl --user restart vicinae
+          ```
+
+        - If the issue looks like stale data (missing items after a vault change, wrong TOTP, etc.), run the **Log Out** command from this extension first — it wipes the local cache and keyring entries — then sign back in and try again.
         - Do **not** paste your master password, session key, vault contents, or attachment contents. Logs are redacted by the extension, but always double-check before posting.
 
   - type: textarea
