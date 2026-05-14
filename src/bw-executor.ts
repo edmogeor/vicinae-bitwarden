@@ -1,6 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { join } from 'node:path';
+import { basename, resolve as resolvePath, sep } from 'node:path';
 import { BwError, BwFolder, BwItem, ItemTypeValue } from './bitwarden-types';
 import type { BwSend, CreateSendPayload } from './send-types';
 import { getDownloadDir, getPreferences } from './preferences';
@@ -57,8 +57,8 @@ function bwEnv(): NodeJS.ProcessEnv {
     if (prefs.customCertPath) {
       env.NODE_EXTRA_CA_CERTS = prefs.customCertPath;
     }
-  } catch {
-    // Preferences not available
+  } catch (err) {
+    logError('bw.env', err);
   }
   return env;
 }
@@ -66,7 +66,8 @@ function bwEnv(): NodeJS.ProcessEnv {
 function parseJson<T>(stdout: string): T {
   try {
     return JSON.parse(stdout) as T;
-  } catch {
+  } catch (err) {
+    logError('bw.parseJson', err);
     throw new BwError('Failed to parse `bw` output as JSON', 'PARSE_ERROR');
   }
 }
@@ -449,7 +450,26 @@ export async function downloadAttachment(
   } catch {
     downloadDir = `${process.env.HOME ?? '/tmp'}/Downloads`;
   }
-  const outPath = join(downloadDir, fileName);
+  const safeName = basename(fileName);
+  if (!safeName || safeName === '.' || safeName === '..' || safeName.startsWith('.')) {
+    logError('bw.downloadAttachment.unsafeFilename', new Error(`unsafe filename: ${fileName}`));
+    throw new BwError(
+      `Refusing to download attachment with unsafe filename: ${fileName}`,
+      'UNSAFE_FILENAME',
+    );
+  }
+  const dirRoot = resolvePath(downloadDir);
+  const outPath = resolvePath(dirRoot, safeName);
+  if (outPath !== dirRoot + sep + safeName) {
+    logError(
+      'bw.downloadAttachment.unsafeFilename',
+      new Error(`escapes download dir: ${fileName}`),
+    );
+    throw new BwError(
+      `Refusing to download attachment outside download directory: ${fileName}`,
+      'UNSAFE_FILENAME',
+    );
+  }
   try {
     await execBw(['get', 'attachment', attachmentId, '--itemid', itemId, '--output', outPath], {
       timeout: 30000,

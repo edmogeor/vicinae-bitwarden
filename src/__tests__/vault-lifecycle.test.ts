@@ -67,6 +67,28 @@ function makeParams(
   };
 }
 
+function renderSyncErrorCase(errorMessage: string) {
+  const syncVault = vi
+    .fn<(token: string) => Promise<void>>()
+    .mockRejectedValue(new Error(errorMessage));
+  const clearSession = vi.fn<() => Promise<void>>();
+  const setState = vi.fn<SetUIState>();
+
+  const params = makeParams({ session: 'token', syncVault, clearSession, setState });
+  renderHook(() => useVaultLifecycle(params));
+
+  return { clearSession, setState };
+}
+
+async function expectErrorScreen(setState: SetUIState, clearSession: SetUIState) {
+  await waitFor(() => {
+    expect(setState).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'error', title: 'Failed to load vault' }),
+    );
+  });
+  expect(clearSession).not.toHaveBeenCalled();
+}
+
 const items = makeItems(1);
 const folders = makeFolders(1);
 
@@ -145,14 +167,7 @@ describe('useVaultLifecycle', () => {
 
     it('clears session and sets needs-unlock on auth-related sync failure with no cache', async () => {
       mockLoadCachedVault.mockResolvedValue(null);
-      const syncVault = vi
-        .fn<(token: string) => Promise<void>>()
-        .mockRejectedValue(new Error('Not logged in'));
-      const clearSession = vi.fn<() => Promise<void>>();
-      const setState = vi.fn<SetUIState>();
-
-      const params = makeParams({ session: 'token', syncVault, clearSession, setState });
-      renderHook(() => useVaultLifecycle(params));
+      const { clearSession, setState } = renderSyncErrorCase('Not logged in');
 
       await waitFor(() => {
         expect(clearSession).toHaveBeenCalled();
@@ -164,21 +179,8 @@ describe('useVaultLifecycle', () => {
 
     it('shows error screen on non-auth sync failure with no cache', async () => {
       mockLoadCachedVault.mockResolvedValue(null);
-      const syncVault = vi
-        .fn<(token: string) => Promise<void>>()
-        .mockRejectedValue(new Error('Cannot reach Bitwarden server'));
-      const clearSession = vi.fn<() => Promise<void>>();
-      const setState = vi.fn<SetUIState>();
-
-      const params = makeParams({ session: 'token', syncVault, clearSession, setState });
-      renderHook(() => useVaultLifecycle(params));
-
-      await waitFor(() => {
-        expect(setState).toHaveBeenCalledWith(
-          expect.objectContaining({ kind: 'error', title: 'Failed to load vault' }),
-        );
-      });
-      expect(clearSession).not.toHaveBeenCalled();
+      const { clearSession, setState } = renderSyncErrorCase('Cannot reach Bitwarden server');
+      await expectErrorScreen(setState, clearSession);
     });
   });
 
@@ -292,13 +294,7 @@ describe('useVaultLifecycle', () => {
     );
 
     rerender({ kind: 'loading' });
-
-    await waitFor(() => {
-      expect(setState).toHaveBeenCalledWith(
-        expect.objectContaining({ kind: 'error', title: 'Failed to load vault' }),
-      );
-    });
-    expect(clearSession).not.toHaveBeenCalled();
+    await expectErrorScreen(setState, clearSession);
   });
 
   // -------------------------------------------------------------------------

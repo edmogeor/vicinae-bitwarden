@@ -7,19 +7,8 @@ interface VaultErrorProps {
 }
 
 export function VaultError({ title, message, retry }: VaultErrorProps) {
-  const body = [
-    `# ${title}`,
-    '',
-    '```',
-    message,
-    '```',
-    '',
-    retry ? '**Press `Enter` to retry.**' : '',
-    '',
-    '_Review the error text for personal info before sharing publicly._',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const retryHint = retry ? '\n**Press `Enter` to retry.**' : '';
+  const body = `# ${title}\n\n\`\`\`\n${message}\n\`\`\`${retryHint}\n\n_Review the error text for personal info before sharing publicly._`;
   return (
     <Detail
       markdown={body}

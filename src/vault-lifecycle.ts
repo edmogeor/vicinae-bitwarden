@@ -32,6 +32,26 @@ function hasTotpItem(items: BwItem[]): boolean {
   );
 }
 
+async function handleSyncError(
+  err: unknown,
+  clearSession: () => Promise<void>,
+  setState: React.Dispatch<React.SetStateAction<UIState>>,
+  authErrorText?: string,
+): Promise<void> {
+  const message = getErrorMessage(err);
+  if (isAuthError(message)) {
+    await clearSession();
+    setState({ kind: 'needs-unlock', error: authErrorText ?? message });
+  } else {
+    setState({
+      kind: 'error',
+      title: 'Failed to load vault',
+      message,
+      retry: () => setState({ kind: 'loading' }),
+    });
+  }
+}
+
 interface VaultLifecycleParams {
   session: string | null;
   state: UIState;
@@ -63,10 +83,7 @@ export function useVaultLifecycle(params: VaultLifecycleParams) {
       const cached = await loadCachedVault();
       let staleCache = false;
       if (cached) {
-        if (hasTotpItem(cached.items)) {
-          const secrets = await loadTotpSecrets();
-          staleCache = Object.keys(secrets).length === 0;
-        }
+        staleCache = hasTotpItem(cached.items) && Object.keys(await loadTotpSecrets()).length === 0;
         if (!staleCache) {
           setVault(cached.items, cached.folders);
         }
@@ -98,20 +115,9 @@ export function useVaultLifecycle(params: VaultLifecycleParams) {
         await syncVault(session!);
         await showToast({ style: Toast.Style.Success, title: 'Vault synced' });
       } catch (err) {
-        if (!cached || staleCache) {
-          const message = getErrorMessage(err);
-          if (isAuthError(message)) {
-            await clearSession();
-            setState({ kind: 'needs-unlock', error: 'Session expired' });
-          } else {
-            setState({
-              kind: 'error',
-              title: 'Failed to load vault',
-              message,
-              retry: () => setState({ kind: 'loading' }),
-            });
-          }
-        }
+        logError('vault-lifecycle.initialSync', err);
+        if (!cached || staleCache)
+          await handleSyncError(err, clearSession, setState, 'Session expired');
       }
     })();
   }, []);
@@ -165,20 +171,8 @@ export function useVaultLifecycle(params: VaultLifecycleParams) {
       try {
         await syncVault(session);
       } catch (err) {
-        if (!cached) {
-          const message = getErrorMessage(err);
-          if (isAuthError(message)) {
-            await clearSession();
-            setState({ kind: 'needs-unlock', error: message });
-          } else {
-            setState({
-              kind: 'error',
-              title: 'Failed to load vault',
-              message,
-              retry: () => setState({ kind: 'loading' }),
-            });
-          }
-        }
+        logError('vault-lifecycle.cachedSync', err);
+        if (!cached) await handleSyncError(err, clearSession, setState);
       }
     })();
   }, [session, state.kind]);

@@ -215,7 +215,8 @@ async function fetchAndWrite(domain: string, filePath: string, now: number): Pro
     const dataUri = `data:image/png;base64,${rounded.toString('base64')}`;
     faviconCache[domain] = { dataUri, timestamp: now };
     return dataUri;
-  } catch {
+  } catch (err) {
+    logError('favicons.fetchAndWrite', err);
     faviconCache[domain] = { dataUri: '', timestamp: now };
     return '';
   }
