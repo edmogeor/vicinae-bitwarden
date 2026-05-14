@@ -121,33 +121,29 @@ export function getErrorMessage(err: unknown): string {
   return redactSensitive(friendlyMessage(String(err)));
 }
 
+const FRIENDLY_MESSAGES: ReadonlyArray<readonly [readonly string[], string]> = [
+  [
+    ['incorrect client_secret', 'incorrect clientid'],
+    'Invalid API credentials — check your Client ID and Client Secret in extension preferences.',
+  ],
+  [['invalid master password'], 'Incorrect master password.'],
+  [['not logged in'], 'Not logged in.'],
+  [
+    ['econnrefused', 'enotfound', 'getaddrinfo', 'econnreset'],
+    'Cannot reach Bitwarden server — check your connection and server URL.',
+  ],
+  [
+    ['two-factor', 'two step'],
+    'Two-step login is required but the CLI does not support it for API key logins.',
+  ],
+  [['timed out', 'etimedout'], 'Request timed out — the Bitwarden server did not respond in time.'],
+  [['rate limit', '429'], 'Too many requests — wait a moment and try again.'],
+];
+
 function friendlyMessage(raw: string): string {
   const lower = raw.toLowerCase();
-  if (lower.includes('incorrect client_secret') || lower.includes('incorrect clientid')) {
-    return 'Invalid API credentials — check your Client ID and Client Secret in extension preferences.';
-  }
-  if (lower.includes('invalid master password')) {
-    return 'Incorrect master password.';
-  }
-  if (lower.includes('not logged in')) {
-    return 'Not logged in.';
-  }
-  if (
-    lower.includes('econnrefused') ||
-    lower.includes('enotfound') ||
-    lower.includes('getaddrinfo') ||
-    lower.includes('econnreset')
-  ) {
-    return 'Cannot reach Bitwarden server — check your connection and server URL.';
-  }
-  if (lower.includes('two-factor') || lower.includes('two step')) {
-    return 'Two-step login is required but the CLI does not support it for API key logins.';
-  }
-  if (lower.includes('timed out') || lower.includes('etimedout')) {
-    return 'Request timed out — the Bitwarden server did not respond in time.';
-  }
-  if (lower.includes('rate limit') || lower.includes('429')) {
-    return 'Too many requests — wait a moment and try again.';
+  for (const [needles, msg] of FRIENDLY_MESSAGES) {
+    if (needles.some((n) => lower.includes(n))) return msg;
   }
   return raw;
 }

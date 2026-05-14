@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .fallow/
+.claude/
 vicinae-env.d.ts
 CONTEXT.md
 PRD.md
