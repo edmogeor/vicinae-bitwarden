@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { BwError, BwFolder, BwItem, ItemTypeValue } from './bitwarden-types';
 import type { BwSend, CreateSendPayload } from './send-types';
 import { getDownloadDir, getPreferences } from './preferences';
+import { redactSensitive } from './redact';
+import { logError } from './log';
 
 const exec = promisify(execFile);
 
@@ -113,9 +115,9 @@ export function getErrorMessage(err: unknown): string {
       .join('\n')
       .trim();
     const raw = cleaned || err.message;
-    return friendlyMessage(raw);
+    return redactSensitive(friendlyMessage(raw));
   }
-  return friendlyMessage(String(err));
+  return redactSensitive(friendlyMessage(String(err)));
 }
 
 function friendlyMessage(raw: string): string {
@@ -177,7 +179,8 @@ export async function checkInstalled(): Promise<boolean> {
   try {
     await exec('bw', ['--version'], { timeout: 5000 });
     return true;
-  } catch {
+  } catch (err) {
+    logError('bw.checkInstalled', err);
     return false;
   }
 }
@@ -398,8 +401,8 @@ export async function logout(): Promise<void> {
 export async function lock(session: Session): Promise<void> {
   try {
     await execBw(['lock'], { timeout: 10000, env: sessionEnv(session) });
-  } catch {
-    // Lock failures are non-fatal — the session is cleared client-side regardless
+  } catch (err) {
+    logError('bw.lock', err);
   }
 }
 

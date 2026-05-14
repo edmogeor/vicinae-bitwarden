@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
+import { logError } from './log';
 
 const FAVICON_CACHE_KEY = 'vicinae-bitwarden-favicons';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -55,7 +56,8 @@ export async function loadFaviconCache(): Promise<FaviconMap> {
       hydrateEntry(domain, value, result);
     }
     return result;
-  } catch {
+  } catch (err) {
+    logError('favicons.load', err);
     return {};
   }
 }
