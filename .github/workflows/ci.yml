@@ -59,7 +59,7 @@ jobs:
       - name: Generate health badge
         run: |
           mkdir -p badge-out
-          fallow health --format badge > badge-out/badge.svg
+          fallow health --format badge --score --hotspots > badge-out/badge.svg
 
       - name: Publish badge
         uses: peaceiris/actions-gh-pages@v4
